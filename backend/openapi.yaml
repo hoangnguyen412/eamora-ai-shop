@@ -1,0 +1,87 @@
+openapi: 3.0.0
+info:
+  title: Eamora AI Shop API
+  version: 1.0.0
+  description: API Contract cho đồ án AI-Driven B2C Marketplace
+servers:
+  - url: http://localhost:4000
+paths:
+  /health:
+    get:
+      summary: Kiểm tra trạng thái API và Database
+      responses:
+        '200': { description: OK }
+  /api/auth/register:
+    post:
+      summary: Đăng ký tài khoản
+      responses:
+        '201': { description: Created }
+  /api/auth/login:
+    post:
+      summary: Đăng nhập lấy JWT
+      responses:
+        '200': { description: OK }
+  /api/auth/me:
+    get:
+      summary: Lấy thông tin user hiện tại
+      responses:
+        '200': { description: OK }
+  /api/products:
+    get:
+      summary: Danh sách sản phẩm (có filter)
+      responses:
+        '200': { description: OK }
+  /api/products/{id}:
+    get:
+      summary: Chi tiết sản phẩm
+      responses:
+        '200': { description: OK }
+  /api/products/{id}/reviews:
+    get:
+      summary: Lấy danh sách đánh giá
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Tạo đánh giá mới
+      responses:
+        '201': { description: Created }
+  /api/orders:
+    post:
+      summary: Tạo đơn hàng
+      responses:
+        '201': { description: Created }
+  /api/orders/me:
+    get:
+      summary: Lịch sử mua hàng
+      responses:
+        '200': { description: OK }
+  /api/seller/listings:
+    get:
+      summary: Lấy danh sách listing của seller
+      responses:
+        '200': { description: OK }
+  /api/search/semantic:
+    post:
+      summary: Tìm kiếm ngữ nghĩa (gọi sang AI)
+      responses:
+        '200': { description: OK }
+  /api/chat/message:
+    post:
+      summary: Chat với RAG Assistant
+      responses:
+        '200': { description: OK }
+  /api/agent/watch:
+    post:
+      summary: Thêm sản phẩm vào Watchlist
+      responses:
+        '201': { description: Created }
+  /api/agent/rules:
+    put:
+      summary: Cập nhật luật Auto-buy
+      responses:
+        '200': { description: OK }
+  /api/agent/history:
+    get:
+      summary: Lịch sử giá & Auto-buy
+      responses:
+        '200': { description: OK }
