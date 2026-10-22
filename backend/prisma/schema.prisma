@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         String   // buyer / seller
+  createdAt    DateTime @default(now())
+  orders       Order[]
+  reviews      Review[]
+  interactions Interaction[]
+}
+
+model Shop {
+  id              String    @id @default(uuid())
+  sellerId        String
+  name            String
+  description     String?
+  reputationScore Float     @default(0)
+  listings        Listing[]
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  categoryId  String
+  name        String
+  description String?
+  specs       Json?
+  basePrice   Float
+  category    Category    @relation(fields: [categoryId], references: [id])
+  listings    Listing[]
+  reviews     Review[]
+  embeddings  Embedding[]
+}
+
+model Listing {
+  id         String         @id @default(uuid())
+  productId  String
+  shopId     String
+  price      Float
+  stock      Int
+  product    Product        @relation(fields: [productId], references: [id])
+  shop       Shop           @relation(fields: [shopId], references: [id])
+  priceHistory PriceHistory[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  buyerId     String
+  totalAmount Float
+  status      String      // pending, completed, cancelled
+  createdAt   DateTime    @default(now())
+  buyer       User        @relation(fields: [buyerId], references: [id])
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  listingId String
+  quantity  Int
+  price     Float
+  order     Order  @relation(fields: [orderId], references: [id])
+}
+
+model Review {
+  id        String  @id @default(uuid())
+  productId String
+  userId    String
+  rating    Int
+  comment   String?
+  isFake    Boolean @default(false)
+  product   Product @relation(fields: [productId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+}
+
+model Interaction {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  action    String   // view, click, cart, buy
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// --- AI & AGENT ENTITIES ---
+
+model SearchSession {
+  id        String   @id @default(uuid())
+  userId    String?
+  queryText String
+  filters   Json?
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id                 String   @id @default(uuid())
+  sessionId          String
+  role               String   // user / assistant
+  content            String
+  retrievedProducts  Json?
+  createdAt          DateTime @default(now())
+}
+
+model Embedding {
+  id        String  @id @default(uuid())
+  productId String
+  vector    Unsupported("vector(768)")
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model PriceHistory {
+  id        String   @id @default(uuid())
+  listingId String
+  price     Float
+  recordedAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id])
+}
