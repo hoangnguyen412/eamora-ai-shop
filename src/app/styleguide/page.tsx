@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ProductCard from "@/components/shared/ProductCard";
+import ProductPrice from "@/components/shared/ProductPrice";
+import ProductRating from "@/components/shared/ProductRating";
+import InventoryStatus from "@/components/shared/InventoryStatus";
 import mockData from "@/mocks/db.json";
 import { Product } from "@/types";
 
@@ -136,6 +139,37 @@ export default function StyleguidePage() {
         <div className="w-full max-w-xs">
           <ProductCard product={sampleProduct} />
         </div>
+      </section>
+
+      <section aria-labelledby="commerce-components-heading" className="space-y-5">
+        <div>
+          <h2 id="commerce-components-heading" className="text-xl font-semibold">Commerce components</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Reusable product metadata used on cards and detail pages.</p>
+        </div>
+        <Card>
+          <CardContent className="grid gap-6 py-5 sm:grid-cols-3">
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Rating</p>
+              <ProductRating rating={sampleProduct.rating} reviewCount={sampleProduct.reviewCount} />
+              <ProductRating rating={sampleProduct.rating} reviewCount={sampleProduct.reviewCount} size="detail" />
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Price</p>
+              <ProductPrice price={sampleProduct.price} originalPrice={sampleProduct.originalPrice} />
+              <ProductPrice
+                price={sampleProduct.price}
+                originalPrice={sampleProduct.originalPrice}
+                discountPercent={sampleProduct.discountPercent}
+                size="detail"
+              />
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase text-muted-foreground">Inventory</p>
+              <InventoryStatus stock={sampleProduct.stock} />
+              <InventoryStatus stock={0} />
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );

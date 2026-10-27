@@ -6,8 +6,9 @@ import { Product } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Star, TrendingDown, Sparkles, Eye, Users } from "lucide-react";
-import { formatPrice } from "@/lib/helpers";
+import { ShoppingCart, TrendingDown, Sparkles, Eye, Users } from "lucide-react";
+import ProductPrice from "@/components/shared/ProductPrice";
+import ProductRating from "@/components/shared/ProductRating";
 import { useCart } from "@/context/CartProvider";
 
 interface ProductCardProps {
@@ -97,36 +98,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           </h3>
         </Link>
 
-        {/* Rating */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`h-3 w-3 ${
-                  i < Math.floor(product.rating)
-                    ? "fill-amber-400 text-amber-400"
-                    : "text-muted-foreground/30"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            ({product.reviewCount})
-          </span>
-        </div>
+        <ProductRating rating={product.rating} reviewCount={product.reviewCount} />
 
-        {/* Price */}
-        <div className="flex items-baseline gap-2">
-          <span className="text-lg font-bold text-primary">
-            {formatPrice(product.price)}
-          </span>
-          {product.originalPrice > product.price && (
-            <span className="text-xs text-muted-foreground line-through">
-              {formatPrice(product.originalPrice)}
-            </span>
-          )}
-        </div>
+        <ProductPrice price={product.price} originalPrice={product.originalPrice} />
 
         {/* Add to cart */}
         <Button
