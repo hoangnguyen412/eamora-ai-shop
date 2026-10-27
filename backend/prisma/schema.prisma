@@ -17,6 +17,7 @@ model User {
   orders       Order[]
   reviews      Review[]
   interactions Interaction[]
+  watchlist    Watchlist[]
 }
 
 model Shop {
@@ -46,6 +47,7 @@ model Product {
   listings    Listing[]
   reviews     Review[]
   embeddings  Embedding[]
+  watchlist   Watchlist[]
 }
 
 model Listing {
@@ -54,6 +56,8 @@ model Listing {
   shopId     String
   price      Float
   stock      Int
+  condition  String   @default("new")
+  createdAt  DateTime @default(now())
   product    Product        @relation(fields: [productId], references: [id])
   shop       Shop           @relation(fields: [shopId], references: [id])
   priceHistory PriceHistory[]
@@ -121,7 +125,19 @@ model Embedding {
   id        String  @id @default(uuid())
   productId String
   vector    Unsupported("vector(768)")
+  updatedAt DateTime @default(now()) @updatedAt
   product   Product @relation(fields: [productId], references: [id])
+}
+
+model Watchlist {
+  id          String   @id @default(uuid())
+  userId      String
+  productId   String
+  targetPrice Float
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
 }
 
 model PriceHistory {
