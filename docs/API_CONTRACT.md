@@ -3,6 +3,7 @@
 ## 1. Auth & User
 - `POST /api/auth/register` (body: email, password, role)
 - `POST /api/auth/login` (body: email, password) -> { token, user }
+- The frontend auth provider persists the backend JWT in `localStorage` under `eamora.auth.token`, restores the user through `GET /api/auth/me`, and shares the bearer token across authenticated API calls. The browser-side token is accessible to JavaScript; production deployments should consider HttpOnly cookie-based storage with corresponding CSRF protections.
 
 ## 2. Core Marketplace
 - `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page`, `limit`; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid price ranges return 400)

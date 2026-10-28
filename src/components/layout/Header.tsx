@@ -20,7 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/context/AuthProvider";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -28,6 +29,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { itemCount } = useCart();
+  const { user, isLoading, signOut } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 glass border-b">
@@ -94,30 +96,33 @@ export default function Header({ onMenuClick }: HeaderProps) {
               </Button>
             </Link>
 
-            {/* User menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="rounded-full cursor-pointer outline-none">
+            {!user ? (
+              <Link href="/login">
+                <Button variant="outline" size="sm" disabled={isLoading}>
+                  {isLoading ? "Đang tải..." : "Đăng nhập"}
+                </Button>
+              </Link>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="rounded-full cursor-pointer outline-none">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://api.dicebear.com/9.x/avataaars/svg?seed=Felix" />
                     <AvatarFallback>
                       <User className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">Nguyễn Văn A</p>
-                  <p className="text-xs text-muted-foreground">
-                    nguyenvana@example.com
-                  </p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Tài khoản</DropdownMenuItem>
-                <DropdownMenuItem>Đơn hàng của tôi</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Đăng xuất</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {user.role === "seller" ? "Nhà bán" : "Người mua"}
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>Đăng xuất</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </div>

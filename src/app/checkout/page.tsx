@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartProvider";
+import { useAuth } from "@/context/AuthProvider";
 import { formatPrice } from "@/lib/helpers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,15 +28,13 @@ import {
 
 export default function CheckoutPage() {
   const { items, subtotal, shippingFee, totalAmount, clearCart } = useCart();
+  const { token, user, isLoading: isAuthLoading, signOut } = useAuth();
   const [submitted, setSubmitted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [token, setToken] = useState("");
   const [orderId, setOrderId] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,35 +103,18 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      let activeToken = token;
-      if (!activeToken) {
-        const loginResponse = await fetch(`${apiBaseUrl}/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-        const loginResult = await loginResponse.json() as {
-          token?: string;
-          message?: string;
-          user?: { role?: string };
-        };
-
-        if (!loginResponse.ok || !loginResult.token) {
-          throw new Error(loginResult.message || "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.");
-        }
-        if (loginResult.user?.role !== "buyer") {
-          throw new Error("Tài khoản seller không thể đặt hàng. Vui lòng đăng nhập bằng tài khoản buyer.");
-        }
-
-        activeToken = loginResult.token;
-        setToken(activeToken);
+      if (!token || !user) {
+        throw new Error("Vui lòng đăng nhập trước khi đặt hàng.");
+      }
+      if (user.role !== "buyer") {
+        throw new Error("Tài khoản seller không thể đặt hàng. Vui lòng đăng nhập bằng tài khoản buyer.");
       }
 
       const orderResponse = await fetch(`${apiBaseUrl}/api/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${activeToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           items: items.map((item) => ({
@@ -150,7 +132,7 @@ export default function CheckoutPage() {
       };
 
       if (!orderResponse.ok || !orderResult.success || !orderResult.data?.id) {
-        if (orderResponse.status === 401) setToken("");
+        if (orderResponse.status === 401) signOut();
         throw new Error(orderResult.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
       }
 
@@ -172,38 +154,40 @@ export default function CheckoutPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Shipping + Payment */}
           <div className="lg:col-span-2 space-y-6">
-            {!token && (
+            {isAuthLoading ? (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Đăng nhập tài khoản buyer</CardTitle>
-                </CardHeader>
-                <CardContent className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="buyer-email" className="text-sm font-medium">Email</label>
-                    <Input
-                      id="buyer-email"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      required
-                      placeholder="Email tài khoản"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="buyer-password" className="text-sm font-medium">Mật khẩu</label>
-                    <Input
-                      id="buyer-password"
-                      type="password"
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      required
-                      placeholder="Mật khẩu"
-                    />
-                  </div>
+                <CardContent className="py-4 text-sm text-muted-foreground" role="status">
+                  Đang kiểm tra phiên đăng nhập...
                 </CardContent>
               </Card>
+            ) : !user ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Đăng nhập để đặt hàng</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Đăng nhập hoặc tạo tài khoản buyer để tiếp tục. Phiên đăng nhập được dùng chung trên cửa hàng.
+                  </p>
+                  <Link href="/login?next=%2Fcheckout">
+                    <Button type="button" variant="outline">Đăng nhập / Đăng ký buyer</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : user.role !== "buyer" ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Cần tài khoản buyer</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Bạn đang đăng nhập bằng tài khoản seller ({user.email}). Đăng xuất rồi đăng nhập buyer để đặt hàng.
+                  </p>
+                  <Button type="button" variant="outline" onClick={signOut}>Đăng xuất</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="text-sm text-muted-foreground">Đang đặt hàng với tài khoản {user.email}</p>
             )}
 
             {/* Shipping info */}
@@ -380,7 +364,7 @@ export default function CheckoutPage() {
                   type="submit"
                   className="w-full bg-gradient-brand text-white hover:opacity-90 h-12"
                   size="lg"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isAuthLoading || user?.role !== "buyer"}
                 >
                   {isSubmitting ? "Đang xử lý..." : "Đặt hàng"}
                 </Button>
