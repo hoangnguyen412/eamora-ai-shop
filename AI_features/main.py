@@ -6,6 +6,7 @@ import time
 import re
 import os
 import psycopg2
+from dotenv import load_dotenv
 
 app = FastAPI(title="E-Amora AI Service", version="1.0.0")
 
@@ -14,8 +15,13 @@ print("Loading model keepitreal/vietnamese-sbert...")
 model = SentenceTransformer('keepitreal/vietnamese-sbert')
 print("Model loaded successfully!")
 
+load_dotenv()
+
 # Cấu hình kết nối PostgreSQL (pgvector)
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/eamora")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL is None:
+    print("LỖI: DATABASE_URL không được tìm thấy trong biến môi trường. Vui lòng kiểm tra file .env")
+    exit(1)
 
 
 def get_db_connection():
@@ -124,14 +130,8 @@ def semantic_search(req: SemanticSearchRequest):
         where_clauses.append('p."basePrice" <= %s')
         params.append(filters["budget_max"])
     if filters.get("brand") is not None:
-        # Lưu ý: Product trong schema không có cột brand trực tiếp, nhưng nếu query có brand, 
-        # ta có thể join với Category hoặc check tên. Theo schema Product có categoryId liên kết với Category (slug/name).
-        # Tạm thời map vào trường hợp schema hoặc giữ nguyên nếu bảng Product thực tế có brand. 
-        # Tuy nhiên đối chiếu schema.prisma: Product không có cột "brand". Category có "name", "slug".
-        # Ta sẽ dùng category name/slug hoặc bỏ qua nếu không khớp schema. 
-        # Nhưng để an toàn theo yêu cầu hard filter brand, ta check p."name" chứa brand hoặc qua category.
-        # Ở đây ta điều chỉnh theo đúng schema.prisma (Product có name, basePrice, categoryId).
-        pass
+        where_clauses.append('LOWER(p."name") LIKE LOWER(%s)')
+        params.append(f'%{filters["brand"]}%')
 
     if filters.get("category") is not None:
         where_clauses.append('p."categoryId" IN (SELECT "id" FROM "Category" WHERE LOWER("name") = LOWER(%s))')
