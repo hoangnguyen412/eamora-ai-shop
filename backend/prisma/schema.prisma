@@ -28,6 +28,8 @@ model Shop {
   description     String?
   reputationScore Float     @default(0)
   listings        Listing[]
+
+  @@index([sellerId])
 }
 
 model Category {
@@ -49,6 +51,8 @@ model Product {
   reviews     Review[]
   embeddings  Embedding[]
   watchlist   Watchlist[]
+
+  @@index([categoryId])
 }
 
 model Listing {
@@ -62,6 +66,9 @@ model Listing {
   product    Product        @relation(fields: [productId], references: [id])
   shop       Shop           @relation(fields: [shopId], references: [id])
   priceHistory PriceHistory[]
+
+  @@index([productId, stock, price])
+  @@index([shopId])
 }
 
 model Order {
@@ -74,6 +81,8 @@ model Order {
   createdAt     DateTime    @default(now())
   buyer         User        @relation(fields: [buyerId], references: [id])
   items         OrderItem[]
+
+  @@index([buyerId, createdAt])
 }
 
 model OrderItem {
@@ -83,6 +92,9 @@ model OrderItem {
   quantity  Int
   price     Float
   order     Order  @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([listingId])
 }
 
 model Review {
@@ -94,6 +106,8 @@ model Review {
   isFake    Boolean @default(false)
   product   Product @relation(fields: [productId], references: [id])
   user      User    @relation(fields: [userId], references: [id])
+
+  @@index([productId])
 }
 
 model Interaction {
@@ -103,6 +117,8 @@ model Interaction {
   action    String   // view, click, cart, buy
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
 }
 
 // --- AI & AGENT ENTITIES ---
@@ -151,6 +167,8 @@ model Watchlist {
   user        User     @relation(fields: [userId], references: [id])
   product     Product  @relation(fields: [productId], references: [id])
   queueItems  AutoBuyQueueItem[]
+
+  @@index([userId, createdAt])
 }
 
 model AutoBuyQueueItem {
@@ -162,6 +180,7 @@ model AutoBuyQueueItem {
   watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+  @@index([watchlistId, status])
 }
 
 model PriceHistory {
@@ -170,4 +189,6 @@ model PriceHistory {
   price     Float
   recordedAt DateTime @default(now())
   listing   Listing  @relation(fields: [listingId], references: [id])
+
+  @@index([listingId, recordedAt])
 }

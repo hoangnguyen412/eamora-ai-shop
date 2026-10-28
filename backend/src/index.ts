@@ -123,10 +123,23 @@ const normalizeProductRecord = (product: Record<string, any>) => {
 const getProductData = async () => {
   try {
     const productsFromDb = await prisma.product.findMany({
-      include: {
-        category: true,
-        reviews: true,
-        listings: { include: { shop: true } },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        specs: true,
+        basePrice: true,
+        category: { select: { name: true } },
+        reviews: { select: { rating: true } },
+        listings: {
+          select: {
+            id: true,
+            shopId: true,
+            price: true,
+            stock: true,
+            shop: { select: { name: true } },
+          },
+        },
       },
     });
 
@@ -483,26 +496,25 @@ app.get('/api/orders/:id', requireAuth, async (req: AuthenticatedRequest, res: R
     const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const order = await prisma.order.findUnique({
       where: { id: orderId },
+      include: { items: true },
     });
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const orderItems = await prisma.orderItem.findMany({ where: { orderId: order.id } });
-
     if (req.user?.role === 'buyer' && order.buyerId === req.user.id) {
-      return res.json({ success: true, data: { ...order, items: orderItems } });
+      return res.json({ success: true, data: order });
     }
 
     if (req.user?.role === 'seller') {
-      const listingIds = orderItems.map((item) => item.listingId);
+      const listingIds = order.items.map((item) => item.listingId);
       const ownedListings = await prisma.listing.findMany({
         where: { id: { in: listingIds }, shop: { sellerId: req.user.id } },
         select: { id: true },
       });
       if (ownedListings.length === listingIds.length) {
-        return res.json({ success: true, data: { ...order, items: orderItems } });
+        return res.json({ success: true, data: order });
       }
     }
 
@@ -795,6 +807,10 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
 
 app.get('/api/products/:id/price-history', async (req: Request, res: Response) => {
   const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const requestedLimit = req.query.limit === undefined ? 100 : Number(req.query.limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 100) {
+    return res.status(400).json({ success: false, message: 'limit must be an integer from 1 to 100' });
+  }
 
   try {
     const product = await prisma.product.findUnique({
@@ -809,7 +825,8 @@ app.get('/api/products/:id/price-history', async (req: Request, res: Response) =
             stock: true,
             shop: { select: { name: true } },
             priceHistory: {
-              orderBy: [{ recordedAt: 'asc' }, { id: 'asc' }],
+              orderBy: [{ recordedAt: 'desc' }, { id: 'desc' }],
+              take: requestedLimit,
               select: { id: true, price: true, recordedAt: true },
             },
           },
@@ -872,24 +889,23 @@ app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true },
+      select: {
+        reviews: {
+          select: {
+            id: true,
+            productId: true,
+            rating: true,
+            comment: true,
+            user: { select: { id: true } },
+          },
+        },
+      },
     });
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    const reviews = await prisma.review.findMany({
-      where: { productId },
-      select: {
-        id: true,
-        productId: true,
-        rating: true,
-        comment: true,
-        user: { select: { id: true } },
-      },
-    });
-
-    return res.json({ success: true, data: reviews });
+    return res.json({ success: true, data: product.reviews });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Unable to fetch product reviews', details: error });
   }
