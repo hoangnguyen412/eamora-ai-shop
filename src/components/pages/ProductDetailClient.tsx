@@ -23,10 +23,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/AuthProvider";
 
 const products = mockData.products as unknown as Product[];
-const priceHistoryMap = mockData.priceHistory as Record<string, PriceHistory>;
 
 export default function ProductDetailClient({ id }: { id: string }) {
   const [product, setProduct] = useState<Product | null>(() => products.find((item) => item.id === id) ?? null);
+  const [priceHistoryState, setPriceHistoryState] = useState<{
+    productId: string;
+    data?: PriceHistory;
+    error?: string;
+  } | null>(null);
   const { addItem } = useCart();
   const { token, user, isLoading: isAuthLoading } = useAuth();
   const [selectedImage, setSelectedImage] = useState(0);
@@ -59,6 +63,25 @@ export default function ProductDetailClient({ id }: { id: string }) {
     return () => controller.abort();
   }, [apiBaseUrl, id]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${apiBaseUrl}/api/products/${encodeURIComponent(id)}/price-history`, { signal: controller.signal })
+      .then(async (response) => {
+        const result = await response.json() as { success?: boolean; data?: PriceHistory; message?: string };
+        if (!response.ok || !result.success || !result.data) {
+          throw new Error(result.message || "Không thể tải lịch sử giá.");
+        }
+        setPriceHistoryState({ productId: id, data: result.data });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name !== "AbortError") {
+          setPriceHistoryState({ productId: id, error: error.message });
+        }
+      });
+
+    return () => controller.abort();
+  }, [apiBaseUrl, id]);
+
   if (!product) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center">
@@ -68,7 +91,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
     );
   }
 
-  const priceData = priceHistoryMap[product.id];
+  const currentPriceHistory = priceHistoryState?.productId === id ? priceHistoryState : null;
   const specEntries = Object.entries(product.specs).filter(([, v]) => v !== undefined);
 
   const handleWatchSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -225,10 +248,14 @@ export default function ProductDetailClient({ id }: { id: string }) {
               <CardTitle className="text-base flex items-center gap-2">📈 Lịch sử giá — {product.name}</CardTitle>
             </CardHeader>
             <CardContent>
-              {priceData ? (
-                <PriceChart priceData={priceData} />
+              {!currentPriceHistory ? (
+                <p role="status" className="py-8 text-center text-sm text-muted-foreground">Đang tải lịch sử giá...</p>
+              ) : currentPriceHistory.error ? (
+                <p role="alert" className="py-8 text-center text-sm text-destructive">{currentPriceHistory.error}</p>
+              ) : currentPriceHistory.data && currentPriceHistory.data.history.length > 0 ? (
+                <PriceChart priceData={currentPriceHistory.data} />
               ) : (
-                <p className="text-sm text-muted-foreground py-8 text-center">Chưa có dữ liệu biến động giá cho sản phẩm này</p>
+                <p className="text-sm text-muted-foreground py-8 text-center">Chưa có mốc lịch sử giá nào được backend ghi nhận cho sản phẩm này.</p>
               )}
             </CardContent>
           </Card>

@@ -16,4 +16,4 @@
 - **Embedding**: id, product_id, vector (vector 768), updated_at
 - **Watchlist**: id, user_id, product_id, target_price, status (active/bought/cancelled); created through the authenticated buyer Price Agent API
 - **AutoBuyQueueItem**: id, watchlist_id, status, result (JSONB), created_at; buyer-owned active watches can be queued once while pending; sandbox results are persisted, and queue items cascade-delete with their watch
-- **PriceHistory**: id, listing_id, price, recorded_at; history API returns recorded rows but does not generate snapshots
+- **PriceHistory**: id, listing_id, price, recorded_at; public product history and buyer history APIs return recorded rows but do not generate snapshots

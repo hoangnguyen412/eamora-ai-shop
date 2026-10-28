@@ -793,6 +793,79 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/products/:id/price-history', async (req: Request, res: Response) => {
+  const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        id: true,
+        basePrice: true,
+        listings: {
+          select: {
+            id: true,
+            price: true,
+            stock: true,
+            shop: { select: { name: true } },
+            priceHistory: {
+              orderBy: [{ recordedAt: 'asc' }, { id: 'asc' }],
+              select: { id: true, price: true, recordedAt: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const history = product.listings
+      .flatMap((listing) => listing.priceHistory.map((point) => ({
+        id: point.id,
+        listingId: listing.id,
+        shopName: listing.shop.name,
+        price: point.price,
+        date: point.recordedAt,
+      })))
+      .sort((left, right) => left.date.getTime() - right.date.getTime() || left.id.localeCompare(right.id));
+    const recordedPrices = history.map((point) => point.price);
+    const currentPrice = product.listings
+      .filter((listing) => listing.stock > 0)
+      .reduce<number | null>((lowest, listing) => lowest === null ? listing.price : Math.min(lowest, listing.price), null)
+      ?? product.listings.reduce<number | null>(
+        (lowest, listing) => lowest === null ? listing.price : Math.min(lowest, listing.price),
+        null,
+      )
+      ?? product.basePrice;
+    const firstPrice = recordedPrices[0];
+    const lastPrice = recordedPrices[recordedPrices.length - 1];
+    const priceTrend = firstPrice === undefined || lastPrice === undefined || firstPrice === lastPrice
+      ? 'stable'
+      : lastPrice < firstPrice ? 'down' : 'up';
+
+    return res.json({
+      success: true,
+      data: {
+        productId: product.id,
+        currentPrice,
+        lowestPrice: recordedPrices.length
+          ? recordedPrices.reduce((lowest, price) => Math.min(lowest, price), Number.POSITIVE_INFINITY)
+          : currentPrice,
+        highestPrice: recordedPrices.length
+          ? recordedPrices.reduce((highest, price) => Math.max(highest, price), Number.NEGATIVE_INFINITY)
+          : currentPrice,
+        priceTrend,
+        history: history.map(({ date, price }) => ({ date, price })),
+        recordedPoints: history,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch product price history', details: error });
+  }
+});
+
 app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
   const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
@@ -1223,6 +1296,7 @@ app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: A
                 select: {
                   id: true,
                   price: true,
+                  stock: true,
                   shop: { select: { name: true } },
                   priceHistory: {
                     orderBy: { recordedAt: 'desc' },

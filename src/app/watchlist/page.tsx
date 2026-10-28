@@ -20,6 +20,7 @@ interface RecordedPrice {
 interface WatchedListing {
   id: string;
   price: number;
+  stock: number;
   shop: { name: string };
   priceHistory: RecordedPrice[];
 }
@@ -139,6 +140,12 @@ export default function WatchlistPage() {
     }
   };
 
+  const priceNotifications = watchlist.flatMap((watch) => watch.status === "active"
+    ? watch.product.listings
+      .filter((listing) => listing.stock > 0 && listing.price <= watch.targetPrice)
+      .map((listing) => ({ watch, listing }))
+    : []);
+
   if (isAuthLoading) {
     return <p role="status" className="py-16 text-center text-sm text-muted-foreground">Đang tải Price Agent...</p>;
   }
@@ -182,6 +189,42 @@ export default function WatchlistPage() {
       {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
       {notice && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
 
+      <section className="space-y-4" aria-labelledby="price-alerts-heading">
+        <div>
+          <h2 id="price-alerts-heading" className="text-xl font-semibold">Thông báo giá</h2>
+          <p className="text-sm text-muted-foreground">
+            Cảnh báo được tính từ giá listing hiện tại và watchlist trả về từ API; tải lại trang để kiểm tra giá mới nhất.
+          </p>
+        </div>
+        {priceNotifications.length === 0 ? (
+          <Card>
+            <CardContent className="py-6 text-sm text-muted-foreground">
+              Chưa có sản phẩm đang theo dõi nào chạm giá mục tiêu.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {priceNotifications.map(({ watch, listing }) => (
+              <Card key={`${watch.id}-${listing.id}`} className="border-emerald-500/30">
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <div>
+                    <p className="font-medium">
+                      <Link href={`/products/${watch.product.id}`} className="hover:text-primary">
+                        {watch.product.name}
+                      </Link>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {listing.shop.name} · Giá mục tiêu {formatPrice(watch.targetPrice)}
+                    </p>
+                  </div>
+                  <Badge variant="default">Đã chạm giá · {formatPrice(listing.price)}</Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -189,7 +232,7 @@ export default function WatchlistPage() {
             Quy tắc mua tự động
           </CardTitle>
           <CardDescription>
-            Cấu hình được lưu vào tài khoản. Bật tùy chọn này hiện chưa tự động đặt hoặc thanh toán đơn hàng.
+            Cấu hình được lưu vào tài khoản. Worker chỉ mô phỏng quyết định trong sandbox, không đặt đơn hoặc thanh toán.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -204,7 +247,7 @@ export default function WatchlistPage() {
               />
               <span>
                 <span className="block font-medium">Cho phép Auto-buy</span>
-                <span className="text-muted-foreground">Chỉ lưu lựa chọn; chức năng thực thi chưa được bật.</span>
+                <span className="text-muted-foreground">Cho phép xử lý sandbox; chưa thực hiện mua hàng thật.</span>
               </span>
             </label>
             <Button type="submit" disabled={isSavingRule}>

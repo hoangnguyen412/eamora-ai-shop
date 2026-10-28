@@ -60,6 +60,17 @@ paths:
       summary: Chi tiết sản phẩm, gồm các listing còn hàng để chọn nhà bán
       responses:
         '200': { description: OK }
+  /api/products/{id}/price-history:
+    get:
+      summary: Lịch sử giá đã ghi nhận cho sản phẩm (public)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Recorded listing prices, current price, historical range and trend }
+        '404': { description: Product not found }
   /api/interactions:
     post:
       summary: Ghi nhận tương tác của buyer với sản phẩm
@@ -383,7 +394,7 @@ paths:
         '409': { description: Job is not pending, Auto-buy is disabled, or watch is inactive }
   /api/agent/history:
     get:
-      summary: Lịch sử theo dõi, giá đã ghi nhận và đơn hàng của buyer
+      summary: Watchlist, current listing prices, recorded price history and orders for buyer notifications
       security:
         - bearerAuth: []
       parameters:

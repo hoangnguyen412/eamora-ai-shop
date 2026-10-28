@@ -8,6 +8,7 @@
 ## 2. Core Marketplace
 - `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page`, `limit`; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid price ranges return 400)
 - `GET /api/products/:id` (includes in-stock seller `offers`: `listingId`, `shopId`, `shopName`, `price`, and `stock`)
+- `GET /api/products/:id/price-history` (Public; returns only recorded `PriceHistory` snapshots plus current listing price and historical low/high/trend; does not create snapshots)
 - `GET /api/products/:id/reviews` (Public; returns reviews without reviewer email)
 - `POST /api/products/:id/reviews` (Buyer; body: integer `rating` from 1 to 5, optional `comment` up to 2000 characters)
 - `POST /api/orders` (Buyer; body: `items: [{ listingId, quantity }]`, `shipping_info: { fullName, phone, address, city }`, optional `payment_method`; price and shipping fee are calculated by the server)
@@ -32,6 +33,8 @@
 - `POST /api/agent/queue` (Buyer; body: `{ watch_id }`; requires Auto-buy enabled and an active watch owned by the buyer; creates one pending item per watch)
 - `GET /api/agent/queue` (Buyer; optional `limit` 1–100, default 50; returns the buyer's queue in FIFO order)
 - `POST /api/agent/queue/:id/execute` (Buyer; sandbox-only evaluation of the cheapest in-stock listing against the watch target; stores result and completes the queue item without creating an order or charging payment; repeated execution returns the saved result)
-- `GET /api/agent/history` (Buyer; optional `limit` 1–100, default 50; returns the buyer's watchlist with recorded listing price history and their orders. Price points appear only when recorded in `PriceHistory`; this API does not create price snapshots or run auto-buy.)
+- `GET /api/agent/history` (Buyer; optional `limit` 1–100, default 50; returns the buyer's watchlist with current listing prices, stock and recorded price history, plus their orders. Price points appear only when recorded in `PriceHistory`; this API does not create price snapshots or run auto-buy.)
 
 Queue items are persisted and de-duplicated while pending. The optional backend worker (disabled unless `AUTO_BUY_WORKER_ENABLED=true`) processes eligible queue items in FIFO batches, only for buyers with Auto-buy enabled and active watches. Both the worker and execute endpoint only simulate the purchase decision and never create orders or charge payments.
+
+The Watchlist UI derives non-persistent price alerts from current in-stock listing prices returned by `GET /api/agent/history`. Alerts are recalculated when the page loads and have no read/unread state or push delivery.
