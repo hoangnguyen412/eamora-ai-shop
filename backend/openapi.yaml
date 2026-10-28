@@ -6,6 +6,7 @@ info:
     API Express currently implemented for the Eamora AI Shop marketplace.
     Production requires a 32-byte JWT_SECRET. CORS_ORIGINS is an exact-origin allowlist and TRUST_PROXY_HOPS must match the trusted proxy topology.
     JSON request bodies are limited to 100 KB; internal error details are never returned to clients.
+    Rate limits use an in-memory per-IP store: 300 requests per 15 minutes for /api and 10 authentication requests per 15 minutes.
 servers:
   - url: http://localhost:4000
 paths:
@@ -40,8 +41,12 @@ paths:
               type: object
               required: [email, password, role]
               properties:
-                email: { type: string }
-                password: { type: string, minLength: 8 }
+                email: { type: string, format: email, maxLength: 254 }
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 72
+                  description: Maximum password size is 72 UTF-8 bytes
                 role: { type: string, enum: [buyer, seller] }
       responses:
         '201':
@@ -52,6 +57,7 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
         '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
         '409':
           description: Email is already registered
           content:
@@ -70,8 +76,11 @@ paths:
               type: object
               required: [email, password]
               properties:
-                email: { type: string }
-                password: { type: string }
+                email: { type: string, format: email, maxLength: 254 }
+                password:
+                  type: string
+                  maxLength: 72
+                  description: Maximum password size is 72 UTF-8 bytes
       responses:
         '200':
           description: JWT and authenticated user
@@ -81,6 +90,7 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
         '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
         '401':
           description: Invalid email or password
           content:
@@ -112,14 +122,14 @@ paths:
       parameters:
         - in: query
           name: q
-          schema: { type: string }
+          schema: { type: string, maxLength: 200 }
           description: Từ khóa khớp tên sản phẩm, thương hiệu hoặc danh mục
         - in: query
           name: category
-          schema: { type: string }
+          schema: { type: string, maxLength: 120 }
         - in: query
           name: brand
-          schema: { type: string }
+          schema: { type: string, maxLength: 120 }
         - in: query
           name: minPrice
           schema: { type: number, minimum: 0 }
@@ -128,7 +138,7 @@ paths:
           schema: { type: number, minimum: 0 }
         - in: query
           name: page
-          schema: { type: integer, minimum: 1, default: 1 }
+          schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 }
         - in: query
           name: limit
           schema: { type: integer, minimum: 1, maximum: 100, default: 12 }
@@ -140,6 +150,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProductListResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
         '500': { $ref: '#/components/responses/ServerError' }
   /api/products/{id}:
     get:
@@ -337,16 +348,16 @@ paths:
                     required: [listingId, quantity]
                     properties:
                       listingId: { type: string }
-                      quantity: { type: integer, minimum: 1 }
+                      quantity: { type: integer, minimum: 1, maximum: 9007199254740991 }
                 shipping_info:
                   description: shippingInfo is also accepted as a camelCase alias
                   type: object
                   required: [fullName, phone, address, city]
                   properties:
-                    fullName: { type: string }
-                    phone: { type: string }
-                    address: { type: string }
-                    city: { type: string }
+                    fullName: { type: string, maxLength: 120 }
+                    phone: { type: string, maxLength: 32 }
+                    address: { type: string, maxLength: 500 }
+                    city: { type: string, maxLength: 120 }
                 payment_method:
                   description: paymentMethod is also accepted as a camelCase alias
                   type: string
@@ -669,6 +680,17 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     AuthUnavailable:
       description: Authentication cannot be checked because the database is unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limit exceeded; retry after the interval in the Retry-After header
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+        RateLimit:
+          schema: { type: string }
       content:
         application/json:
           schema:

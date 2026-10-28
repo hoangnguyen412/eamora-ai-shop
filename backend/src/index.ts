@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
@@ -27,6 +28,7 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 const TRUST_PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS ?? 0);
+const API_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const AUTO_BUY_WORKER_ENABLED = process.env.AUTO_BUY_WORKER_ENABLED === 'true';
 const AUTO_BUY_WORKER_INTERVAL_MS = Number(process.env.AUTO_BUY_WORKER_INTERVAL_MS ?? 10000);
 const AUTO_BUY_WORKER_BATCH_SIZE = Number(process.env.AUTO_BUY_WORKER_BATCH_SIZE ?? 10);
@@ -91,6 +93,40 @@ const createToken = (user: Pick<UserPayload, 'id' | 'email' | 'role'>) =>
   jwt.sign({ sub: user.id, email: user.email, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
+
+const apiRateLimiter = rateLimit({
+  windowMs: API_RATE_LIMIT_WINDOW_MS,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests. Try again later.' },
+});
+const authRateLimiter = rateLimit({
+  windowMs: API_RATE_LIMIT_WINDOW_MS,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many authentication attempts. Try again later.' },
+});
+
+const isValidEmail = (email: string) =>
+  email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const parseIntegerQuery = (
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number | null => {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= minimum && parsed <= maximum ? parsed : null;
+};
 
 const sendServerError = (
   res: Response,
@@ -317,6 +353,7 @@ app.use(helmet({
     },
   },
 }));
+app.use('/api', apiRateLimiter);
 app.use(express.json({ limit: '100kb' }));
 
 const swaggerDocument = YAML.load(path.join(__dirname, '../openapi.yaml'));
@@ -331,7 +368,7 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req: Request, res: Response) => {
+app.post('/api/auth/register', authRateLimiter, async (req: Request, res: Response) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
   const role = typeof req.body?.role === 'string' ? req.body.role.trim().toLowerCase() : '';
@@ -339,24 +376,26 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
   if (!email || !password || !role) {
     return res.status(400).json({ message: 'Email, password and role are required' });
   }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Email must be a valid address of at most 254 characters' });
+  }
 
   if (!ALLOWED_ROLES.includes(role as (typeof ALLOWED_ROLES)[number])) {
     return res.status(400).json({ message: 'Role must be buyer or seller' });
   }
 
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
-  }
-
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (existingUser) {
-    return res.status(409).json({ message: 'User already exists' });
+  if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters and no more than 72 bytes' });
   }
 
   try {
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      return res.status(409).json({ message: 'User already exists' });
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
@@ -377,16 +416,22 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       user: sanitizeUser(user),
     });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return res.status(409).json({ message: 'User already exists' });
+    }
     return sendServerError(res, 'Unable to create user', error, { message: 'Unable to create user' });
   }
 });
 
-app.post('/api/auth/login', async (req: Request, res: Response) => {
+app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
+  }
+  if (!isValidEmail(email) || Buffer.byteLength(password, 'utf8') > 72) {
+    return res.status(400).json({ message: 'Invalid email or password length' });
   }
 
   try {
@@ -457,11 +502,12 @@ app.get('/api/orders/me', requireAuth, requireRole(['buyer']), async (req: Authe
 app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
   const rawItems = req.body?.items;
   const shippingInfo = req.body?.shipping_info ?? req.body?.shippingInfo;
-  const paymentMethod = typeof req.body?.payment_method === 'string'
-    ? req.body.payment_method
-    : typeof req.body?.paymentMethod === 'string'
-      ? req.body.paymentMethod
-      : 'cod';
+  const rawPaymentMethod = req.body?.payment_method ?? req.body?.paymentMethod;
+  const paymentMethod = rawPaymentMethod === undefined
+    ? 'cod'
+    : typeof rawPaymentMethod === 'string'
+      ? rawPaymentMethod
+      : '';
 
   if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 50) {
     return res.status(400).json({ success: false, message: 'Items must contain between 1 and 50 entries' });
@@ -469,18 +515,34 @@ app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: Authent
 
   const itemQuantities = new Map<string, number>();
   for (const item of rawItems) {
-    const listingId = typeof item?.listingId === 'string' ? item.listingId.trim() : '';
-    const quantity = Number(item?.quantity);
-    if (!listingId || !Number.isInteger(quantity) || quantity < 1) {
+    const listingId = item && typeof item === 'object' && typeof item.listingId === 'string'
+      ? item.listingId.trim()
+      : '';
+    const quantity = item && typeof item === 'object' ? item.quantity : undefined;
+    if (!listingId || listingId.length > 200 || typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 1) {
       return res.status(400).json({ success: false, message: 'Each item requires a listingId and positive integer quantity' });
     }
-    itemQuantities.set(listingId, (itemQuantities.get(listingId) ?? 0) + quantity);
+    const combinedQuantity = (itemQuantities.get(listingId) ?? 0) + quantity;
+    if (!Number.isSafeInteger(combinedQuantity)) {
+      return res.status(400).json({ success: false, message: 'Combined listing quantity is too large' });
+    }
+    itemQuantities.set(listingId, combinedQuantity);
   }
 
   const addressFields = ['fullName', 'phone', 'address', 'city'] as const;
-  if (!shippingInfo || addressFields.some((field) => typeof shippingInfo[field] !== 'string' || !shippingInfo[field].trim())) {
-    return res.status(400).json({ success: false, message: 'Shipping info requires fullName, phone, address and city' });
+  const maxAddressLengths = { fullName: 120, phone: 32, address: 500, city: 120 };
+  if (!shippingInfo || typeof shippingInfo !== 'object' || Array.isArray(shippingInfo)
+    || addressFields.some((field) => typeof shippingInfo[field] !== 'string'
+      || !shippingInfo[field].trim()
+      || shippingInfo[field].trim().length > maxAddressLengths[field])) {
+    return res.status(400).json({ success: false, message: 'Shipping info requires valid fullName, phone, address and city fields within their length limits' });
   }
+  const validatedShippingInfo = {
+    fullName: shippingInfo.fullName.trim(),
+    phone: shippingInfo.phone.trim(),
+    address: shippingInfo.address.trim(),
+    city: shippingInfo.city.trim(),
+  };
 
   if (!['cod', 'vnpay', 'credit_card'].includes(paymentMethod)) {
     return res.status(400).json({ success: false, message: 'Unsupported payment method' });
@@ -524,7 +586,7 @@ app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: Authent
           buyerId: req.user!.id,
           totalAmount,
           status: 'pending',
-          shippingInfo,
+          shippingInfo: validatedShippingInfo,
           paymentMethod,
           items: { create: orderItems },
         },
@@ -788,14 +850,34 @@ app.get('/api/seller/stats', requireAuth, requireRole(['seller']), async (req: A
 
 app.get('/api/products', async (req: Request, res: Response) => {
   try {
-    const page = Number(req.query.page ?? 1);
-    const limit = Number(req.query.limit ?? 12);
-    const query = typeof req.query.q === 'string' ? req.query.q.trim().toLocaleLowerCase() : '';
-    const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
-    const brand = typeof req.query.brand === 'string' ? req.query.brand.trim() : '';
-    const minPrice = req.query.minPrice === undefined ? undefined : Number(req.query.minPrice);
-    const maxPrice = req.query.maxPrice === undefined ? undefined : Number(req.query.maxPrice);
+    const page = parseIntegerQuery(req.query.page, 1, 1, 1_000_000);
+    const limit = parseIntegerQuery(req.query.limit, 12, 1, 100);
+    const rawQuery = req.query.q;
+    const rawCategory = req.query.category;
+    const rawBrand = req.query.brand;
+    if ((rawQuery !== undefined && (typeof rawQuery !== 'string' || rawQuery.length > 200))
+      || (rawCategory !== undefined && (typeof rawCategory !== 'string' || rawCategory.length > 120))
+      || (rawBrand !== undefined && (typeof rawBrand !== 'string' || rawBrand.length > 120))) {
+      return res.status(400).json({ success: false, message: 'Search filters must be single strings within their length limits' });
+    }
 
+    const query = typeof rawQuery === 'string' ? rawQuery.trim().toLocaleLowerCase() : '';
+    const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
+    const brand = typeof rawBrand === 'string' ? rawBrand.trim() : '';
+    const minPrice = req.query.minPrice === undefined
+      ? undefined
+      : typeof req.query.minPrice === 'string' && req.query.minPrice.trim()
+        ? Number(req.query.minPrice)
+        : Number.NaN;
+    const maxPrice = req.query.maxPrice === undefined
+      ? undefined
+      : typeof req.query.maxPrice === 'string' && req.query.maxPrice.trim()
+        ? Number(req.query.maxPrice)
+        : Number.NaN;
+
+    if (page === null || limit === null) {
+      return res.status(400).json({ success: false, message: 'page must be 1–1000000 and limit must be 1–100' });
+    }
     if ((minPrice !== undefined && (!Number.isFinite(minPrice) || minPrice < 0))
       || (maxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice < 0))
       || (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice)) {
@@ -815,10 +897,8 @@ app.get('/api/products', async (req: Request, res: Response) => {
       return matchesQuery && matchesCategory && matchesBrand && matchesMinPrice && matchesMaxPrice;
     });
 
-    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 12;
-    const startIndex = (safePage - 1) * safeLimit;
-    const paginated = filteredProducts.slice(startIndex, startIndex + safeLimit);
+    const startIndex = (page - 1) * limit;
+    const paginated = filteredProducts.slice(startIndex, startIndex + limit);
 
     return res.json({
       success: true,
@@ -828,10 +908,10 @@ app.get('/api/products', async (req: Request, res: Response) => {
         brands: [...new Set(products.map((product) => product.brand))].sort(),
       },
       pagination: {
-        currentPage: safePage,
-        totalPages: Math.max(1, Math.ceil(filteredProducts.length / safeLimit || 1)),
+        currentPage: page,
+        totalPages: Math.max(1, Math.ceil(filteredProducts.length / limit || 1)),
         totalItems: filteredProducts.length,
-        limit: safeLimit,
+        limit,
       },
     });
   } catch (error) {
@@ -857,8 +937,8 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
 
 app.get('/api/products/:id/price-history', async (req: Request, res: Response) => {
   const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const requestedLimit = req.query.limit === undefined ? 100 : Number(req.query.limit);
-  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 100) {
+  const requestedLimit = parseIntegerQuery(req.query.limit, 100, 1, 100);
+  if (requestedLimit === null) {
     return res.status(400).json({ success: false, message: 'limit must be an integer from 1 to 100' });
   }
 
@@ -972,11 +1052,11 @@ app.post('/api/products/:id/reviews', requireAuth, requireRole(['buyer']), async
   if (rawComment !== undefined && rawComment !== null && typeof rawComment !== 'string') {
     return res.status(400).json({ success: false, message: 'Comment must be a string' });
   }
-
-  const comment = typeof rawComment === 'string' ? rawComment.trim() : null;
-  if (comment && comment.length > 2000) {
+  if (typeof rawComment === 'string' && rawComment.length > 2000) {
     return res.status(400).json({ success: false, message: 'Comment must be 2000 characters or fewer' });
   }
+
+  const comment = typeof rawComment === 'string' ? rawComment.trim() : null;
 
   try {
     const product = await prisma.product.findUnique({
@@ -1147,16 +1227,16 @@ app.post('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: Au
 });
 
 app.get('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
-  const requestedLimit = req.query.limit === undefined ? 50 : Number(req.query.limit);
-  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
-    return res.status(400).json({ success: false, message: 'limit must be a positive integer' });
+  const requestedLimit = parseIntegerQuery(req.query.limit, 50, 1, 100);
+  if (requestedLimit === null) {
+    return res.status(400).json({ success: false, message: 'limit must be an integer from 1 to 100' });
   }
 
   try {
     const queueItems = await prisma.autoBuyQueueItem.findMany({
       where: { watchlist: { is: { userId: req.user!.id } } },
       orderBy: { createdAt: 'asc' },
-      take: Math.min(requestedLimit, 100),
+      take: requestedLimit,
       include: {
         watchlist: {
           select: {
@@ -1341,11 +1421,10 @@ const startAutoBuyWorker = () => {
 };
 
 app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
-  const requestedLimit = req.query.limit === undefined ? 50 : Number(req.query.limit);
-  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
-    return res.status(400).json({ success: false, message: 'limit must be a positive integer' });
+  const limit = parseIntegerQuery(req.query.limit, 50, 1, 100);
+  if (limit === null) {
+    return res.status(400).json({ success: false, message: 'limit must be an integer from 1 to 100' });
   }
-  const limit = Math.min(requestedLimit, 100);
 
   try {
     const [watchlist, orders] = await Promise.all([

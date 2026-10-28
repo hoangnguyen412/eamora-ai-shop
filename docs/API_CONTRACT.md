@@ -6,6 +6,9 @@
 - `TRUST_PROXY_HOPS` defaults to `0`; configure it only to the exact number of trusted reverse-proxy hops so client IP headers cannot be spoofed.
 - JSON request bodies are limited to 100 KB. Authentication checks the current user against the database on every protected request and fails closed if the database is unavailable.
 - Internal exception details are logged by the backend and are not returned in HTTP 500 responses.
+- Rate limits are per source IP and use an in-memory store: 300 requests per 15 minutes across `/api`, with a shared 10-request per 15-minute limit for register/login. Rejected requests return 429 with `Retry-After` and standard rate-limit headers. Multiple backend instances need a shared rate-limit store for cluster-wide enforcement.
+- Auth requires a valid email address (maximum 254 characters); passwords must contain at least 8 characters and at most 72 UTF-8 bytes. Product pagination accepts `page` 1–1,000,000 and `limit` 1–100; malformed/repeated filters and out-of-range values return 400 instead of silently falling back.
+- Orders accept 1–50 line items with positive safe-integer quantities; shipping fields have per-field length limits. Price-history, agent queue and agent-history limits accept only integers from 1–100 (defaults: 100, 50 and 50).
 
 ## 1. Auth & User
 - `POST /api/auth/register` (body: email, password, role)
@@ -13,7 +16,7 @@
 - The frontend auth provider persists the backend JWT in `localStorage` under `eamora.auth.token`, restores the user through `GET /api/auth/me`, and shares the bearer token across authenticated API calls. The browser-side token is accessible to JavaScript; production deployments should consider HttpOnly cookie-based storage with corresponding CSRF protections.
 
 ## 2. Core Marketplace
-- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page`, `limit`; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid price ranges return 400)
+- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page` 1–1,000,000, `limit` 1–100; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid/repeated filters, pagination or price ranges return 400)
 - `GET /api/products/:id` (includes in-stock seller `offers`: `listingId`, `shopId`, `shopName`, `price`, and `stock`)
 - `GET /api/products/:id/price-history` (Public; optional `limit` 1–100 per listing, default 100; returns the most recent recorded `PriceHistory` snapshots in chronological order plus current listing price and historical low/high/trend; does not create snapshots)
 - `GET /api/products/:id/reviews` (Public; returns reviews without reviewer email)
