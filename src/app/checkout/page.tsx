@@ -42,8 +42,8 @@ export default function CheckoutPage() {
 
   if (submitted) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center space-y-4">
-        <div className="flex h-20 w-20 mx-auto items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+      <div className="mx-auto max-w-lg space-y-4 px-4 py-20 text-center">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
           <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
         </div>
         <h2 className="text-2xl font-bold">Đặt hàng thành công!</h2>
@@ -65,9 +65,12 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground/30" />
-        <h2 className="text-2xl font-bold">Không có sản phẩm để thanh toán</h2>
+      <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+          <ShoppingBag className="h-9 w-9 text-primary" />
+        </div>
+        <h2 className="mt-5 text-2xl font-bold">Chưa có sản phẩm để thanh toán</h2>
+        <p className="text-muted-foreground">Thêm sản phẩm vào giỏ hàng để bắt đầu đặt hàng.</p>
         <Link href="/search">
           <Button className="mt-4 bg-gradient-brand text-white hover:opacity-90">
             Khám phá sản phẩm
@@ -147,13 +150,17 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold mb-6">Thanh toán</h1>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <header className="mb-6">
+        <p className="text-sm font-medium text-primary">Bước cuối cùng</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Thanh toán</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Xác nhận thông tin nhận hàng và phương thức thanh toán.</p>
+      </header>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
           {/* Shipping + Payment */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-5 lg:col-span-2">
             {isAuthLoading ? (
               <Card>
                 <CardContent className="py-4 text-sm text-muted-foreground" role="status">
@@ -274,6 +281,7 @@ export default function CheckoutPage() {
                       key={method.id}
                       type="button"
                       onClick={() => setPaymentMethod(method.id)}
+                      aria-pressed={paymentMethod === method.id}
                       className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                         paymentMethod === method.id
                           ? "border-primary bg-primary/5 shadow-sm"
@@ -299,7 +307,7 @@ export default function CheckoutPage() {
 
           {/* Order summary */}
           <div>
-            <Card className="sticky top-24">
+            <Card className="sticky top-24 border-border/70 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">Đơn hàng của bạn</CardTitle>
               </CardHeader>

@@ -147,7 +147,13 @@ export default function WatchlistPage() {
     : []);
 
   if (isAuthLoading) {
-    return <p role="status" className="py-16 text-center text-sm text-muted-foreground">Đang tải Price Agent...</p>;
+    return (
+      <div role="status" aria-label="Đang tải Price Agent" className="mx-auto max-w-5xl space-y-4 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-28 animate-pulse rounded-xl bg-muted" />
+        <div className="h-44 animate-pulse rounded-xl bg-muted" />
+      </div>
+    );
   }
 
   if (!user || user.role !== "buyer") {
@@ -174,20 +180,20 @@ export default function WatchlistPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="space-y-2">
+      <header className="space-y-2 rounded-2xl border bg-gradient-to-br from-emerald-500/5 via-background to-primary/5 p-5 sm:p-6">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
             <TrendingDown className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Price Agent</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Price Agent</h1>
             <p className="text-sm text-muted-foreground">Theo dõi mức giá và quản lý cấu hình của bạn.</p>
           </div>
         </div>
       </header>
 
-      {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
-      {notice && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
+      {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+      {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
 
       <section className="space-y-4" aria-labelledby="price-alerts-heading">
         <div>

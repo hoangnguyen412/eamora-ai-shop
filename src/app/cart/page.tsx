@@ -27,9 +27,11 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground/30" />
-        <h2 className="text-2xl font-bold">Giỏ hàng trống</h2>
+      <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+          <ShoppingBag className="h-9 w-9 text-primary" />
+        </div>
+        <h2 className="mt-5 text-2xl font-bold">Giỏ hàng đang chờ bạn</h2>
         <p className="text-muted-foreground">
           Hãy thêm sản phẩm vào giỏ hàng để tiến hành thanh toán
         </p>
@@ -43,21 +45,27 @@ export default function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold mb-6">
-        Giỏ hàng <span className="text-muted-foreground font-normal text-lg">({itemCount} sản phẩm)</span>
-      </h1>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-primary">Kiểm tra lựa chọn của bạn</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Giỏ hàng</h1>
+        </div>
+        <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
+          {itemCount} sản phẩm
+        </span>
+      </header>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
         {/* Cart items */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4 lg:col-span-2">
           {items.map((item) => (
-            <Card key={item.id} className="overflow-hidden">
+            <Card key={item.id} className="overflow-hidden border-border/70">
               <CardContent className="p-4">
-                <div className="flex gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row">
                   {/* Image */}
                   <Link href={`/products/${item.productId}`} className="shrink-0">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted/50">
+                    <div className="h-24 w-24 overflow-hidden rounded-lg bg-muted/50">
                       <Image
                         src={item.product.thumbnailUrl}
                         alt={item.product.name}
@@ -70,7 +78,7 @@ export default function CartPage() {
                   </Link>
 
                   {/* Details */}
-                  <div className="flex-1 min-w-0 space-y-2">
+                  <div className="min-w-0 flex-1 space-y-2">
                     <Link
                       href={`/products/${item.productId}`}
                       className="text-sm font-semibold hover:text-primary transition-colors line-clamp-2"
@@ -118,12 +126,13 @@ export default function CartPage() {
                   </div>
 
                   {/* Quantity + Remove */}
-                  <div className="flex flex-col items-end justify-between">
+                  <div className="flex flex-row items-center justify-between gap-3 sm:flex-col sm:items-end">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       onClick={() => removeItem(item.productId)}
+                      aria-label={`Xóa ${item.product.name} khỏi giỏ hàng`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -136,6 +145,7 @@ export default function CartPage() {
                         onClick={() =>
                           updateQuantity(item.productId, item.quantity - 1)
                         }
+                        aria-label={`Giảm số lượng ${item.product.name}`}
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
@@ -149,6 +159,7 @@ export default function CartPage() {
                         onClick={() =>
                           updateQuantity(item.productId, item.quantity + 1)
                         }
+                        aria-label={`Tăng số lượng ${item.product.name}`}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -176,9 +187,9 @@ export default function CartPage() {
 
         {/* Order summary */}
         <div>
-          <Card className="sticky top-24">
+          <Card className="sticky top-24 border-border/70 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Tổng đơn hàng</CardTitle>
+              <CardTitle className="text-lg">Tóm tắt đơn hàng</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2 text-sm">

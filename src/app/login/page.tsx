@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Cpu } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -51,17 +52,31 @@ function LoginForm() {
   };
 
   return (
-    <div className="mx-auto flex max-w-lg justify-center px-4 py-16">
-      <Card className="w-full">
-        <CardHeader>
+    <div className="mx-auto grid max-w-4xl gap-6 px-4 py-10 sm:px-6 sm:py-16 lg:grid-cols-5 lg:items-stretch lg:px-8">
+      <section className="hidden flex-col justify-between rounded-2xl bg-gradient-to-br from-primary/10 via-background to-violet-500/10 p-8 lg:col-span-2 lg:flex">
+        <div>
+          <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-lg shadow-primary/20">
+            <Cpu className="h-6 w-6" />
+          </div>
+          <p className="text-sm font-semibold text-primary">TechAI Shop</p>
+          <h1 className="mt-3 text-3xl font-bold leading-tight">Mua sắm công nghệ theo cách của bạn.</h1>
+          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+            Đăng nhập để quản lý đơn hàng, lưu sản phẩm yêu thích và theo dõi giá.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">Một tài khoản buyer cho các trải nghiệm mua sắm.</p>
+      </section>
+      <Card className="w-full border-border/70 shadow-sm lg:col-span-3">
+        <CardHeader className="space-y-2 p-6 sm:p-8">
+          <p className="text-sm font-medium text-primary">Chào mừng bạn</p>
           <CardTitle>{mode === "login" ? "Đăng nhập" : "Tạo tài khoản buyer"}</CardTitle>
           <CardDescription>
             {mode === "login"
-              ? "Đăng nhập bằng tài khoản Eamora Shop để tiếp tục."
+              ? "Đăng nhập bằng tài khoản TechAI Shop để tiếp tục."
               : "Tạo tài khoản buyer để đặt hàng và quản lý đơn mua."}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-sm font-medium">Email</label>
@@ -89,7 +104,7 @@ function LoginForm() {
               />
             </div>
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={isSubmitting || isLoading}>
+            <Button type="submit" className="h-11 w-full bg-gradient-brand text-white hover:opacity-90" disabled={isSubmitting || isLoading}>
               {isSubmitting
                 ? "Đang xử lý..."
                 : mode === "login"
