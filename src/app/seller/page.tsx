@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
+import { AlertCircle, DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
 
 const orders = mockData.orders as unknown as Order[];
 const sellerProducts = mockData.sellerProducts;
@@ -21,17 +21,28 @@ const stats = [
 
 export default function SellerPage() {
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Seller Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Quản lý đơn hàng và sản phẩm của bạn</p>
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Quản lý đơn hàng và sản phẩm của bạn</p>
+        </div>
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+          Bản xem trước
+        </span>
+      </div>
+
+      <div role="status" className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-900 dark:text-amber-200">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>Các số liệu và bảng bên dưới là dữ liệu minh họa, chưa được kết nối với tài khoản nhà bán.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="p-4 flex items-center gap-4">
+          <Card key={s.label} className="border-border/70">
+            <CardContent className="flex items-center gap-3 p-4 sm:gap-4">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${s.color} shadow-lg`}>
                 <s.icon className="h-6 w-6 text-white" />
               </div>
@@ -52,13 +63,12 @@ export default function SellerPage() {
         </TabsList>
 
         <TabsContent value="orders">
-          <Card>
+          <Card className="border-border/70">
             <CardHeader>
               <CardTitle className="text-base">Quản lý đơn hàng</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
+                <Table containerLabel="Bảng quản lý đơn hàng, có thể cuộn ngang">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Mã đơn</TableHead>
@@ -90,19 +100,17 @@ export default function SellerPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="products">
-          <Card>
+          <Card className="border-border/70">
             <CardHeader>
               <CardTitle className="text-base">Danh sách sản phẩm</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
+                <Table containerLabel="Bảng sản phẩm đăng bán, có thể cuộn ngang">
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
@@ -128,7 +136,6 @@ export default function SellerPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

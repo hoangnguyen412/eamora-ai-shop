@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartProvider";
+import { useAuth } from "@/context/AuthProvider";
 import { formatPrice } from "@/lib/helpers";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -27,27 +28,34 @@ import {
 
 export default function CheckoutPage() {
   const { items, subtotal, shippingFee, totalAmount, clearCart } = useCart();
+  const { token, user, isLoading: isAuthLoading, signOut } = useAuth();
   const [submitted, setSubmitted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
   if (submitted) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center space-y-4">
-        <div className="flex h-20 w-20 mx-auto items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+      <div className="mx-auto max-w-lg space-y-4 px-4 py-20 text-center">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
           <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
         </div>
-        <h2 className="text-2xl font-bold">Đặt hàng thành công!</h2>
+        <h1 className="text-2xl font-bold">Đặt hàng thành công!</h1>
         <p className="text-muted-foreground">
-          Mã đơn hàng: <strong>ORD-20261020-01</strong>
+          Mã đơn hàng: <strong>{orderId}</strong>
         </p>
         <p className="text-sm text-muted-foreground">
           Cảm ơn bạn đã mua sắm tại TechAI Shop. Đơn hàng sẽ được xử lý trong
           24 giờ.
         </p>
-        <Link href="/">
-          <Button className="mt-4 bg-gradient-brand text-white hover:opacity-90">
-            Về trang chủ
-          </Button>
+        <Link href="/" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>
+          Về trang chủ
         </Link>
       </div>
     );
@@ -55,32 +63,139 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center space-y-4">
-        <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground/30" />
-        <h2 className="text-2xl font-bold">Không có sản phẩm để thanh toán</h2>
-        <Link href="/search">
-          <Button className="mt-4 bg-gradient-brand text-white hover:opacity-90">
-            Khám phá sản phẩm
-          </Button>
+      <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+          <ShoppingBag className="h-9 w-9 text-primary" />
+        </div>
+        <h1 className="mt-5 text-2xl font-bold">Chưa có sản phẩm để thanh toán</h1>
+        <p className="text-muted-foreground">Thêm sản phẩm vào giỏ hàng để bắt đầu đặt hàng.</p>
+        <Link href="/search" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>
+          Khám phá sản phẩm
         </Link>
       </div>
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    clearCart();
-    setSubmitted(true);
+    if (!city) {
+      setError("Vui lòng chọn thành phố giao hàng.");
+      return;
+    }
+
+    if (items.some((item) => !item.listingId || !item.shopId)) {
+      setError("Vui lòng chọn nhà bán cho tất cả sản phẩm trong giỏ hàng.");
+      return;
+    }
+
+    if (new Set(items.map((item) => item.shopId)).size !== 1) {
+      setError("Một đơn hàng chỉ có thể chứa sản phẩm từ cùng một nhà bán.");
+      return;
+    }
+
+    if (items.some((item) => item.quantity > (item.product.offers?.find((offer) => offer.listingId === item.listingId)?.stock ?? 0))) {
+      setError("Số lượng trong giỏ vượt quá tồn kho của nhà bán đã chọn.");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      if (!token || !user) {
+        throw new Error("Vui lòng đăng nhập trước khi đặt hàng.");
+      }
+      if (user.role !== "buyer") {
+        throw new Error("Tài khoản seller không thể đặt hàng. Vui lòng đăng nhập bằng tài khoản buyer.");
+      }
+
+      const orderResponse = await fetch(`${apiBaseUrl}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            listingId: item.listingId,
+            quantity: item.quantity,
+          })),
+          shipping_info: { fullName, phone, address, city },
+          payment_method: paymentMethod,
+        }),
+      });
+      const orderResult = await orderResponse.json() as {
+        success?: boolean;
+        data?: { id?: string };
+        message?: string;
+      };
+
+      if (!orderResponse.ok || !orderResult.success || !orderResult.data?.id) {
+        if (orderResponse.status === 401) signOut();
+        throw new Error(orderResult.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+      }
+
+      setOrderId(orderResult.data.id);
+      clearCart();
+      setSubmitted(true);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Không thể hoàn tất đơn hàng.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold mb-6">Thanh toán</h1>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <header className="mb-6">
+        <p className="text-sm font-medium text-primary">Bước cuối cùng</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Thanh toán</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Xác nhận thông tin nhận hàng và phương thức thanh toán.</p>
+      </header>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
           {/* Shipping + Payment */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-5 lg:col-span-2">
+            {isAuthLoading ? (
+              <Card>
+                <CardContent className="py-4 text-sm text-muted-foreground" role="status">
+                  Đang kiểm tra phiên đăng nhập...
+                </CardContent>
+              </Card>
+            ) : !user ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Đăng nhập để đặt hàng</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Đăng nhập hoặc tạo tài khoản buyer để tiếp tục. Phiên đăng nhập được dùng chung trên cửa hàng.
+                  </p>
+                  <Link
+                    href="/login?next=%2Fcheckout"
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    Đăng nhập / Đăng ký buyer
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : user.role !== "buyer" ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Cần tài khoản buyer</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Bạn đang đăng nhập bằng tài khoản seller ({user.email}). Đăng xuất rồi đăng nhập buyer để đặt hàng.
+                  </p>
+                  <Button type="button" variant="outline" onClick={signOut}>Đăng xuất</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <p className="text-sm text-muted-foreground">Đang đặt hàng với tài khoản {user.email}</p>
+            )}
+
             {/* Shipping info */}
             <Card>
               <CardHeader>
@@ -89,40 +204,50 @@ export default function CheckoutPage() {
               <CardContent className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Họ và tên</label>
+                    <label htmlFor="shipping-name" className="text-sm font-medium">Họ và tên</label>
                     <Input
-                      defaultValue="Nguyễn Văn A"
+                      id="shipping-name"
+                      autoComplete="name"
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
                       required
                       placeholder="Nhập họ tên"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Số điện thoại</label>
+                    <label htmlFor="shipping-phone" className="text-sm font-medium">Số điện thoại</label>
                     <Input
-                      defaultValue="0901234567"
+                      id="shipping-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
                       required
                       placeholder="Nhập số điện thoại"
                     />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Địa chỉ</label>
+                  <label htmlFor="shipping-address" className="text-sm font-medium">Địa chỉ</label>
                   <Input
-                    defaultValue="123 Đường Lý Thường Kiệt, Q.10"
+                    id="shipping-address"
+                    autoComplete="street-address"
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
                     required
                     placeholder="Nhập địa chỉ"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Thành phố</label>
-                  <Select defaultValue="hcm">
-                    <SelectTrigger>
-                      <SelectValue />
+                  <label htmlFor="shipping-city" className="text-sm font-medium">Thành phố</label>
+                  <Select value={city || null} onValueChange={(value) => setCity(value ?? "")}>
+                    <SelectTrigger id="shipping-city">
+                      <SelectValue placeholder="Chọn thành phố" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hcm">TP. Hồ Chí Minh</SelectItem>
-                      <SelectItem value="hn">Hà Nội</SelectItem>
-                      <SelectItem value="dn">Đà Nẵng</SelectItem>
+                      <SelectItem value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</SelectItem>
+                      <SelectItem value="Hà Nội">Hà Nội</SelectItem>
+                      <SelectItem value="Đà Nẵng">Đà Nẵng</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -132,12 +257,12 @@ export default function CheckoutPage() {
             {/* Payment method */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
+                <CardTitle id="payment-method-heading" className="text-base">
                   Phương thức thanh toán
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-3 gap-3">
+                <div role="group" aria-labelledby="payment-method-heading" className="grid sm:grid-cols-3 gap-3">
                   {[
                     {
                       id: "cod",
@@ -155,6 +280,7 @@ export default function CheckoutPage() {
                       key={method.id}
                       type="button"
                       onClick={() => setPaymentMethod(method.id)}
+                      aria-pressed={paymentMethod === method.id}
                       className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                         paymentMethod === method.id
                           ? "border-primary bg-primary/5 shadow-sm"
@@ -180,7 +306,7 @@ export default function CheckoutPage() {
 
           {/* Order summary */}
           <div>
-            <Card className="sticky top-24">
+            <Card className="sticky top-24 border-border/70 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">Đơn hàng của bạn</CardTitle>
               </CardHeader>
@@ -238,12 +364,16 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
+                {error && (
+                  <p role="alert" className="text-sm text-destructive">{error}</p>
+                )}
                 <Button
                   type="submit"
                   className="w-full bg-gradient-brand text-white hover:opacity-90 h-12"
                   size="lg"
+                  disabled={isSubmitting || isAuthLoading || user?.role !== "buyer"}
                 >
-                  Đặt hàng
+                  {isSubmitting ? "Đang xử lý..." : "Đặt hàng"}
                 </Button>
               </CardContent>
             </Card>

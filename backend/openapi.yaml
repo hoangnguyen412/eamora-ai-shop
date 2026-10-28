@@ -2,7 +2,11 @@ openapi: 3.0.0
 info:
   title: Eamora AI Shop API
   version: 1.0.0
-  description: API Contract cho đồ án AI-Driven B2C Marketplace
+  description: |
+    API Express currently implemented for the Eamora AI Shop marketplace.
+    Production requires a 32-byte JWT_SECRET. CORS_ORIGINS is an exact-origin allowlist and TRUST_PROXY_HOPS must match the trusted proxy topology.
+    JSON request bodies are limited to 100 KB; internal error details are never returned to clients.
+    Rate limits use an in-memory per-IP store: 300 requests per 15 minutes for /api and 10 authentication requests per 15 minutes.
 servers:
   - url: http://localhost:4000
 paths:
@@ -10,78 +14,1191 @@ paths:
     get:
       summary: Kiểm tra trạng thái API và Database
       responses:
-        '200': { description: OK }
+        '200':
+          description: API and database are available
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, db]
+                properties:
+                  status: { type: string, enum: [ok] }
+                  db: { type: string, enum: [connected] }
+        '500':
+          description: Database is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthError'
   /api/auth/register:
     post:
       summary: Đăng ký tài khoản
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, role]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 72
+                  description: Maximum password size is 72 UTF-8 bytes
+                role: { type: string, enum: [buyer, seller] }
       responses:
-        '201': { description: Created }
+        '201':
+          description: Account created and JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '409':
+          description: Email is already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/auth/login:
     post:
       summary: Đăng nhập lấy JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password:
+                  type: string
+                  maxLength: 72
+                  description: Maximum password size is 72 UTF-8 bytes
       responses:
-        '200': { description: OK }
+        '200':
+          description: JWT and authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/auth/me:
     get:
       summary: Lấy thông tin user hiện tại
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200':
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/AuthUnavailable' }
   /api/products:
     get:
-      summary: Danh sách sản phẩm (có filter)
+      summary: Danh sách sản phẩm (từ khóa, filter và phân trang)
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string, maxLength: 200 }
+          description: Từ khóa khớp tên sản phẩm, thương hiệu hoặc danh mục
+        - in: query
+          name: category
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: brand
+          schema: { type: string, maxLength: 120 }
+        - in: query
+          name: minPrice
+          schema: { type: number, minimum: 0 }
+        - in: query
+          name: maxPrice
+          schema: { type: number, minimum: 0 }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 12 }
       responses:
-        '200': { description: OK }
+        '200':
+          description: Products, filter options and pagination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/products/{id}:
     get:
-      summary: Chi tiết sản phẩm
+      summary: Chi tiết sản phẩm, gồm các listing còn hàng để chọn nhà bán
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
       responses:
-        '200': { description: OK }
+        '200':
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data: { $ref: '#/components/schemas/Product' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/products/{id}/price-history:
+    get:
+      summary: Lịch sử giá đã ghi nhận cho sản phẩm (public)
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+        - in: query
+          name: limit
+          description: Maximum recorded price points returned for each listing
+          schema: { type: integer, minimum: 1, maximum: 100, default: 100 }
+      responses:
+        '200':
+          description: Most recent recorded prices, returned in chronological order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceHistoryResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/interactions:
+    post:
+      summary: Ghi nhận tương tác của buyer với sản phẩm
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, action]
+              properties:
+                productId: { type: string }
+                action:
+                  type: string
+                  enum: [view, click, cart, buy]
+      responses:
+        '201':
+          description: Interaction recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/search/sessions:
+    post:
+      summary: Lưu query và bộ lọc tìm kiếm (hỗ trợ guest)
+      security:
+        - {}
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [queryText]
+              properties:
+                queryText: { type: string, maxLength: 500 }
+                filters: { type: object, additionalProperties: true }
+      responses:
+        '201':
+          description: Search session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSessionResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/search/sessions/{id}/clicks:
+    post:
+      summary: Ghi nhận sản phẩm được click trong search session
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId]
+              properties:
+                productId: { type: string }
+      responses:
+        '201':
+          description: Search click recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchClickResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/products/{id}/reviews:
     get:
       summary: Lấy danh sách đánh giá
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
       responses:
-        '200': { description: OK }
+        '200':
+          description: Reviews; reviewer email is not returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewListResponse'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
-      summary: Tạo đánh giá mới
+      summary: Buyer tạo đánh giá mới
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: string, maxLength: 2000, nullable: true }
       responses:
-        '201': { description: Created }
+        '201':
+          description: Review created; isFake is assigned by the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/orders:
     post:
       summary: Tạo đơn hàng
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, shipping_info]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [listingId, quantity]
+                    properties:
+                      listingId: { type: string }
+                      quantity: { type: integer, minimum: 1, maximum: 9007199254740991 }
+                shipping_info:
+                  description: shippingInfo is also accepted as a camelCase alias
+                  type: object
+                  required: [fullName, phone, address, city]
+                  properties:
+                    fullName: { type: string, maxLength: 120 }
+                    phone: { type: string, maxLength: 32 }
+                    address: { type: string, maxLength: 500 }
+                    city: { type: string, maxLength: 120 }
+                payment_method:
+                  description: paymentMethod is also accepted as a camelCase alias
+                  type: string
+                  enum: [cod, vnpay, credit_card]
       responses:
-        '201': { description: Created }
+        '201':
+          description: Order created with server-calculated listing prices and shipping fee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/orders/me:
     get:
       summary: Lịch sử mua hàng
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200':
+          description: Buyer order history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/orders/{id}:
+    get:
+      summary: Chi tiết đơn hàng của buyer hoặc seller sở hữu listing
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/orders/{id}/status:
+    patch:
+      summary: Cập nhật trạng thái đơn hàng (seller sở hữu đơn)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [processing, shipped, delivered, cancelled]
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/seller/listings:
     get:
       summary: Lấy danh sách listing của seller
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
-  /api/search/semantic:
-    post:
-      summary: Tìm kiếm ngữ nghĩa (gọi sang AI)
+        '200':
+          description: Seller listings with sold quantity and stock status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerListingsResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/seller/orders:
+    get:
+      summary: Lấy đơn hàng có listing thuộc seller
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
-  /api/chat/message:
-    post:
-      summary: Chat với RAG Assistant
+        '200':
+          description: Seller orders with seller-owned items and line totals
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerOrdersResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/seller/stats:
+    get:
+      summary: Thống kê listing, đơn hàng và doanh thu của seller
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200':
+          description: Seller statistics; revenue excludes cancelled orders and shipping fees
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerStatsResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/agent/watch:
     post:
-      summary: Thêm sản phẩm vào Watchlist
+      summary: Theo dõi sản phẩm theo giá mục tiêu (buyer)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, target_price]
+              properties:
+                product_id: { type: string }
+                target_price: { type: number, minimum: 0, exclusiveMinimum: true }
       responses:
-        '201': { description: Created }
+        '201':
+          description: Price watch created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/agent/rules:
-    put:
-      summary: Cập nhật luật Auto-buy
+    get:
+      summary: Lấy cấu hình Price Agent của buyer
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200':
+          description: Current Auto-buy setting
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulesResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    put:
+      summary: Lưu cấu hình bật/tắt Auto-buy (không thực thi mua hàng)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [auto_buy]
+              properties:
+                auto_buy: { type: boolean }
+      responses:
+        '200':
+          description: Auto-buy setting updated; no purchase is executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulesResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/agent/queue:
+    get:
+      summary: Lấy queue auto-buy của buyer hiện tại (FIFO)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Queue items owned by the buyer in FIFO order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueListResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      summary: Đưa một watch đang active vào queue auto-buy
+      description: Chỉ lưu job pending; không tạo đơn hàng, không thanh toán hoặc thực thi mua hàng. Yêu cầu buyer đã bật auto_buy.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [watch_id]
+              properties:
+                watch_id: { type: string }
+      responses:
+        '201':
+          description: Queue item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueItemResponse'
+        '200':
+          description: Existing pending item returned without duplication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeduplicatedQueueItemResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /api/agent/queue/{id}/execute:
+    post:
+      summary: Mô phỏng quyết định auto-buy cho queue item (sandbox)
+      description: Đánh giá listing còn hàng với giá mục tiêu, lưu kết quả và hoàn tất queue item. Không tạo đơn hàng hoặc thanh toán.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Sandbox evaluation completed or previously saved result returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueExecutionResponse'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
   /api/agent/history:
     get:
-      summary: Lịch sử giá & Auto-buy
+      summary: Watchlist, current listing prices, recorded price history and orders for buyer notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
       responses:
-        '200': { description: OK }
+        '200':
+          description: Buyer watchlist with recorded price history and recent orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentHistoryResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+components:
+  parameters:
+    ResourceId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge:
+      description: JSON request body exceeds 100 KB
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AuthUnavailable:
+      description: Authentication cannot be checked because the database is unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limit exceeded; retry after the interval in the Retry-After header
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+        RateLimit:
+          schema: { type: string }
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Authenticated user does not have permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Request conflicts with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Unexpected server or database error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, enum: [false] }
+        message: { type: string }
+    HealthError:
+      type: object
+      required: [status, db]
+      properties:
+        status: { type: string, enum: [error] }
+        db: { type: string, enum: [disconnected] }
+    User:
+      type: object
+      required: [id, email, role, createdAt]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [buyer, seller] }
+        createdAt: { type: string, format: date-time }
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user:
+          allOf:
+            - $ref: '#/components/schemas/User'
+            - type: object
+              properties:
+                createdAt: { type: string, format: date-time, nullable: true }
+    ProductOffer:
+      type: object
+      required: [listingId, shopId, shopName, price, stock]
+      properties:
+        listingId: { type: string }
+        shopId: { type: string }
+        shopName: { type: string }
+        price: { type: number }
+        stock: { type: integer }
+    Product:
+      type: object
+      required: [id, name, slug, brand, category, price, stock, rating, reviewCount, offers]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        brand: { type: string }
+        category: { type: string }
+        price: { type: number }
+        originalPrice: { type: number }
+        discountPercent: { type: number }
+        stock: { type: integer }
+        rating: { type: number }
+        reviewCount: { type: integer }
+        thumbnailUrl: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        isFeatured: { type: boolean }
+        specs: { type: object, additionalProperties: true }
+        recommendationBadge: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        description: { type: string }
+        offers:
+          type: array
+          items: { $ref: '#/components/schemas/ProductOffer' }
+    ProductListResponse:
+      type: object
+      required: [success, data, filterOptions, pagination]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Product' }
+        filterOptions:
+          type: object
+          required: [categories, brands]
+          properties:
+            categories:
+              type: array
+              items: { type: string }
+            brands:
+              type: array
+              items: { type: string }
+        pagination:
+          type: object
+          required: [currentPage, totalPages, totalItems, limit]
+          properties:
+            currentPage: { type: integer }
+            totalPages: { type: integer }
+            totalItems: { type: integer }
+            limit: { type: integer }
+    PricePoint:
+      type: object
+      required: [date, price]
+      properties:
+        date: { type: string, format: date-time }
+        price: { type: number }
+    RecordedPricePoint:
+      allOf:
+        - $ref: '#/components/schemas/PricePoint'
+        - type: object
+          required: [id, listingId, shopName]
+          properties:
+            id: { type: string }
+            listingId: { type: string }
+            shopName: { type: string }
+    PriceHistoryResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [productId, currentPrice, lowestPrice, highestPrice, priceTrend, history, recordedPoints]
+          properties:
+            productId: { type: string }
+            currentPrice: { type: number }
+            lowestPrice: { type: number }
+            highestPrice: { type: number }
+            priceTrend: { type: string, enum: [stable, down, up] }
+            history:
+              type: array
+              items: { $ref: '#/components/schemas/PricePoint' }
+            recordedPoints:
+              type: array
+              items: { $ref: '#/components/schemas/RecordedPricePoint' }
+    Review:
+      type: object
+      required: [id, productId, rating, user]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, nullable: true }
+        user:
+          type: object
+          required: [id]
+          properties:
+            id: { type: string }
+    ReviewListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Review' }
+    ReviewResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [id, productId, userId, rating, isFake]
+          properties:
+            id: { type: string }
+            productId: { type: string }
+            userId: { type: string }
+            rating: { type: integer, minimum: 1, maximum: 5 }
+            comment: { type: string, nullable: true }
+            isFake: { type: boolean, enum: [false] }
+    InteractionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [id, userId, productId, action, createdAt]
+          properties:
+            id: { type: string }
+            userId: { type: string }
+            productId: { type: string }
+            action: { type: string, enum: [view, click, cart, buy] }
+            createdAt: { type: string, format: date-time }
+    SearchSessionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [id, queryText, createdAt]
+          properties:
+            id: { type: string }
+            userId: { type: string, nullable: true }
+            queryText: { type: string }
+            filters: { type: object, additionalProperties: true, nullable: true }
+            createdAt: { type: string, format: date-time }
+    SearchClickResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [id, sessionId, productId, createdAt]
+          properties:
+            id: { type: string }
+            sessionId: { type: string }
+            productId: { type: string }
+            createdAt: { type: string, format: date-time }
+    OrderItem:
+      type: object
+      required: [id, orderId, listingId, quantity, price]
+      properties:
+        id: { type: string }
+        orderId: { type: string }
+        listingId: { type: string }
+        quantity: { type: integer }
+        price: { type: number }
+    Order:
+      type: object
+      required: [id, buyerId, totalAmount, status, paymentMethod, createdAt, items]
+      properties:
+        id: { type: string }
+        buyerId: { type: string }
+        totalAmount: { type: number }
+        status: { type: string, enum: [pending, processing, shipped, delivered, cancelled] }
+        shippingInfo: { type: object, additionalProperties: true, nullable: true }
+        paymentMethod: { type: string, enum: [cod, vnpay, credit_card] }
+        createdAt: { type: string, format: date-time }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OrderItem' }
+    OrderResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/Order' }
+    OrderListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Order' }
+    SellerListingsResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items:
+            allOf:
+              - type: object
+                required: [id, productId, shopId, price, stock, condition, createdAt, totalSold, status]
+                properties:
+                  id: { type: string }
+                  productId: { type: string }
+                  shopId: { type: string }
+                  price: { type: number }
+                  stock: { type: integer }
+                  condition: { type: string }
+                  createdAt: { type: string, format: date-time }
+                  totalSold: { type: integer }
+                  status: { type: string, enum: [active, out_of_stock] }
+              - type: object
+                properties:
+                  product: { type: object, additionalProperties: true }
+    SellerOrdersResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/Order'
+              - type: object
+                required: [sellerAmount]
+                properties:
+                  sellerAmount: { type: number }
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/OrderItem'
+                        - type: object
+                          required: [productId, productName, lineTotal]
+                          properties:
+                            productId: { type: string }
+                            productName: { type: string }
+                            lineTotal: { type: number }
+    SellerStatsResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [listingCount, activeListingCount, orderCount, totalRevenue, unitsSold, ordersByStatus]
+          properties:
+            listingCount: { type: integer }
+            activeListingCount: { type: integer }
+            orderCount: { type: integer }
+            totalRevenue: { type: number }
+            unitsSold: { type: integer }
+            ordersByStatus:
+              type: object
+              required: [pending, processing, shipped, delivered, cancelled]
+              properties:
+                pending: { type: integer }
+                processing: { type: integer }
+                shipped: { type: integer }
+                delivered: { type: integer }
+                cancelled: { type: integer }
+    WatchResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [id, userId, productId, targetPrice, status, createdAt, product]
+          properties:
+            id: { type: string }
+            userId: { type: string }
+            productId: { type: string }
+            targetPrice: { type: number }
+            status: { type: string, enum: [active, bought, cancelled] }
+            createdAt: { type: string, format: date-time }
+            product:
+              type: object
+              required: [id, name, basePrice]
+              properties:
+                id: { type: string }
+                name: { type: string }
+                basePrice: { type: number }
+    RulesResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [auto_buy]
+          properties:
+            auto_buy: { type: boolean }
+    QueueItem:
+      type: object
+      required: [id, watchlistId, status, createdAt, watchlist]
+      properties:
+        id: { type: string }
+        watchlistId: { type: string }
+        status: { type: string, enum: [pending, processing, completed] }
+        result: { type: object, nullable: true }
+        createdAt: { type: string, format: date-time }
+        watchlist:
+          type: object
+          required: [id, targetPrice, product]
+          properties:
+            id: { type: string }
+            status: { type: string, enum: [active, bought, cancelled] }
+            targetPrice: { type: number }
+            product:
+              type: object
+              required: [id, name]
+              properties:
+                id: { type: string }
+                name: { type: string }
+                listings:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      price: { type: number }
+    QueueItemResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/QueueItem' }
+    DeduplicatedQueueItemResponse:
+      allOf:
+        - $ref: '#/components/schemas/QueueItemResponse'
+        - type: object
+          required: [deduplicated]
+          properties:
+            deduplicated: { type: boolean, enum: [true] }
+    QueueListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/QueueItem' }
+    QueueExecutionResponse:
+      allOf:
+        - $ref: '#/components/schemas/QueueItemResponse'
+        - type: object
+          properties:
+            already_executed: { type: boolean, enum: [true] }
+    AgentHistoryResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: object
+          required: [watchlist, orders]
+          properties:
+            watchlist:
+              type: array
+              items:
+                type: object
+                required: [id, userId, productId, targetPrice, status, createdAt, product]
+                properties:
+                  id: { type: string }
+                  userId: { type: string }
+                  productId: { type: string }
+                  targetPrice: { type: number }
+                  status: { type: string, enum: [active, bought, cancelled] }
+                  createdAt: { type: string, format: date-time }
+                  product:
+                    type: object
+                    required: [id, name, listings]
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+                      listings:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, price, stock, shop, priceHistory]
+                          properties:
+                            id: { type: string }
+                            price: { type: number }
+                            stock: { type: integer }
+                            shop:
+                              type: object
+                              required: [name]
+                              properties:
+                                name: { type: string }
+                            priceHistory:
+                              type: array
+                              items:
+                                type: object
+                                required: [id, price, recordedAt]
+                                properties:
+                                  id: { type: string }
+                                  price: { type: number }
+                                  recordedAt: { type: string, format: date-time }
+            orders:
+              type: array
+              items:
+                type: object
+                required: [id, totalAmount, status, paymentMethod, createdAt, items]
+                properties:
+                  id: { type: string }
+                  totalAmount: { type: number }
+                  status: { type: string, enum: [pending, processing, shipped, delivered, cancelled] }
+                  paymentMethod: { type: string, enum: [cod, vnpay, credit_card] }
+                  createdAt: { type: string, format: date-time }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [listingId, quantity, price]
+                      properties:
+                        listingId: { type: string }
+                        quantity: { type: integer }
+                        price: { type: number }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

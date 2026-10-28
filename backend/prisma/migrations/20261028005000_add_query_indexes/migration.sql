@@ -1,0 +1,12 @@
+CREATE INDEX "Shop_sellerId_idx" ON "Shop"("sellerId");
+CREATE INDEX "Product_categoryId_idx" ON "Product"("categoryId");
+CREATE INDEX "Listing_productId_stock_price_idx" ON "Listing"("productId", "stock", "price");
+CREATE INDEX "Listing_shopId_idx" ON "Listing"("shopId");
+CREATE INDEX "Order_buyerId_createdAt_idx" ON "Order"("buyerId", "createdAt");
+CREATE INDEX "OrderItem_orderId_idx" ON "OrderItem"("orderId");
+CREATE INDEX "OrderItem_listingId_idx" ON "OrderItem"("listingId");
+CREATE INDEX "Review_productId_idx" ON "Review"("productId");
+CREATE INDEX "Interaction_userId_createdAt_idx" ON "Interaction"("userId", "createdAt");
+CREATE INDEX "Watchlist_userId_createdAt_idx" ON "Watchlist"("userId", "createdAt");
+CREATE INDEX "AutoBuyQueueItem_watchlistId_status_idx" ON "AutoBuyQueueItem"("watchlistId", "status");
+CREATE INDEX "PriceHistory_listingId_recordedAt_idx" ON "PriceHistory"("listingId", "recordedAt");
