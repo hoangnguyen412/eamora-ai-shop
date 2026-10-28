@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/shared/ProductCard";
 import mockData from "@/mocks/db.json";
@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
-import { formatPrice, filterProducts } from "@/lib/helpers";
 import { Suspense } from "react";
 
 const products = mockData.products as unknown as Product[];
@@ -28,16 +27,27 @@ function SearchContent() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
 
-  const filtered = useMemo(() => {
-    return filterProducts(products, {
-      search,
-      category: selectedCategory,
-      brand: selectedBrand,
-      minPrice: minPrice ? parseInt(minPrice) : undefined,
-      maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
-    });
-  }, [search, selectedCategory, selectedBrand, minPrice, maxPrice]);
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/search/semantic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: search }),
+      });
+      const data = await response.json();
+      setResults(data.results || []);
+    } catch (error) {
+      console.error("Search error:", error);
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const clearFilters = () => {
     setSearch("");
@@ -45,6 +55,7 @@ function SearchContent() {
     setSelectedBrand("");
     setMinPrice("");
     setMaxPrice("");
+    setResults([]);
   };
 
   const hasFilters = search || selectedCategory || selectedBrand || minPrice || maxPrice;
@@ -53,7 +64,7 @@ function SearchContent() {
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       {/* Search bar */}
       <div className="mb-8 space-y-4">
-        <div className="flex items-center gap-3">
+        <form onSubmit={handleSearch} className="flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -73,6 +84,9 @@ function SearchContent() {
               </Button>
             )}
           </div>
+          <Button type="submit" variant="outline" className="h-12 gap-2">
+            Tìm kiếm
+          </Button>
           <Button
             variant="outline"
             className="h-12 gap-2 lg:hidden"
@@ -81,14 +95,14 @@ function SearchContent() {
             <SlidersHorizontal className="h-4 w-4" />
             Bộ lọc
           </Button>
-        </div>
+        </form>
 
         {search && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm text-muted-foreground">
               AI đang phân tích: &ldquo;<strong className="text-foreground">{search}</strong>&rdquo;
-              — Tìm thấy <strong className="text-primary">{filtered.length}</strong> kết quả phù hợp
+              — Tìm thấy <strong className="text-primary">{results.length}</strong> kết quả phù hợp
             </span>
           </div>
         )}
@@ -178,45 +192,54 @@ function SearchContent() {
 
         {/* Results grid */}
         <div className="flex-1 space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Hiển thị <strong>{filtered.length}</strong> sản phẩm
-            </p>
-            {hasFilters && (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedCategory && (
-                  <Badge variant="secondary" className="gap-1 text-xs">
-                    {selectedCategory}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory("")} />
-                  </Badge>
-                )}
-                {selectedBrand && (
-                  <Badge variant="secondary" className="gap-1 text-xs">
-                    {selectedBrand}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedBrand("")} />
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
-
-          {filtered.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+          {isLoading ? (
+            <div className="text-center py-20 space-y-3">
+              <Sparkles className="h-12 w-12 mx-auto text-primary animate-spin" />
+              <p className="text-lg font-medium">Đang tìm kiếm...</p>
             </div>
           ) : (
-            <div className="text-center py-20 space-y-3">
-              <Search className="h-12 w-12 mx-auto text-muted-foreground/30" />
-              <p className="text-lg font-medium">Không tìm thấy sản phẩm</p>
-              <p className="text-sm text-muted-foreground">
-                Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc
-              </p>
-              <Button variant="outline" onClick={clearFilters}>
-                Xóa bộ lọc
-              </Button>
-            </div>
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Hiển thị <strong>{results.length}</strong> sản phẩm
+                </p>
+                {hasFilters && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedCategory && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        {selectedCategory}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory("")} />
+                      </Badge>
+                    )}
+                    {selectedBrand && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        {selectedBrand}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedBrand("")} />
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {results.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {results.map((product) => (
+                    <ProductCard key={product.id} product={product as Product} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 space-y-3">
+                  <Search className="h-12 w-12 mx-auto text-muted-foreground/30" />
+                  <p className="text-lg font-medium">Không tìm thấy sản phẩm</p>
+                  <p className="text-sm text-muted-foreground">
+                    Hãy thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc
+                  </p>
+                  <Button variant="outline" onClick={clearFilters}>
+                    Xóa bộ lọc
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

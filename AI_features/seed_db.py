@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.parse
 import psycopg2
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
@@ -65,10 +66,13 @@ def main():
         # Lấy categoryId từ category_map
         category_id = category_map.get(product["category"])
 
+        # Tạo URL ảnh giả lập
+        image_url = f"https://placehold.co/400x400?text={urllib.parse.quote(product['name'])}"
+
         # Chèn sản phẩm vào bảng Product (ON CONFLICT DO NOTHING)
         cur.execute(
-            'INSERT INTO "Product" ("id", "categoryId", "name", "description", "basePrice") VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING',
-            (product_id, category_id, product["name"], product.get("description", ""), product["price"]),
+            'INSERT INTO "Product" ("id", "categoryId", "name", "description", "basePrice", "imageUrl", "brand") VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING',
+            (product_id, category_id, product["name"], product.get("description", ""), product["price"], image_url, product.get("brand", "")),
         )
         conn.commit()
 
