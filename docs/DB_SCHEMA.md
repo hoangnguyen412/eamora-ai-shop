@@ -15,4 +15,5 @@
 - **ChatMessage**: id, session_id, role (user/assistant), content, retrieved_products (JSONB)
 - **Embedding**: id, product_id, vector (vector 768), updated_at
 - **Watchlist**: id, user_id, product_id, target_price, status (active/bought/cancelled); created through the authenticated buyer Price Agent API
+- **AutoBuyQueueItem**: id, watchlist_id, status (pending), created_at; buyer-owned active watches can be queued once while pending; queue items cascade-delete with their watch
 - **PriceHistory**: id, listing_id, price, recorded_at; history API returns recorded rows but does not generate snapshots

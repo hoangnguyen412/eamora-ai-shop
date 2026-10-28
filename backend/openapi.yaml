@@ -328,6 +328,42 @@ paths:
         '400': { description: auto_buy must be a boolean }
         '401': { description: Authentication required }
         '403': { description: Buyer role required }
+  /api/agent/queue:
+    get:
+      summary: Lấy queue auto-buy của buyer hiện tại (FIFO)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200': { description: Queue items owned by the buyer }
+        '400': { description: Invalid limit }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
+    post:
+      summary: Đưa một watch đang active vào queue auto-buy
+      description: Chỉ lưu job pending; không tạo đơn hàng, không thanh toán hoặc thực thi mua hàng. Yêu cầu buyer đã bật auto_buy.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [watch_id]
+              properties:
+                watch_id: { type: string }
+      responses:
+        '201': { description: Queue item created }
+        '200': { description: Existing pending item returned to prevent duplicates }
+        '400': { description: Missing watch_id }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
+        '404': { description: Active price watch not found }
+        '409': { description: Auto-buy must be enabled }
   /api/agent/history:
     get:
       summary: Lịch sử theo dõi, giá đã ghi nhận và đơn hàng của buyer

@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -928,6 +928,100 @@ app.put('/api/agent/rules', requireAuth, requireRole(['buyer']), async (req: Aut
     return res.json({ success: true, data: { auto_buy: user.autoBuyEnabled } });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Unable to update price agent rules', details: error });
+  }
+});
+
+app.post('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const watchId = typeof req.body?.watch_id === 'string' ? req.body.watch_id.trim() : '';
+  if (!watchId) {
+    return res.status(400).json({ success: false, message: 'watch_id is required' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { autoBuyEnabled: true },
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (!user.autoBuyEnabled) {
+      return res.status(409).json({ success: false, message: 'Auto-buy must be enabled before queuing a watch' });
+    }
+
+    const watch = await prisma.watchlist.findFirst({
+      where: { id: watchId, userId: req.user!.id, status: 'active' },
+      select: { id: true },
+    });
+    if (!watch) {
+      return res.status(404).json({ success: false, message: 'Active price watch not found' });
+    }
+
+    const includeQueueWatch = {
+      watchlist: {
+        select: {
+          id: true,
+          targetPrice: true,
+          product: { select: { id: true, name: true } },
+        },
+      },
+    } satisfies Prisma.AutoBuyQueueItemInclude;
+    const existingItem = await prisma.autoBuyQueueItem.findFirst({
+      where: { watchlistId: watch.id, status: 'pending' },
+      include: includeQueueWatch,
+    });
+    if (existingItem) {
+      return res.status(200).json({ success: true, data: existingItem, deduplicated: true });
+    }
+
+    try {
+      const queueItem = await prisma.autoBuyQueueItem.create({
+        data: { watchlistId: watch.id },
+        include: includeQueueWatch,
+      });
+      return res.status(201).json({ success: true, data: queueItem });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const pendingItem = await prisma.autoBuyQueueItem.findFirst({
+          where: { watchlistId: watch.id, status: 'pending' },
+          include: includeQueueWatch,
+        });
+        if (pendingItem) {
+          return res.status(200).json({ success: true, data: pendingItem, deduplicated: true });
+        }
+      }
+      throw error;
+    }
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to queue auto-buy watch', details: error });
+  }
+});
+
+app.get('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const requestedLimit = req.query.limit === undefined ? 50 : Number(req.query.limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+    return res.status(400).json({ success: false, message: 'limit must be a positive integer' });
+  }
+
+  try {
+    const queueItems = await prisma.autoBuyQueueItem.findMany({
+      where: { watchlist: { is: { userId: req.user!.id } } },
+      orderBy: { createdAt: 'asc' },
+      take: Math.min(requestedLimit, 100),
+      include: {
+        watchlist: {
+          select: {
+            id: true,
+            targetPrice: true,
+            product: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    return res.json({ success: true, data: queueItems });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch auto-buy queue', details: error });
   }
 });
 
