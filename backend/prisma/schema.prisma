@@ -157,6 +157,7 @@ model AutoBuyQueueItem {
   id          String   @id @default(uuid())
   watchlistId String
   status      String   @default("pending")
+  result      Json?
   createdAt   DateTime @default(now())
   watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
 

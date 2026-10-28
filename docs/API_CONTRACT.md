@@ -31,6 +31,7 @@
 - `PUT /api/agent/rules` (Buyer; body: `{ auto_buy: boolean }`; persists the setting only and does not execute purchases)
 - `POST /api/agent/queue` (Buyer; body: `{ watch_id }`; requires Auto-buy enabled and an active watch owned by the buyer; creates one pending item per watch)
 - `GET /api/agent/queue` (Buyer; optional `limit` 1–100, default 50; returns the buyer's queue in FIFO order)
+- `POST /api/agent/queue/:id/execute` (Buyer; sandbox-only evaluation of the cheapest in-stock listing against the watch target; stores result and completes the queue item without creating an order or charging payment; repeated execution returns the saved result)
 - `GET /api/agent/history` (Buyer; optional `limit` 1–100, default 50; returns the buyer's watchlist with recorded listing price history and their orders. Price points appear only when recorded in `PriceHistory`; this API does not create price snapshots or run auto-buy.)
 
-Queue items are persisted as `pending`; this basic queue API does not create orders, execute purchases, or process jobs. Re-enqueueing a watch with a pending item returns that item instead of creating a duplicate.
+Queue items are persisted and de-duplicated while pending. Executing a queue item only simulates the purchase decision and never creates orders or charges payments.

@@ -12,4 +12,4 @@
 - `POST /agent/score-deal` -> Input: current_price, price_history.
   Output: { dqs_score, is_actionable }
 - Background Task: `monitor_prices()` chạy mỗi 30 phút.
-- Background Task: `execute_auto_buy()` xử lý priority queue.
+- Target background task: `execute_auto_buy()` xử lý priority queue. Backend sandbox endpoint hiện chỉ mô phỏng quyết định theo giá listing; không tạo đơn hàng hoặc thanh toán.

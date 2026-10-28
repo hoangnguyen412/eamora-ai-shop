@@ -364,6 +364,23 @@ paths:
         '403': { description: Buyer role required }
         '404': { description: Active price watch not found }
         '409': { description: Auto-buy must be enabled }
+  /api/agent/queue/{id}/execute:
+    post:
+      summary: Mô phỏng quyết định auto-buy cho queue item (sandbox)
+      description: Đánh giá listing còn hàng với giá mục tiêu, lưu kết quả và hoàn tất queue item. Không tạo đơn hàng hoặc thanh toán.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Sandbox evaluation completed or returned idempotently }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
+        '404': { description: Queue item not found }
+        '409': { description: Job is not pending, Auto-buy is disabled, or watch is inactive }
   /api/agent/history:
     get:
       summary: Lịch sử theo dõi, giá đã ghi nhận và đơn hàng của buyer
