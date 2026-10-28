@@ -6,15 +6,17 @@ import mockData from "@/mocks/db.json";
 import { Product, PriceHistory } from "@/types";
 import { useCart } from "@/context/CartProvider";
 import PriceChart from "@/components/shared/PriceChart";
-import { formatPrice } from "@/lib/helpers";
+import ProductPrice from "@/components/shared/ProductPrice";
+import ProductRating from "@/components/shared/ProductRating";
+import InventoryStatus from "@/components/shared/InventoryStatus";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ShoppingCart, Star, Truck, ShieldCheck, RotateCcw,
-  ChevronLeft, Sparkles, Package,
+  ShoppingCart, Truck, ShieldCheck, RotateCcw,
+  ChevronLeft, Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -86,28 +88,15 @@ export default function ProductDetailClient({ id }: { id: string }) {
             </div>
             <h1 className="text-2xl md:text-3xl font-bold">{product.name}</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className={`h-4 w-4 ${i < Math.floor(product.rating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`} />
-              ))}
-            </div>
-            <span className="text-sm font-medium">{product.rating}</span>
-            <span className="text-sm text-muted-foreground">({product.reviewCount} đánh giá)</span>
-          </div>
+          <ProductRating rating={product.rating} reviewCount={product.reviewCount} size="detail" />
           <div className="space-y-1">
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-primary">{formatPrice(product.price)}</span>
-              {product.originalPrice > product.price && (
-                <>
-                  <span className="text-lg text-muted-foreground line-through">{formatPrice(product.originalPrice)}</span>
-                  <Badge variant="destructive" className="text-xs">-{product.discountPercent}%</Badge>
-                </>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Còn {product.stock} sản phẩm trong kho
-            </p>
+            <ProductPrice
+              price={product.price}
+              originalPrice={product.originalPrice}
+              discountPercent={product.discountPercent}
+              size="detail"
+            />
+            <InventoryStatus stock={product.stock} />
           </div>
           <Separator />
           <div className="space-y-4">
