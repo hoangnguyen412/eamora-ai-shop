@@ -22,11 +22,8 @@
 - `GET /api/seller/orders` (Seller only; returns orders containing the seller's listings, with product names and seller line-item subtotal)
 - `GET /api/seller/stats` (Seller only; returns `listingCount`, `activeListingCount`, `orderCount`, `totalRevenue`, `unitsSold`, and `ordersByStatus`; revenue and units sold exclude cancelled orders and shipping fees)
 
-## 3. AI Features (Gọi sang FastAPI)
-- `POST /api/search/semantic` -> { query, filters } 
-  (Backend gọi AI lấy vector, query DB trả về kết quả)
-- `POST /api/chat/message` -> { message, session_id } 
-  (Backend gọi AI RAG, trả về text + products)
+## 3. Price Agent
+- Price Agent routes below are implemented by the Express backend. Semantic search and RAG chat are not exposed as Express endpoints yet.
 - `POST /api/agent/watch` (Buyer; body: `product_id`, positive numeric `target_price`; saves a price watch)
 - `GET /api/agent/rules` (Buyer; returns the persisted `{ auto_buy }` setting)
 - `PUT /api/agent/rules` (Buyer; body: `{ auto_buy: boolean }`; persists the setting only and does not execute purchases)
