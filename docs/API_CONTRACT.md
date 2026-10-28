@@ -16,7 +16,9 @@
 - `POST /api/interactions` (Buyer; body: `productId`, `action` in `view | click | cart | buy`)
 - `POST /api/search/sessions` (Optional bearer auth; body: `queryText`, optional `filters` JSON object)
 - `POST /api/search/sessions/:id/clicks` (Optional bearer auth; body: `productId`; authenticated sessions can only be updated by their owner)
-- `GET /api/seller/listings` (Seller only)
+- `GET /api/seller/listings` (Seller only; listing data includes `totalSold` excluding cancelled orders and `status` as `active` or `out_of_stock`)
+- `GET /api/seller/orders` (Seller only; returns orders containing the seller's listings, with product names and seller line-item subtotal)
+- `GET /api/seller/stats` (Seller only; returns `listingCount`, `activeListingCount`, `orderCount`, `totalRevenue`, `unitsSold`, and `ordersByStatus`; revenue and units sold exclude cancelled orders and shipping fees)
 
 ## 3. AI Features (Gọi sang FastAPI)
 - `POST /api/search/semantic` -> { query, filters } 

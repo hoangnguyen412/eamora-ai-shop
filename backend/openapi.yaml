@@ -222,8 +222,30 @@ paths:
   /api/seller/listings:
     get:
       summary: Lấy danh sách listing của seller
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200': { description: OK; mỗi listing có totalSold và status }
+        '401': { description: Authentication required }
+        '403': { description: Seller role required }
+  /api/seller/orders:
+    get:
+      summary: Lấy đơn hàng có listing thuộc seller
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK; đơn có items, sellerAmount, productName và lineTotal }
+        '401': { description: Authentication required }
+        '403': { description: Seller role required }
+  /api/seller/stats:
+    get:
+      summary: Thống kê listing, đơn hàng và doanh thu của seller
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: OK; doanh thu không gồm phí ship và đơn đã hủy }
+        '401': { description: Authentication required }
+        '403': { description: Seller role required }
   /api/search/semantic:
     post:
       summary: Tìm kiếm ngữ nghĩa (gọi sang AI)

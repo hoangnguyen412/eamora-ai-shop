@@ -562,24 +562,144 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole(['seller']), async 
 
 app.get('/api/seller/listings', requireAuth, requireRole(['seller']), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const shop = await prisma.shop.findFirst({
-      where: { sellerId: req.user?.id ?? '' },
-      include: {
-        listings: {
-          include: {
-            product: true,
-          },
-        },
+    const listings = await prisma.listing.findMany({
+      where: { shop: { sellerId: req.user!.id } },
+      include: { product: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    const listingIds = listings.map((listing) => listing.id);
+    const orderItems = listingIds.length > 0
+      ? await prisma.orderItem.findMany({ where: { listingId: { in: listingIds } } })
+      : [];
+    const orderIds = [...new Set(orderItems.map((item) => item.orderId))];
+    const orders = orderIds.length > 0
+      ? await prisma.order.findMany({
+        where: { id: { in: orderIds }, status: { not: 'cancelled' } },
+        select: { id: true },
+      })
+      : [];
+    const activeOrderIds = new Set(orders.map((order) => order.id));
+    const soldByListing = new Map<string, number>();
+
+    for (const item of orderItems) {
+      if (activeOrderIds.has(item.orderId)) {
+        soldByListing.set(item.listingId, (soldByListing.get(item.listingId) ?? 0) + item.quantity);
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: listings.map((listing) => ({
+        ...listing,
+        totalSold: soldByListing.get(listing.id) ?? 0,
+        status: listing.stock > 0 ? 'active' : 'out_of_stock',
+      })),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch seller listings', details: error });
+  }
+});
+
+app.get('/api/seller/orders', requireAuth, requireRole(['seller']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const listings = await prisma.listing.findMany({
+      where: { shop: { sellerId: req.user!.id } },
+      include: { product: { select: { id: true, name: true } } },
+    });
+    const listingsById = new Map(listings.map((listing) => [listing.id, listing]));
+    const listingIds = [...listingsById.keys()];
+    const orderItems = listingIds.length > 0
+      ? await prisma.orderItem.findMany({ where: { listingId: { in: listingIds } } })
+      : [];
+    const orderIds = [...new Set(orderItems.map((item) => item.orderId))];
+    const orders = orderIds.length > 0
+      ? await prisma.order.findMany({
+        where: { id: { in: orderIds } },
+        orderBy: { createdAt: 'desc' },
+      })
+      : [];
+    const itemsByOrder = new Map<string, typeof orderItems>();
+
+    for (const item of orderItems) {
+      const items = itemsByOrder.get(item.orderId) ?? [];
+      items.push(item);
+      itemsByOrder.set(item.orderId, items);
+    }
+
+    return res.json({
+      success: true,
+      data: orders.map((order) => {
+        const items = (itemsByOrder.get(order.id) ?? []).flatMap((item) => {
+          const listing = listingsById.get(item.listingId);
+          return listing
+            ? [{
+              ...item,
+              productId: listing.product.id,
+              productName: listing.product.name,
+              lineTotal: item.price * item.quantity,
+            }]
+            : [];
+        });
+
+        return {
+          ...order,
+          items,
+          sellerAmount: items.reduce((total, item) => total + item.lineTotal, 0),
+        };
+      }),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch seller orders', details: error });
+  }
+});
+
+app.get('/api/seller/stats', requireAuth, requireRole(['seller']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const listings = await prisma.listing.findMany({
+      where: { shop: { sellerId: req.user!.id } },
+      select: { id: true, stock: true },
+    });
+    const listingIds = listings.map((listing) => listing.id);
+    const orderItems = listingIds.length > 0
+      ? await prisma.orderItem.findMany({ where: { listingId: { in: listingIds } } })
+      : [];
+    const orderIds = [...new Set(orderItems.map((item) => item.orderId))];
+    const orders = orderIds.length > 0
+      ? await prisma.order.findMany({
+        where: { id: { in: orderIds } },
+        select: { id: true, status: true },
+      })
+      : [];
+    const ordersById = new Map(orders.map((order) => [order.id, order]));
+    const ordersByStatus = {
+      pending: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+
+    for (const order of orders) {
+      if (Object.prototype.hasOwnProperty.call(ordersByStatus, order.status)) {
+        ordersByStatus[order.status as keyof typeof ordersByStatus] += 1;
+      }
+    }
+
+    const soldItems = orderItems.filter((item) => ordersById.get(item.orderId)?.status !== 'cancelled');
+
+    return res.json({
+      success: true,
+      data: {
+        listingCount: listings.length,
+        activeListingCount: listings.filter((listing) => listing.stock > 0).length,
+        orderCount: orders.length,
+        totalRevenue: soldItems.reduce((total, item) => total + item.price * item.quantity, 0),
+        unitsSold: soldItems.reduce((total, item) => total + item.quantity, 0),
+        ordersByStatus,
       },
     });
-
-    return res.json({ success: true, data: shop?.listings ?? [] });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('ECONNREFUSED') || message.includes('connect') || message.includes('database')) {
-      return res.json({ success: true, data: [] });
-    }
-    return res.status(500).json({ success: false, message: 'Unable to fetch seller listings', details: error });
+    return res.status(500).json({ success: false, message: 'Unable to fetch seller stats', details: error });
   }
 });
 
