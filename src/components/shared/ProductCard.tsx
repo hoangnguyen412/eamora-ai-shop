@@ -49,7 +49,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
 
   return (
-    <Card className="group relative overflow-hidden border transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1">
+    <Card className="group relative overflow-hidden border-border/70 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
       {/* Recommendation Badge */}
       {product.recommendationBadge && (
         <div className="absolute top-3 left-3 z-10">
@@ -77,35 +77,37 @@ export default function ProductCard({ product }: ProductCardProps) {
             alt={product.name}
             width={400}
             height={400}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             unoptimized
           />
         </div>
       </Link>
 
-      <CardContent className="p-4 space-y-2">
+      <CardContent className="flex h-[210px] flex-col gap-2 p-4">
         {/* Category & Brand */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{product.brand}</span>
-          <span>•</span>
-          <span>{product.category}</span>
+          <span className="truncate">{product.brand}</span>
+          <span aria-hidden="true">·</span>
+          <span className="truncate">{product.category}</span>
         </div>
 
         {/* Name */}
         <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold text-sm leading-tight line-clamp-2 hover:text-primary transition-colors">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug transition-colors hover:text-primary">
             {product.name}
           </h3>
         </Link>
 
         <ProductRating rating={product.rating} reviewCount={product.reviewCount} />
 
-        <ProductPrice price={product.price} originalPrice={product.originalPrice} />
+        <div className="mt-auto">
+          <ProductPrice price={product.price} originalPrice={product.originalPrice} />
+        </div>
 
         {/* Add to cart */}
         <Button
           onClick={() => addItem(product)}
-          className="w-full gap-2 bg-gradient-brand text-white hover:opacity-90 transition-opacity"
+          className="w-full gap-2 bg-gradient-brand text-white transition-opacity hover:opacity-90"
           size="sm"
         >
           <ShoppingCart className="h-4 w-4" />

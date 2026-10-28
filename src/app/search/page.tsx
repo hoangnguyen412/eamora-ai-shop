@@ -105,7 +105,12 @@ function SearchContent() {
   const hasFilters = search || selectedCategory || selectedBrand || minPrice || maxPrice;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <header className="mb-6 space-y-1">
+        <p className="text-sm font-medium text-primary">Khám phá Eamora</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tìm sản phẩm</h1>
+        <p className="text-sm text-muted-foreground">Lọc theo danh mục, thương hiệu hoặc khoảng giá.</p>
+      </header>
       {/* Search bar */}
       <div className="mb-8 space-y-4">
         <div className="flex items-center gap-3">
@@ -113,6 +118,7 @@ function SearchContent() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Tìm sản phẩm theo tên, thương hiệu hoặc danh mục"
+              aria-label="Tìm sản phẩm"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -125,6 +131,7 @@ function SearchContent() {
                 variant="ghost"
                 size="icon"
                 className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                aria-label="Xóa nội dung tìm kiếm"
                 onClick={() => {
                   setSearch("");
                   setPage(1);
@@ -138,6 +145,7 @@ function SearchContent() {
             variant="outline"
             className="h-12 gap-2 lg:hidden"
             onClick={() => setShowFilters(!showFilters)}
+            aria-expanded={showFilters}
           >
             <SlidersHorizontal className="h-4 w-4" />
             Bộ lọc
@@ -157,7 +165,7 @@ function SearchContent() {
 
       <div className="flex gap-8">
         {/* Filters sidebar */}
-        <aside className={`${showFilters ? "block" : "hidden"} lg:block w-full lg:w-64 shrink-0`}>
+        <aside className={`${showFilters ? "block" : "hidden"} w-full shrink-0 lg:block lg:w-64`}>
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -172,20 +180,25 @@ function SearchContent() {
             <CardContent className="space-y-5">
               {/* Category */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Danh mục</label>
+                <p className="text-sm font-medium">Danh mục</p>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
-                    <Badge
+                    <button
                       key={cat}
-                      variant={selectedCategory === cat ? "default" : "outline"}
-                      className="cursor-pointer hover:bg-primary/10 transition-colors"
+                      type="button"
+                      aria-pressed={selectedCategory === cat}
+                      className={`rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        selectedCategory === cat
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
+                      }`}
                       onClick={() => {
                         setSelectedCategory(selectedCategory === cat ? "" : cat);
                         setPage(1);
                       }}
                     >
                       {cat}
-                    </Badge>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -194,20 +207,25 @@ function SearchContent() {
 
               {/* Brand */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Thương hiệu</label>
+                <p className="text-sm font-medium">Thương hiệu</p>
                 <div className="flex flex-wrap gap-2">
                   {brands.map((brand) => (
-                    <Badge
+                    <button
                       key={brand}
-                      variant={selectedBrand === brand ? "default" : "outline"}
-                      className="cursor-pointer hover:bg-primary/10 transition-colors"
+                      type="button"
+                      aria-pressed={selectedBrand === brand}
+                      className={`rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        selectedBrand === brand
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
+                      }`}
                       onClick={() => {
                         setSelectedBrand(selectedBrand === brand ? "" : brand);
                         setPage(1);
                       }}
                     >
                       {brand}
-                    </Badge>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -216,11 +234,14 @@ function SearchContent() {
 
               {/* Price range */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Khoảng giá (VND)</label>
+                <p className="text-sm font-medium">Khoảng giá (VND)</p>
                 <div className="flex items-center gap-2">
                   <Input
+                    id="min-price"
                     type="number"
+                    min="0"
                     placeholder="Từ"
+                    aria-label="Giá thấp nhất"
                     value={minPrice}
                     onChange={(e) => {
                       setMinPrice(e.target.value);
@@ -230,8 +251,11 @@ function SearchContent() {
                   />
                   <span className="text-muted-foreground">—</span>
                   <Input
+                    id="max-price"
                     type="number"
+                    min="0"
                     placeholder="Đến"
+                    aria-label="Giá cao nhất"
                     value={maxPrice}
                     onChange={(e) => {
                       setMaxPrice(e.target.value);
@@ -247,9 +271,9 @@ function SearchContent() {
 
         {/* Results grid */}
         <div className="flex-1 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">
-              Hiển thị <strong>{totalItems}</strong> sản phẩm
+              {isLoading ? "Đang cập nhật kết quả..." : <>Tìm thấy <strong>{totalItems}</strong> sản phẩm</>}
             </p>
             {hasFilters && (
               <div className="flex flex-wrap gap-1.5">
@@ -280,7 +304,19 @@ function SearchContent() {
               {error}
             </div>
           ) : isLoading ? (
-            <p role="status" className="py-12 text-center text-sm text-muted-foreground">Đang tải sản phẩm...</p>
+            <div role="status" aria-label="Đang tải sản phẩm" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} className="overflow-hidden rounded-xl border bg-card">
+                  <div className="aspect-square animate-pulse bg-muted" />
+                  <div className="space-y-3 p-4">
+                    <div className="h-3 w-2/5 animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-4/5 animate-pulse rounded bg-muted" />
+                    <div className="h-5 w-1/2 animate-pulse rounded bg-muted" />
+                    <div className="h-9 animate-pulse rounded bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map((product) => (
@@ -309,7 +345,7 @@ function SearchContent() {
               >
                 Trang trước
               </Button>
-              <span className="text-sm text-muted-foreground">Trang {page} / {totalPages}</span>
+              <span className="text-sm text-muted-foreground" aria-live="polite">Trang {page} / {totalPages}</span>
               <Button
                 variant="outline"
                 disabled={page >= totalPages || isLoading}
@@ -327,7 +363,7 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div role="status" className="mx-auto max-w-7xl px-4 py-16 text-center text-sm text-muted-foreground">Đang mở tìm kiếm...</div>}>
       <SearchContent />
     </Suspense>
   );

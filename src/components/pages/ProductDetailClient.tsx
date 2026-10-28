@@ -131,26 +131,26 @@ export default function ProductDetailClient({ id }: { id: string }) {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/" className="hover:text-primary transition-colors">
+      <nav aria-label="Đường dẫn" className="flex items-center gap-2 overflow-hidden text-sm text-muted-foreground">
+        <Link href="/" className="shrink-0 whitespace-nowrap transition-colors hover:text-primary">
           <ChevronLeft className="h-4 w-4 inline" /> Trang chủ
         </Link>
-        <span>/</span>
-        <Link href={`/search?category=${product.category}`} className="hover:text-primary transition-colors">
+        <span className="shrink-0">/</span>
+        <Link href={`/search?category=${product.category}`} className="shrink-0 whitespace-nowrap transition-colors hover:text-primary">
           {product.category}
         </Link>
-        <span>/</span>
-        <span className="text-foreground font-medium truncate max-w-[200px]">{product.name}</span>
-      </div>
+        <span className="shrink-0">/</span>
+        <span aria-current="page" className="max-w-[200px] truncate font-medium text-foreground">{product.name}</span>
+      </nav>
 
       {/* Main */}
-      <div className="grid lg:grid-cols-2 gap-10">
+      <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
         {/* Images */}
         <div className="space-y-4">
-          <div className="aspect-square overflow-hidden rounded-2xl bg-muted/50 border">
-            <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="h-full w-full object-cover" unoptimized />
+          <div className="aspect-square overflow-hidden rounded-2xl border bg-muted/50">
+            <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="h-full w-full object-cover" loading="eager" unoptimized />
           </div>
           {product.images.length > 1 && (
             <div className="flex gap-3">
@@ -175,10 +175,10 @@ export default function ProductDetailClient({ id }: { id: string }) {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{product.brand}</span><span>•</span><span>{product.category}</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold">{product.name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
           </div>
           <ProductRating rating={product.rating} reviewCount={product.reviewCount} size="detail" />
-          <div className="space-y-1">
+          <div className="space-y-2 rounded-xl border bg-card p-4 sm:p-5">
             <ProductPrice
               price={product.price}
               originalPrice={product.originalPrice}

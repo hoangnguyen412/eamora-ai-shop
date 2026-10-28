@@ -34,14 +34,14 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
 
   return (
     <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-background to-primary/5 border">
-      <div className="grid md:grid-cols-2 gap-6 p-6 md:p-10 items-center min-h-[400px]">
+      <div className="grid items-center gap-5 p-5 sm:p-8 md:min-h-[400px] md:grid-cols-2 md:gap-8 md:p-10">
         {/* Text side */}
-        <div className="space-y-4 order-2 md:order-1">
+        <div className="order-1 space-y-4 md:order-1">
           <Badge className="gap-1.5 bg-gradient-brand text-white border-0 shadow-lg">
             <Sparkles className="h-3 w-3" />
             Sản phẩm nổi bật
           </Badge>
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
+          <h2 className="text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">
             {product.name}
           </h2>
           <p className="text-muted-foreground text-sm md:text-base leading-relaxed">
@@ -59,7 +59,7 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
               </span>
             )}
           </div>
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-wrap gap-3 pt-2">
             <Link href={`/products/${product.id}`}>
               <Button className="bg-gradient-brand text-white hover:opacity-90">
                 Xem chi tiết
@@ -72,13 +72,14 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
         </div>
 
         {/* Image side */}
-        <div className="order-1 md:order-2 flex justify-center">
-          <div className="relative w-full max-w-sm aspect-square">
+        <div className="order-2 flex justify-center md:order-2">
+          <div className="relative aspect-[16/10] w-full max-w-sm overflow-hidden rounded-xl bg-muted/50 shadow-xl md:aspect-square">
             <Image
               src={product.thumbnailUrl}
               alt={product.name}
               fill
-              className="object-cover rounded-xl shadow-2xl"
+              className="rounded-xl object-cover"
+              loading="eager"
               unoptimized
             />
           </div>
@@ -89,16 +90,18 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full shadow-md hover:bg-background"
+        className="absolute left-auto right-14 top-5 rounded-full bg-background/90 shadow-md backdrop-blur-sm hover:bg-background md:left-2 md:right-auto md:top-1/2 md:-translate-y-1/2"
         onClick={prev}
+        aria-label="Sản phẩm nổi bật trước"
       >
         <ChevronLeft className="h-5 w-5" />
       </Button>
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm rounded-full shadow-md hover:bg-background"
+        className="absolute right-2 top-5 rounded-full bg-background/90 shadow-md backdrop-blur-sm hover:bg-background md:top-1/2 md:-translate-y-1/2"
         onClick={next}
+        aria-label="Sản phẩm nổi bật tiếp theo"
       >
         <ChevronRight className="h-5 w-5" />
       </Button>
@@ -109,6 +112,8 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
           <button
             key={i}
             onClick={() => setCurrent(i)}
+            aria-label={`Hiển thị sản phẩm nổi bật ${i + 1}`}
+            aria-pressed={i === current}
             className={`h-2 rounded-full transition-all duration-300 ${
               i === current
                 ? "w-6 bg-primary"
