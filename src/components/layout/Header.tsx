@@ -11,6 +11,7 @@ import {
   Cpu,
   User,
   LayoutDashboard,
+  TrendingDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -72,6 +73,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <Button variant="ghost" className="text-sm font-medium">
                 <MessageSquareText className="mr-1 h-4 w-4" />
                 AI Chat
+              </Button>
+            </Link>
+            <Link href="/watchlist">
+              <Button variant="ghost" className="text-sm font-medium">
+                <TrendingDown className="mr-1 h-4 w-4" />
+                Price Agent
               </Button>
             </Link>
             <Link href="/seller">

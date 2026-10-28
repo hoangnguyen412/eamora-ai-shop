@@ -19,6 +19,7 @@ import {
   Smartphone,
   Headphones,
   Cpu,
+  TrendingDown,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/", icon: Home, label: "Trang chủ" },
   { href: "/search", icon: Search, label: "Tìm kiếm" },
   { href: "/chat", icon: MessageSquareText, label: "AI Chat" },
+  { href: "/watchlist", icon: TrendingDown, label: "Price Agent" },
   { href: "/cart", icon: ShoppingCart, label: "Giỏ hàng" },
   { href: "/seller", icon: LayoutDashboard, label: "Seller Dashboard" },
 ];
