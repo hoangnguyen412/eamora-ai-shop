@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -45,7 +45,7 @@ const categories = [
 export default function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-72 p-0">
+      <SheetContent id="navigation-sidebar" side="left" className="w-72 p-0">
         <SheetHeader className="p-4 pb-2">
           <SheetTitle className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand">
@@ -60,14 +60,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             Điều hướng
           </p>
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href} onClick={onClose}>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 text-sm font-medium mb-0.5"
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Button>
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={buttonVariants({ variant: "ghost", className: "mb-0.5 w-full justify-start gap-3 text-sm font-medium" })}
+            >
+              <item.icon className="h-4 w-4" aria-hidden="true" />
+              {item.label}
             </Link>
           ))}
         </div>
@@ -79,14 +79,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             Danh mục
           </p>
           {categories.map((cat) => (
-            <Link key={cat.label} href={cat.href} onClick={onClose}>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 text-sm font-medium mb-0.5"
-              >
-                <cat.icon className="h-4 w-4" />
-                {cat.label}
-              </Button>
+            <Link
+              key={cat.label}
+              href={cat.href}
+              onClick={onClose}
+              className={buttonVariants({ variant: "ghost", className: "mb-0.5 w-full justify-start gap-3 text-sm font-medium" })}
+            >
+              <cat.icon className="h-4 w-4" aria-hidden="true" />
+              {cat.label}
             </Link>
           ))}
         </div>

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "@/context/CartProvider";
 import { formatPrice } from "@/lib/helpers";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
@@ -31,14 +31,15 @@ export default function CartPage() {
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
           <ShoppingBag className="h-9 w-9 text-primary" />
         </div>
-        <h2 className="mt-5 text-2xl font-bold">Giỏ hàng đang chờ bạn</h2>
+        <h1 className="mt-5 text-2xl font-bold">Giỏ hàng đang chờ bạn</h1>
         <p className="text-muted-foreground">
           Hãy thêm sản phẩm vào giỏ hàng để tiến hành thanh toán
         </p>
-        <Link href="/search">
-          <Button className="mt-4 bg-gradient-brand text-white hover:opacity-90">
-            Khám phá sản phẩm
-          </Button>
+        <Link
+          href="/search"
+          className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}
+        >
+          Khám phá sản phẩm
         </Link>
       </div>
     );
@@ -149,9 +150,12 @@ export default function CartPage() {
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-8 text-center text-sm font-medium">
+                      <output
+                        aria-label={`Số lượng ${item.product.name}`}
+                        className="w-8 text-center text-sm font-medium"
+                      >
                         {item.quantity}
-                      </span>
+                      </output>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -213,11 +217,12 @@ export default function CartPage() {
               </div>
 
               {canCheckout ? (
-                <Link href="/checkout" className="block">
-                  <Button className="w-full gap-2 bg-gradient-brand text-white hover:opacity-90 h-12" size="lg">
+                <Link
+                  href="/checkout"
+                  className={buttonVariants({ size: "lg", className: "block h-12 w-full gap-2 bg-gradient-brand text-white hover:opacity-90" })}
+                >
                     Tiến hành thanh toán
                     <ArrowRight className="h-4 w-4" />
-                  </Button>
                 </Link>
               ) : (
                 <Button className="w-full h-12" size="lg" disabled>
@@ -225,10 +230,11 @@ export default function CartPage() {
                 </Button>
               )}
 
-              <Link href="/search" className="block">
-                <Button variant="outline" className="w-full" size="sm">
-                  Tiếp tục mua sắm
-                </Button>
+              <Link
+                href="/search"
+                className={buttonVariants({ variant: "outline", size: "sm", className: "block w-full" })}
+              >
+                Tiếp tục mua sắm
               </Link>
             </CardContent>
           </Card>

@@ -150,6 +150,10 @@
   html {
     @apply font-sans scroll-smooth;
   }
+  a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 /* Custom utilities */
@@ -171,5 +175,21 @@
   .dark .glass {
     background: oklch(0.18 0.015 265 / 70%);
     border-color: oklch(0.28 0.02 265);
+  }
+}
+
+.chat-panel-height {
+  height: calc(100vh - 8rem);
+  height: calc(100dvh - 8rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

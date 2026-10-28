@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useCart } from "@/context/CartProvider";
 import { useAuth } from "@/context/AuthProvider";
 import { formatPrice } from "@/lib/helpers";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -46,7 +46,7 @@ export default function CheckoutPage() {
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
           <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
         </div>
-        <h2 className="text-2xl font-bold">Đặt hàng thành công!</h2>
+        <h1 className="text-2xl font-bold">Đặt hàng thành công!</h1>
         <p className="text-muted-foreground">
           Mã đơn hàng: <strong>{orderId}</strong>
         </p>
@@ -54,10 +54,8 @@ export default function CheckoutPage() {
           Cảm ơn bạn đã mua sắm tại TechAI Shop. Đơn hàng sẽ được xử lý trong
           24 giờ.
         </p>
-        <Link href="/">
-          <Button className="mt-4 bg-gradient-brand text-white hover:opacity-90">
-            Về trang chủ
-          </Button>
+        <Link href="/" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>
+          Về trang chủ
         </Link>
       </div>
     );
@@ -69,12 +67,10 @@ export default function CheckoutPage() {
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
           <ShoppingBag className="h-9 w-9 text-primary" />
         </div>
-        <h2 className="mt-5 text-2xl font-bold">Chưa có sản phẩm để thanh toán</h2>
+        <h1 className="mt-5 text-2xl font-bold">Chưa có sản phẩm để thanh toán</h1>
         <p className="text-muted-foreground">Thêm sản phẩm vào giỏ hàng để bắt đầu đặt hàng.</p>
-        <Link href="/search">
-          <Button className="mt-4 bg-gradient-brand text-white hover:opacity-90">
-            Khám phá sản phẩm
-          </Button>
+        <Link href="/search" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>
+          Khám phá sản phẩm
         </Link>
       </div>
     );
@@ -176,8 +172,11 @@ export default function CheckoutPage() {
                   <p className="text-sm text-muted-foreground">
                     Đăng nhập hoặc tạo tài khoản buyer để tiếp tục. Phiên đăng nhập được dùng chung trên cửa hàng.
                   </p>
-                  <Link href="/login?next=%2Fcheckout">
-                    <Button type="button" variant="outline">Đăng nhập / Đăng ký buyer</Button>
+                  <Link
+                    href="/login?next=%2Fcheckout"
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    Đăng nhập / Đăng ký buyer
                   </Link>
                 </CardContent>
               </Card>
@@ -205,7 +204,7 @@ export default function CheckoutPage() {
               <CardContent className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Họ và tên</label>
+                    <label htmlFor="shipping-name" className="text-sm font-medium">Họ và tên</label>
                     <Input
                       id="shipping-name"
                       autoComplete="name"
@@ -216,7 +215,7 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Số điện thoại</label>
+                    <label htmlFor="shipping-phone" className="text-sm font-medium">Số điện thoại</label>
                     <Input
                       id="shipping-phone"
                       type="tel"
@@ -229,7 +228,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Địa chỉ</label>
+                  <label htmlFor="shipping-address" className="text-sm font-medium">Địa chỉ</label>
                   <Input
                     id="shipping-address"
                     autoComplete="street-address"
@@ -240,9 +239,9 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Thành phố</label>
+                  <label htmlFor="shipping-city" className="text-sm font-medium">Thành phố</label>
                   <Select value={city || null} onValueChange={(value) => setCity(value ?? "")}>
-                    <SelectTrigger>
+                    <SelectTrigger id="shipping-city">
                       <SelectValue placeholder="Chọn thành phố" />
                     </SelectTrigger>
                     <SelectContent>
@@ -258,12 +257,12 @@ export default function CheckoutPage() {
             {/* Payment method */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
+                <CardTitle id="payment-method-heading" className="text-base">
                   Phương thức thanh toán
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-3 gap-3">
+                <div role="group" aria-labelledby="payment-method-heading" className="grid sm:grid-cols-3 gap-3">
                   {[
                     {
                       id: "cod",

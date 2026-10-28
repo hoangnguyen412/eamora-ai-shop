@@ -49,7 +49,7 @@ export default function StyleguidePage() {
               <div
                 className="h-20 border-b border-border"
                 style={{ backgroundColor: color.value }}
-                aria-label={`${color.name} color swatch`}
+                aria-hidden="true"
               />
               <div className="p-3">
                 <p className="text-sm font-medium">{color.name}</p>

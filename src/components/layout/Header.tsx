@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartProvider";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   ShoppingCart,
   Search,
@@ -25,10 +25,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthProvider";
 
 interface HeaderProps {
+  menuOpen: boolean;
   onMenuClick: () => void;
 }
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
   const { itemCount } = useCart();
   const { user, isLoading, signOut } = useAuth();
 
@@ -43,6 +44,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
             className="lg:hidden"
             onClick={onMenuClick}
             aria-label="Mở menu điều hướng"
+            aria-expanded={menuOpen}
+            aria-controls="navigation-sidebar"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -58,66 +61,54 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </Link>
 
           {/* Desktop navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            <Link href="/">
-              <Button variant="ghost" className="text-sm font-medium">
-                Trang chủ
-              </Button>
+          <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
+            <Link href="/" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+              Trang chủ
             </Link>
-            <Link href="/search">
-              <Button variant="ghost" className="text-sm font-medium">
-                <Search className="mr-1 h-4 w-4" />
-                Tìm kiếm
-              </Button>
+            <Link href="/search" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+              <Search className="mr-1 h-4 w-4" aria-hidden="true" />
+              Tìm kiếm
             </Link>
-            <Link href="/chat">
-              <Button variant="ghost" className="text-sm font-medium">
-                <MessageSquareText className="mr-1 h-4 w-4" />
-                AI Chat
-              </Button>
+            <Link href="/chat" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+              <MessageSquareText className="mr-1 h-4 w-4" aria-hidden="true" />
+              AI Chat
             </Link>
-            <Link href="/watchlist">
-              <Button variant="ghost" className="text-sm font-medium">
-                <TrendingDown className="mr-1 h-4 w-4" />
-                Price Agent
-              </Button>
+            <Link href="/watchlist" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+              <TrendingDown className="mr-1 h-4 w-4" aria-hidden="true" />
+              Price Agent
             </Link>
-            <Link href="/seller">
-              <Button variant="ghost" className="text-sm font-medium">
-                <LayoutDashboard className="mr-1 h-4 w-4" />
-                Seller
-              </Button>
+            <Link href="/seller" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+              <LayoutDashboard className="mr-1 h-4 w-4" aria-hidden="true" />
+              Seller
             </Link>
           </nav>
 
           {/* Right side */}
           <div className="flex items-center gap-2">
             {/* Cart */}
-            <Link href="/cart">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                aria-label={`Giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ""}`}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-gradient-brand text-white border-0">
-                    {itemCount}
-                  </Badge>
-                )}
-              </Button>
+            <Link
+              href="/cart"
+              className={buttonVariants({ variant: "ghost", size: "icon", className: "relative" })}
+              aria-label={`Giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ""}`}
+            >
+              <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+              {itemCount > 0 && (
+                <Badge aria-hidden="true" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-gradient-brand text-white border-0">
+                  {itemCount}
+                </Badge>
+              )}
             </Link>
 
             {!user ? (
-              <Link href="/login">
-                <Button variant="outline" size="sm" disabled={isLoading}>
-                  {isLoading ? "Đang tải..." : "Đăng nhập"}
-                </Button>
+              <Link href="/login" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                {isLoading ? "Đang tải..." : "Đăng nhập"}
               </Link>
             ) : (
               <DropdownMenu>
-                <DropdownMenuTrigger className="rounded-full cursor-pointer outline-none">
+                <DropdownMenuTrigger
+                  aria-label="Mở menu tài khoản"
+                  className="rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>
                       <User className="h-4 w-4" />

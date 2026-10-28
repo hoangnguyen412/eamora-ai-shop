@@ -68,8 +68,7 @@ export default function SellerPage() {
               <CardTitle className="text-base">Quản lý đơn hàng</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
+                <Table containerLabel="Bảng quản lý đơn hàng, có thể cuộn ngang">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Mã đơn</TableHead>
@@ -101,7 +100,6 @@ export default function SellerPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -112,8 +110,7 @@ export default function SellerPage() {
               <CardTitle className="text-base">Danh sách sản phẩm</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
+                <Table containerLabel="Bảng sản phẩm đăng bán, có thể cuộn ngang">
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
@@ -139,7 +136,6 @@ export default function SellerPage() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

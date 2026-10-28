@@ -52,7 +52,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-8rem)] flex flex-col">
+    <div className="chat-panel-height mx-auto flex max-w-4xl flex-col px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex items-center gap-3 mb-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 shadow-lg">
           <Bot className="h-5 w-5 text-white" />
@@ -68,7 +68,13 @@ export default function ChatPage() {
 
       <Card className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          <div className="space-y-6">
+          <div
+            className="space-y-6"
+            role="log"
+            aria-label="Lịch sử cuộc trò chuyện"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
             {messages.map((msg) => (
               <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                 <Avatar className="h-8 w-8 shrink-0">
@@ -108,7 +114,7 @@ export default function ChatPage() {
               </div>
             ))}
             {isTyping && (
-              <div className="flex gap-3">
+              <div className="flex gap-3" role="status" aria-label="Trợ lý đang nhập">
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-500 text-white"><Bot className="h-4 w-4" /></AvatarFallback>
                 </Avatar>
@@ -125,9 +131,9 @@ export default function ChatPage() {
         </ScrollArea>
         <CardContent className="p-4 border-t">
           <div className="flex gap-2">
-            <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Hỏi AI về sản phẩm công nghệ... (Enter để gửi)" className="resize-none min-h-[44px] max-h-32" rows={1} />
-            <Button onClick={handleSend} disabled={!input.trim() || isTyping} className="bg-gradient-brand text-white hover:opacity-90 shrink-0" size="icon">
-              <Send className="h-4 w-4" />
+            <Textarea aria-label="Tin nhắn cho trợ lý AI" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Hỏi AI về sản phẩm công nghệ... (Enter để gửi)" className="resize-none min-h-[44px] max-h-32" rows={1} />
+            <Button onClick={handleSend} disabled={!input.trim() || isTyping} aria-label="Gửi tin nhắn" className="bg-gradient-brand text-white hover:opacity-90 shrink-0" size="icon">
+              <Send className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1">

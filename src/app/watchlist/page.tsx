@@ -6,7 +6,7 @@ import { BellRing, TrendingDown } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { formatDate, formatPrice } from "@/lib/helpers";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
@@ -165,8 +165,8 @@ export default function WatchlistPage() {
             <CardDescription>Đăng nhập buyer để xem danh sách theo dõi và cấu hình Price Agent.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/login?next=%2Fwatchlist">
-              <Button>Đăng nhập / Đăng ký buyer</Button>
+            <Link href="/login?next=%2Fwatchlist" className={buttonVariants()}>
+              Đăng nhập / Đăng ký buyer
             </Link>
           </CardContent>
         </Card>
@@ -272,7 +272,9 @@ export default function WatchlistPage() {
           <Card>
             <CardContent className="space-y-3 py-8 text-center">
               <p className="text-sm text-muted-foreground">Bạn chưa theo dõi sản phẩm nào.</p>
-              <Link href="/search"><Button variant="outline">Tìm sản phẩm</Button></Link>
+              <Link href="/search" className={buttonVariants({ variant: "outline" })}>
+                Tìm sản phẩm
+              </Link>
             </CardContent>
           </Card>
         ) : (

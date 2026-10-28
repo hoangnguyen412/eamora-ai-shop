@@ -18,6 +18,8 @@ const featuredProducts = products.filter((p) => p.isFeatured);
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-7xl space-y-12 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <h1 className="sr-only">Cửa hàng Eamora — khám phá sản phẩm công nghệ</h1>
+
       {/* Hero Carousel */}
       <section>
         <ProductCarousel products={featuredProducts} />

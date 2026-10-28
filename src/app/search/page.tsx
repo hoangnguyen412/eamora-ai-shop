@@ -146,6 +146,7 @@ function SearchContent() {
             className="h-12 gap-2 lg:hidden"
             onClick={() => setShowFilters(!showFilters)}
             aria-expanded={showFilters}
+            aria-controls="search-filters"
           >
             <SlidersHorizontal className="h-4 w-4" />
             Bộ lọc
@@ -163,9 +164,12 @@ function SearchContent() {
         )}
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex flex-col gap-8 lg:flex-row">
         {/* Filters sidebar */}
-        <aside className={`${showFilters ? "block" : "hidden"} w-full shrink-0 lg:block lg:w-64`}>
+        <aside
+          id="search-filters"
+          className={`${showFilters ? "block" : "hidden"} w-full shrink-0 lg:block lg:w-64`}
+        >
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -179,8 +183,8 @@ function SearchContent() {
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Category */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Danh mục</p>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Danh mục</legend>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
                     <button
@@ -201,13 +205,13 @@ function SearchContent() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               <Separator />
 
               {/* Brand */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Thương hiệu</p>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Thương hiệu</legend>
                 <div className="flex flex-wrap gap-2">
                   {brands.map((brand) => (
                     <button
@@ -228,13 +232,13 @@ function SearchContent() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               <Separator />
 
               {/* Price range */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Khoảng giá (VND)</p>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Khoảng giá (VND)</legend>
                 <div className="flex items-center gap-2">
                   <Input
                     id="min-price"
@@ -264,7 +268,7 @@ function SearchContent() {
                     className="text-sm"
                   />
                 </div>
-              </div>
+              </fieldset>
             </CardContent>
           </Card>
         </aside>
@@ -272,28 +276,44 @@ function SearchContent() {
         {/* Results grid */}
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground" aria-live="polite" aria-atomic="true">
               {isLoading ? "Đang cập nhật kết quả..." : <>Tìm thấy <strong>{totalItems}</strong> sản phẩm</>}
             </p>
             {hasFilters && (
               <div className="flex flex-wrap gap-1.5">
                 {selectedCategory && (
-                  <Badge variant="secondary" className="gap-1 text-xs">
-                    {selectedCategory}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => {
-                      setSelectedCategory("");
-                      setPage(1);
-                    }} />
-                  </Badge>
+                  <span className="inline-flex items-center gap-1">
+                    <Badge variant="secondary" className="text-xs">{selectedCategory}</Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Xóa bộ lọc danh mục ${selectedCategory}`}
+                      onClick={() => {
+                        setSelectedCategory("");
+                        setPage(1);
+                      }}
+                    >
+                      <X aria-hidden="true" className="h-3 w-3" />
+                    </Button>
+                  </span>
                 )}
                 {selectedBrand && (
-                  <Badge variant="secondary" className="gap-1 text-xs">
-                    {selectedBrand}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => {
-                      setSelectedBrand("");
-                      setPage(1);
-                    }} />
-                  </Badge>
+                  <span className="inline-flex items-center gap-1">
+                    <Badge variant="secondary" className="text-xs">{selectedBrand}</Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Xóa bộ lọc thương hiệu ${selectedBrand}`}
+                      onClick={() => {
+                        setSelectedBrand("");
+                        setPage(1);
+                      }}
+                    >
+                      <X aria-hidden="true" className="h-3 w-3" />
+                    </Button>
+                  </span>
                 )}
               </div>
             )}

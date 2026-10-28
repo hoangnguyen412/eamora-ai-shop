@@ -9,7 +9,7 @@ import PriceChart from "@/components/shared/PriceChart";
 import ProductPrice from "@/components/shared/ProductPrice";
 import ProductRating from "@/components/shared/ProductRating";
 import InventoryStatus from "@/components/shared/InventoryStatus";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -85,8 +85,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
   if (!product) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center">
-        <h2 className="text-2xl font-bold">Không tìm thấy sản phẩm</h2>
-        <Link href="/"><Button className="mt-4">Về trang chủ</Button></Link>
+        <h1 className="text-2xl font-bold">Không tìm thấy sản phẩm</h1>
+        <Link href="/" className={buttonVariants({ className: "mt-4" })}>Về trang chủ</Link>
       </div>
     );
   }
@@ -153,10 +153,16 @@ export default function ProductDetailClient({ id }: { id: string }) {
             <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="h-full w-full object-cover" loading="eager" unoptimized />
           </div>
           {product.images.length > 1 && (
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {product.images.map((img, i) => (
-                <button key={i} onClick={() => setSelectedImage(i)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${i === selectedImage ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted-foreground/30"}`}>
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Hiển thị hình ảnh ${i + 1} của ${product.name}`}
+                  aria-pressed={i === selectedImage}
+                  onClick={() => setSelectedImage(i)}
+                  className={`h-20 w-20 overflow-hidden rounded-lg border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${i === selectedImage ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted-foreground/30"}`}
+                >
                   <Image src={img} alt={`${product.name} ${i + 1}`} width={80} height={80} className="h-full w-full object-cover" unoptimized />
                 </button>
               ))}
@@ -190,19 +196,45 @@ export default function ProductDetailClient({ id }: { id: string }) {
           <Separator />
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium">Số lượng:</span>
-              <div className="flex items-center gap-2 border rounded-lg">
-                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                <span className="w-10 text-center font-medium">{quantity}</span>
-                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</Button>
+              <span id="quantity-label" className="text-sm font-medium">Số lượng:</span>
+              <div role="group" aria-labelledby="quantity-label" className="flex items-center gap-2 border rounded-lg">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  aria-label={`Giảm số lượng ${product.name}`}
+                  disabled={quantity <= 1}
+                >
+                  -
+                </Button>
+                <output aria-label={`Số lượng ${product.name}`} className="w-10 text-center font-medium">
+                  {quantity}
+                </output>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  aria-label={`Tăng số lượng ${product.name}`}
+                  disabled={quantity >= product.stock}
+                >
+                  +
+                </Button>
               </div>
             </div>
             <div className="flex gap-3">
               <Button onClick={() => addItem(product, quantity)} className="flex-1 gap-2 bg-gradient-brand text-white hover:opacity-90 h-12" size="lg">
                 <ShoppingCart className="h-5 w-5" /> Thêm vào giỏ hàng
               </Button>
-              <Link href="/cart" className="flex-1">
-                <Button onClick={() => addItem(product, quantity)} variant="outline" className="w-full h-12" size="lg">Mua ngay</Button>
+              <Link
+                href="/cart"
+                onClick={() => addItem(product, quantity)}
+                className={buttonVariants({ variant: "outline", size: "lg", className: "h-12 flex-1" })}
+              >
+                Mua ngay
               </Link>
             </div>
           </div>
