@@ -282,19 +282,66 @@ paths:
         '200': { description: OK }
   /api/agent/watch:
     post:
-      summary: Thêm sản phẩm vào Watchlist
+      summary: Theo dõi sản phẩm theo giá mục tiêu (buyer)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product_id, target_price]
+              properties:
+                product_id: { type: string }
+                target_price: { type: number, exclusiveMinimum: 0 }
       responses:
-        '201': { description: Created }
+        '201': { description: Watch created }
+        '400': { description: Invalid watch payload }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
+        '404': { description: Product not found }
   /api/agent/rules:
-    put:
-      summary: Cập nhật luật Auto-buy
+    get:
+      summary: Lấy cấu hình Price Agent của buyer
+      security:
+        - bearerAuth: []
       responses:
-        '200': { description: OK }
+        '200': { description: Current auto_buy setting }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
+    put:
+      summary: Lưu cấu hình bật/tắt Auto-buy (không thực thi mua hàng)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [auto_buy]
+              properties:
+                auto_buy: { type: boolean }
+      responses:
+        '200': { description: Rule saved }
+        '400': { description: auto_buy must be a boolean }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
   /api/agent/history:
     get:
-      summary: Lịch sử giá & Auto-buy
+      summary: Lịch sử theo dõi, giá đã ghi nhận và đơn hàng của buyer
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
       responses:
-        '200': { description: OK }
+        '200': { description: Watchlist with recorded listing price history and buyer orders }
+        '400': { description: Invalid limit }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
 components:
   securitySchemes:
     bearerAuth:

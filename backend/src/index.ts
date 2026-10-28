@@ -862,6 +862,132 @@ app.post('/api/products/:id/reviews', requireAuth, requireRole(['buyer']), async
   }
 });
 
+app.post('/api/agent/watch', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const productId = typeof req.body?.product_id === 'string' ? req.body.product_id.trim() : '';
+  const targetPrice = req.body?.target_price;
+
+  if (!productId || typeof targetPrice !== 'number' || !Number.isFinite(targetPrice) || targetPrice <= 0) {
+    return res.status(400).json({ success: false, message: 'product_id and a positive target_price are required' });
+  }
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const watch = await prisma.watchlist.create({
+      data: {
+        userId: req.user!.id,
+        productId: product.id,
+        targetPrice,
+      },
+      include: {
+        product: { select: { id: true, name: true, basePrice: true } },
+      },
+    });
+
+    return res.status(201).json({ success: true, data: watch });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to add price watch', details: error });
+  }
+});
+
+app.get('/api/agent/rules', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { autoBuyEnabled: true },
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({ success: true, data: { auto_buy: user.autoBuyEnabled } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch price agent rules', details: error });
+  }
+});
+
+app.put('/api/agent/rules', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const autoBuy = req.body?.auto_buy;
+  if (typeof autoBuy !== 'boolean') {
+    return res.status(400).json({ success: false, message: 'auto_buy must be a boolean' });
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { autoBuyEnabled: autoBuy },
+      select: { autoBuyEnabled: true },
+    });
+
+    return res.json({ success: true, data: { auto_buy: user.autoBuyEnabled } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to update price agent rules', details: error });
+  }
+});
+
+app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const requestedLimit = req.query.limit === undefined ? 50 : Number(req.query.limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+    return res.status(400).json({ success: false, message: 'limit must be a positive integer' });
+  }
+  const limit = Math.min(requestedLimit, 100);
+
+  try {
+    const [watchlist, orders] = await Promise.all([
+      prisma.watchlist.findMany({
+        where: { userId: req.user!.id },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              listings: {
+                select: {
+                  id: true,
+                  price: true,
+                  shop: { select: { name: true } },
+                  priceHistory: {
+                    orderBy: { recordedAt: 'desc' },
+                    take: limit,
+                    select: { id: true, price: true, recordedAt: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.order.findMany({
+        where: { buyerId: req.user!.id },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        select: {
+          id: true,
+          totalAmount: true,
+          status: true,
+          paymentMethod: true,
+          createdAt: true,
+          items: {
+            select: { listingId: true, quantity: true, price: true },
+          },
+        },
+      }),
+    ]);
+
+    return res.json({ success: true, data: { watchlist, orders } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch price agent history', details: error });
+  }
+});
+
 app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
   const productId = typeof req.body?.productId === 'string' ? req.body.productId.trim() : '';
   const action = typeof req.body?.action === 'string' ? req.body.action : '';

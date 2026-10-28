@@ -1,7 +1,7 @@
 # DATABASE SCHEMA CONTRACT
 
 ## 1. Core Entities
-- **User**: id, email, password_hash, role (buyer/seller), created_at
+- **User**: id, email, password_hash, role (buyer/seller), auto_buy_enabled (Price Agent configuration; does not execute purchases), created_at
 - **Shop**: id, seller_id, name, description, reputation_score
 - **Category**: id, name, slug
 - **Product**: id, category_id, name, description, specs (JSONB), base_price
@@ -14,5 +14,5 @@
 - **SearchSession / SearchClick**: session query/filter JSONB and ordered product click events, with optional user ownership
 - **ChatMessage**: id, session_id, role (user/assistant), content, retrieved_products (JSONB)
 - **Embedding**: id, product_id, vector (vector 768), updated_at
-- **Watchlist**: id, user_id, product_id, target_price, status (active/bought/cancelled)
-- **PriceHistory**: id, listing_id, price, recorded_at
+- **Watchlist**: id, user_id, product_id, target_price, status (active/bought/cancelled); created through the authenticated buyer Price Agent API
+- **PriceHistory**: id, listing_id, price, recorded_at; history API returns recorded rows but does not generate snapshots

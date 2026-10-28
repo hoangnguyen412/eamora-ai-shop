@@ -26,6 +26,7 @@
   (Backend gọi AI lấy vector, query DB trả về kết quả)
 - `POST /api/chat/message` -> { message, session_id } 
   (Backend gọi AI RAG, trả về text + products)
-- `POST /api/agent/watch` -> { product_id, target_price }
-- `PUT /api/agent/rules` -> { auto_buy: true/false }
-- `GET /api/agent/history` -> Lịch sử giá & giao dịch tự động
+- `POST /api/agent/watch` (Buyer; body: `product_id`, positive numeric `target_price`; saves a price watch)
+- `GET /api/agent/rules` (Buyer; returns the persisted `{ auto_buy }` setting)
+- `PUT /api/agent/rules` (Buyer; body: `{ auto_buy: boolean }`; persists the setting only and does not execute purchases)
+- `GET /api/agent/history` (Buyer; optional `limit` 1–100, default 50; returns the buyer's watchlist with recorded listing price history and their orders. Price points appear only when recorded in `PriceHistory`; this API does not create price snapshots or run auto-buy.)
