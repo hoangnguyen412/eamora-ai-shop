@@ -1,0 +1,117 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { Product } from "@/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, TrendingDown, Sparkles, Eye, Users } from "lucide-react";
+import ProductPrice from "@/components/shared/ProductPrice";
+import ProductRating from "@/components/shared/ProductRating";
+import { useCart } from "@/context/CartProvider";
+
+interface ProductCardProps {
+  product: Product;
+}
+
+function BadgeIcon({ type }: { type: string }) {
+  switch (type) {
+    case "ai_pick":
+      return <Sparkles className="h-3 w-3" />;
+    case "price_drop":
+      return <TrendingDown className="h-3 w-3" />;
+    case "frequently_viewed":
+      return <Eye className="h-3 w-3" />;
+    case "similar_user":
+      return <Users className="h-3 w-3" />;
+    default:
+      return null;
+  }
+}
+
+function getBadgeStyle(type: string): string {
+  switch (type) {
+    case "ai_pick":
+      return "bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-0 shadow-md";
+    case "price_drop":
+      return "bg-gradient-to-r from-rose-500 to-orange-500 text-white border-0 shadow-md";
+    case "frequently_viewed":
+      return "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0 shadow-md";
+    case "similar_user":
+      return "bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-md";
+    default:
+      return "";
+  }
+}
+
+export default function ProductCard({ product }: ProductCardProps) {
+  const { addItem } = useCart();
+
+  return (
+    <Card className="group relative overflow-hidden border transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1">
+      {/* Recommendation Badge */}
+      {product.recommendationBadge && (
+        <div className="absolute top-3 left-3 z-10">
+          <Badge className={`gap-1 text-[10px] font-medium px-2 py-0.5 ${getBadgeStyle(product.recommendationBadge.type)}`}>
+            <BadgeIcon type={product.recommendationBadge.type} />
+            {product.recommendationBadge.label}
+          </Badge>
+        </div>
+      )}
+
+      {/* Discount badge */}
+      {product.discountPercent > 0 && (
+        <div className="absolute top-3 right-3 z-10">
+          <Badge variant="destructive" className="text-[10px] font-bold px-1.5 py-0.5">
+            -{product.discountPercent}%
+          </Badge>
+        </div>
+      )}
+
+      {/* Image */}
+      <Link href={`/products/${product.id}`}>
+        <div className="aspect-square overflow-hidden bg-muted/50">
+          <Image
+            src={product.thumbnailUrl}
+            alt={product.name}
+            width={400}
+            height={400}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            unoptimized
+          />
+        </div>
+      </Link>
+
+      <CardContent className="p-4 space-y-2">
+        {/* Category & Brand */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{product.brand}</span>
+          <span>•</span>
+          <span>{product.category}</span>
+        </div>
+
+        {/* Name */}
+        <Link href={`/products/${product.id}`}>
+          <h3 className="font-semibold text-sm leading-tight line-clamp-2 hover:text-primary transition-colors">
+            {product.name}
+          </h3>
+        </Link>
+
+        <ProductRating rating={product.rating} reviewCount={product.reviewCount} />
+
+        <ProductPrice price={product.price} originalPrice={product.originalPrice} />
+
+        {/* Add to cart */}
+        <Button
+          onClick={() => addItem(product)}
+          className="w-full gap-2 bg-gradient-brand text-white hover:opacity-90 transition-opacity"
+          size="sm"
+        >
+          <ShoppingCart className="h-4 w-4" />
+          Thêm vào giỏ
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}

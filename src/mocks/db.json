@@ -1,0 +1,560 @@
+{
+  "users": [
+    {
+      "id": "usr_101",
+      "email": "nguyenvana@example.com",
+      "name": "Nguyễn Văn A",
+      "avatarUrl": "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix",
+      "role": "buyer",
+      "createdAt": "2026-08-15T10:00:00Z"
+    },
+    {
+      "id": "usr_102",
+      "email": "seller@techshop.vn",
+      "name": "TechShop Official",
+      "avatarUrl": "https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka",
+      "role": "seller",
+      "createdAt": "2026-06-01T08:00:00Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod_001",
+      "name": "Laptop ASUS ROG Zephyrus G16 (2026)",
+      "slug": "asus-rog-zephyrus-g16-2026",
+      "brand": "ASUS",
+      "category": "Laptop",
+      "price": 42990000,
+      "originalPrice": 45990000,
+      "discountPercent": 6,
+      "stock": 12,
+      "rating": 4.8,
+      "reviewCount": 32,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=800&q=80",
+        "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&q=80"
+      ],
+      "isFeatured": true,
+      "specs": {
+        "cpu": "Intel Core Ultra 9 185H",
+        "ram": "32GB LPDDR5X",
+        "storage": "1TB SSD NVMe",
+        "gpu": "NVIDIA RTX 4070 8GB",
+        "display": "16 inch OLED 240Hz 2.5K",
+        "battery": "90Wh",
+        "weight": "1.85 kg",
+        "os": "Windows 11 Pro"
+      },
+      "recommendationBadge": {
+        "type": "ai_pick",
+        "label": "Gợi ý hàng đầu cho Dev Game & Đồ họa"
+      },
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "prod_002",
+      "name": "Apple MacBook Pro 14 M3 Pro",
+      "slug": "apple-macbook-pro-14-m3-pro",
+      "brand": "Apple",
+      "category": "Laptop",
+      "price": 49990000,
+      "originalPrice": 52990000,
+      "discountPercent": 5,
+      "stock": 8,
+      "rating": 4.9,
+      "reviewCount": 54,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&q=80",
+        "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=800&q=80"
+      ],
+      "isFeatured": true,
+      "specs": {
+        "cpu": "Apple M3 Pro 11-core",
+        "ram": "18GB Unified Memory",
+        "storage": "512GB SSD",
+        "gpu": "14-core GPU",
+        "display": "14.2 inch Liquid Retina XDR",
+        "battery": "70Wh, Lên tới 17 giờ",
+        "weight": "1.55 kg",
+        "os": "macOS Sonoma"
+      },
+      "recommendationBadge": {
+        "type": "similar_user",
+        "label": "Dựa trên xu hướng tìm kiếm người dùng"
+      },
+      "createdAt": "2026-09-05T00:00:00Z"
+    },
+    {
+      "id": "prod_003",
+      "name": "Samsung Galaxy S24 Ultra 5G",
+      "slug": "samsung-galaxy-s24-ultra",
+      "brand": "Samsung",
+      "category": "Smartphone",
+      "price": 29990000,
+      "originalPrice": 33990000,
+      "discountPercent": 11,
+      "stock": 20,
+      "rating": 4.7,
+      "reviewCount": 89,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&q=80",
+        "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=800&q=80"
+      ],
+      "isFeatured": true,
+      "specs": {
+        "cpu": "Snapdragon 8 Gen 3 for Galaxy",
+        "ram": "12GB",
+        "storage": "256GB",
+        "display": "6.8 inch Dynamic AMOLED 2X 120Hz",
+        "battery": "5000mAh",
+        "weight": "233g",
+        "os": "Android 14, One UI 6.1"
+      },
+      "recommendationBadge": {
+        "type": "price_drop",
+        "label": "Price Agent: Giảm 4.000.000đ tuần này"
+      },
+      "createdAt": "2026-09-10T00:00:00Z"
+    },
+    {
+      "id": "prod_004",
+      "name": "Dell XPS 15 (2026)",
+      "slug": "dell-xps-15-2026",
+      "brand": "Dell",
+      "category": "Laptop",
+      "price": 38990000,
+      "originalPrice": 41990000,
+      "discountPercent": 7,
+      "stock": 6,
+      "rating": 4.6,
+      "reviewCount": 28,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=800&q=80"
+      ],
+      "isFeatured": false,
+      "specs": {
+        "cpu": "Intel Core Ultra 7 155H",
+        "ram": "16GB LPDDR5X",
+        "storage": "512GB SSD NVMe",
+        "gpu": "Intel Arc Graphics",
+        "display": "15.6 inch OLED 3.5K Touch",
+        "battery": "86Wh",
+        "weight": "1.86 kg",
+        "os": "Windows 11 Home"
+      },
+      "recommendationBadge": {
+        "type": "frequently_viewed",
+        "label": "Được xem nhiều tuần này"
+      },
+      "createdAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "id": "prod_005",
+      "name": "Chuột Logitech MX Master 3S",
+      "slug": "logitech-mx-master-3s",
+      "brand": "Logitech",
+      "category": "Accessories",
+      "price": 2490000,
+      "originalPrice": 2790000,
+      "discountPercent": 10,
+      "stock": 50,
+      "rating": 4.8,
+      "reviewCount": 120,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&q=80"
+      ],
+      "isFeatured": false,
+      "specs": {
+        "battery": "Lên tới 70 ngày",
+        "weight": "141g",
+        "os": "Windows / macOS / Linux"
+      },
+      "recommendationBadge": {
+        "type": "ai_pick",
+        "label": "Thường được mua kèm với Laptop ASUS ROG"
+      },
+      "createdAt": "2026-09-15T00:00:00Z"
+    },
+    {
+      "id": "prod_006",
+      "name": "iPhone 16 Pro Max 256GB",
+      "slug": "iphone-16-pro-max-256gb",
+      "brand": "Apple",
+      "category": "Smartphone",
+      "price": 34990000,
+      "originalPrice": 36990000,
+      "discountPercent": 5,
+      "stock": 15,
+      "rating": 4.9,
+      "reviewCount": 145,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80"
+      ],
+      "isFeatured": true,
+      "specs": {
+        "cpu": "Apple A18 Pro",
+        "ram": "8GB",
+        "storage": "256GB",
+        "display": "6.9 inch Super Retina XDR OLED 120Hz",
+        "battery": "4685mAh",
+        "weight": "227g",
+        "os": "iOS 18"
+      },
+      "recommendationBadge": {
+        "type": "similar_user",
+        "label": "87% người dùng tương tự đã mua"
+      },
+      "createdAt": "2026-09-20T00:00:00Z"
+    },
+    {
+      "id": "prod_007",
+      "name": "Bàn Phím Cơ Keychron K8 Pro",
+      "slug": "keychron-k8-pro",
+      "brand": "Keychron",
+      "category": "Accessories",
+      "price": 2190000,
+      "originalPrice": 2590000,
+      "discountPercent": 15,
+      "stock": 30,
+      "rating": 4.5,
+      "reviewCount": 67,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=800&q=80"
+      ],
+      "isFeatured": false,
+      "specs": {
+        "battery": "4000mAh, Lên tới 100 giờ",
+        "weight": "580g",
+        "os": "Windows / macOS / Linux"
+      },
+      "recommendationBadge": {
+        "type": "price_drop",
+        "label": "Price Agent: Giá thấp nhất 3 tháng"
+      },
+      "createdAt": "2026-09-22T00:00:00Z"
+    },
+    {
+      "id": "prod_008",
+      "name": "Tai Nghe Sony WH-1000XM5",
+      "slug": "sony-wh-1000xm5",
+      "brand": "Sony",
+      "category": "Accessories",
+      "price": 7490000,
+      "originalPrice": 8490000,
+      "discountPercent": 11,
+      "stock": 18,
+      "rating": 4.7,
+      "reviewCount": 95,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=800&q=80"
+      ],
+      "isFeatured": false,
+      "specs": {
+        "battery": "30 giờ",
+        "weight": "250g"
+      },
+      "recommendationBadge": {
+        "type": "frequently_viewed",
+        "label": "Top 3 sản phẩm được xem nhiều nhất"
+      },
+      "createdAt": "2026-09-25T00:00:00Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-20261019-01",
+      "userId": "usr_101",
+      "items": [
+        {
+          "productId": "prod_001",
+          "productName": "Laptop ASUS ROG Zephyrus G16 (2026)",
+          "productImage": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=200&q=80",
+          "price": 42990000,
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 42990000,
+      "status": "processing",
+      "paymentMethod": "vnpay",
+      "shippingAddress": {
+        "fullName": "Nguyễn Văn A",
+        "phone": "0901234567",
+        "address": "123 Đường Lý Thường Kiệt, Q.10",
+        "city": "TP. Hồ Chí Minh"
+      },
+      "createdAt": "2026-10-19T14:30:00Z"
+    },
+    {
+      "id": "ORD-20261018-03",
+      "userId": "usr_101",
+      "items": [
+        {
+          "productId": "prod_005",
+          "productName": "Chuột Logitech MX Master 3S",
+          "productImage": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=200&q=80",
+          "price": 2490000,
+          "quantity": 2
+        },
+        {
+          "productId": "prod_007",
+          "productName": "Bàn Phím Cơ Keychron K8 Pro",
+          "productImage": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=200&q=80",
+          "price": 2190000,
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 7170000,
+      "status": "shipped",
+      "paymentMethod": "cod",
+      "shippingAddress": {
+        "fullName": "Nguyễn Văn A",
+        "phone": "0901234567",
+        "address": "123 Đường Lý Thường Kiệt, Q.10",
+        "city": "TP. Hồ Chí Minh"
+      },
+      "createdAt": "2026-10-18T09:15:00Z"
+    },
+    {
+      "id": "ORD-20261015-07",
+      "userId": "usr_102",
+      "items": [
+        {
+          "productId": "prod_006",
+          "productName": "iPhone 16 Pro Max 256GB",
+          "productImage": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=200&q=80",
+          "price": 34990000,
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 34990000,
+      "status": "delivered",
+      "paymentMethod": "credit_card",
+      "shippingAddress": {
+        "fullName": "Trần Thị B",
+        "phone": "0987654321",
+        "address": "456 Nguyễn Huệ, Q.1",
+        "city": "TP. Hồ Chí Minh"
+      },
+      "createdAt": "2026-10-15T16:45:00Z"
+    },
+    {
+      "id": "ORD-20261010-12",
+      "userId": "usr_101",
+      "items": [
+        {
+          "productId": "prod_003",
+          "productName": "Samsung Galaxy S24 Ultra 5G",
+          "productImage": "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=200&q=80",
+          "price": 29990000,
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 29990000,
+      "status": "pending",
+      "paymentMethod": "vnpay",
+      "shippingAddress": {
+        "fullName": "Nguyễn Văn A",
+        "phone": "0901234567",
+        "address": "123 Đường Lý Thường Kiệt, Q.10",
+        "city": "TP. Hồ Chí Minh"
+      },
+      "createdAt": "2026-10-10T11:20:00Z"
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "prod_005",
+      "name": "Chuột Logitech MX Master 3S",
+      "price": 2490000,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&q=80",
+      "recommendationBadge": {
+        "type": "ai_pick",
+        "label": "Thường được mua kèm với Laptop ASUS ROG"
+      }
+    },
+    {
+      "id": "prod_007",
+      "name": "Bàn Phím Cơ Keychron K8 Pro",
+      "price": 2190000,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=500&q=80",
+      "recommendationBadge": {
+        "type": "price_drop",
+        "label": "Price Agent: Giá thấp nhất 3 tháng"
+      }
+    },
+    {
+      "id": "prod_008",
+      "name": "Tai Nghe Sony WH-1000XM5",
+      "price": 7490000,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500&q=80",
+      "recommendationBadge": {
+        "type": "frequently_viewed",
+        "label": "Top 3 sản phẩm được xem nhiều nhất"
+      }
+    },
+    {
+      "id": "prod_004",
+      "name": "Dell XPS 15 (2026)",
+      "price": 38990000,
+      "thumbnailUrl": "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=500&q=80",
+      "recommendationBadge": {
+        "type": "similar_user",
+        "label": "Người dùng tương tự đã xem sản phẩm này"
+      }
+    }
+  ],
+  "priceHistory": {
+    "prod_001": {
+      "productId": "prod_001",
+      "currentPrice": 42990000,
+      "lowestPrice": 41500000,
+      "highestPrice": 45990000,
+      "priceTrend": "down",
+      "history": [
+        { "date": "2026-07-01", "price": 45990000 },
+        { "date": "2026-07-15", "price": 45990000 },
+        { "date": "2026-08-01", "price": 44990000 },
+        { "date": "2026-08-15", "price": 44500000 },
+        { "date": "2026-09-01", "price": 43990000 },
+        { "date": "2026-09-15", "price": 43500000 },
+        { "date": "2026-10-01", "price": 42990000 },
+        { "date": "2026-10-08", "price": 41500000 },
+        { "date": "2026-10-15", "price": 42990000 }
+      ]
+    },
+    "prod_002": {
+      "productId": "prod_002",
+      "currentPrice": 49990000,
+      "lowestPrice": 48000000,
+      "highestPrice": 52990000,
+      "priceTrend": "stable",
+      "history": [
+        { "date": "2026-07-01", "price": 52990000 },
+        { "date": "2026-07-15", "price": 52990000 },
+        { "date": "2026-08-01", "price": 51990000 },
+        { "date": "2026-08-15", "price": 50990000 },
+        { "date": "2026-09-01", "price": 49990000 },
+        { "date": "2026-09-15", "price": 48000000 },
+        { "date": "2026-10-01", "price": 49990000 },
+        { "date": "2026-10-08", "price": 49990000 },
+        { "date": "2026-10-15", "price": 49990000 }
+      ]
+    },
+    "prod_003": {
+      "productId": "prod_003",
+      "currentPrice": 29990000,
+      "lowestPrice": 28990000,
+      "highestPrice": 33990000,
+      "priceTrend": "down",
+      "history": [
+        { "date": "2026-07-01", "price": 33990000 },
+        { "date": "2026-07-15", "price": 33490000 },
+        { "date": "2026-08-01", "price": 32990000 },
+        { "date": "2026-08-15", "price": 31990000 },
+        { "date": "2026-09-01", "price": 30990000 },
+        { "date": "2026-09-15", "price": 29990000 },
+        { "date": "2026-10-01", "price": 28990000 },
+        { "date": "2026-10-08", "price": 29990000 },
+        { "date": "2026-10-15", "price": 29990000 }
+      ]
+    }
+  },
+  "chatHistory": [
+    {
+      "id": "msg_001",
+      "role": "user",
+      "content": "Nên chọn laptop Asus ROG Zephyrus G16 hay Macbook Pro M3 cho nhu cầu vừa lập trình vừa chơi game?",
+      "timestamp": "2026-10-20T10:00:00Z"
+    },
+    {
+      "id": "msg_002",
+      "role": "assistant",
+      "content": "Nếu bạn cần chơi game nặng bên cạnh lập trình, **ASUS ROG Zephyrus G16** là lựa chọn tối ưu hơn nhờ card đồ họa rời RTX 4070 và màn hình 240Hz. Tuy nhiên, nếu bạn ưu tiên thời lượng pin vượt trội và môi trường macOS cho lập trình web/mobile, **MacBook Pro M3** sẽ phù hợp hơn.\n\n**So sánh nhanh:**\n- 🎮 Game: ROG Zephyrus G16 thắng (RTX 4070 vs GPU tích hợp)\n- 🔋 Pin: MacBook Pro M3 thắng (17 giờ vs ~8 giờ)\n- 💻 Lập trình: Cả hai đều mạnh, tuỳ hệ sinh thái bạn quen dùng",
+      "citedProducts": [
+        {
+          "id": "prod_001",
+          "name": "ASUS ROG Zephyrus G16",
+          "price": 42990000,
+          "thumbnailUrl": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&q=80"
+        },
+        {
+          "id": "prod_002",
+          "name": "Apple MacBook Pro 14 M3 Pro",
+          "price": 49990000,
+          "thumbnailUrl": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&q=80"
+        }
+      ],
+      "groundednessScore": 0.95,
+      "timestamp": "2026-10-20T10:00:05Z"
+    },
+    {
+      "id": "msg_003",
+      "role": "user",
+      "content": "Tôi chủ yếu code Python và chơi game AAA, ngân sách khoảng 45 triệu. Có gợi ý nào khác không?",
+      "timestamp": "2026-10-20T10:01:00Z"
+    },
+    {
+      "id": "msg_004",
+      "role": "assistant",
+      "content": "Với ngân sách 45 triệu, ưu tiên code Python + game AAA, mình gợi ý:\n\n1. **ASUS ROG Zephyrus G16 (42.990.000đ)** - Lựa chọn tốt nhất trong tầm giá:\n   - RTX 4070 chơi mượt game AAA ở 1440p\n   - 32GB RAM thoải mái chạy Docker, Jupyter Notebook\n   - Màn hình OLED 240Hz tuyệt đẹp\n\n2. **Dell XPS 15 (38.990.000đ)** - Nếu ưu tiên thiết kế mỏng nhẹ hơn & màn hình 3.5K cảm ứng, nhưng GPU yếu hơn\n\n👉 **Khuyến nghị:** ASUS ROG Zephyrus G16 là lựa chọn cân bằng nhất cho bạn!",
+      "citedProducts": [
+        {
+          "id": "prod_001",
+          "name": "ASUS ROG Zephyrus G16",
+          "price": 42990000,
+          "thumbnailUrl": "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&q=80"
+        },
+        {
+          "id": "prod_004",
+          "name": "Dell XPS 15 (2026)",
+          "price": 38990000,
+          "thumbnailUrl": "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=500&q=80"
+        }
+      ],
+      "groundednessScore": 0.91,
+      "timestamp": "2026-10-20T10:01:08Z"
+    }
+  ],
+  "sellerProducts": [
+    {
+      "id": "prod_001",
+      "name": "Laptop ASUS ROG Zephyrus G16 (2026)",
+      "price": 42990000,
+      "stock": 12,
+      "status": "active",
+      "totalSold": 45
+    },
+    {
+      "id": "prod_003",
+      "name": "Samsung Galaxy S24 Ultra 5G",
+      "price": 29990000,
+      "stock": 20,
+      "status": "active",
+      "totalSold": 89
+    },
+    {
+      "id": "prod_005",
+      "name": "Chuột Logitech MX Master 3S",
+      "price": 2490000,
+      "stock": 50,
+      "status": "active",
+      "totalSold": 210
+    },
+    {
+      "id": "prod_007",
+      "name": "Bàn Phím Cơ Keychron K8 Pro",
+      "price": 2190000,
+      "stock": 0,
+      "status": "out_of_stock",
+      "totalSold": 67
+    }
+  ]
+}
