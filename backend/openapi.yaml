@@ -36,6 +36,28 @@ paths:
       summary: Chi tiết sản phẩm
       responses:
         '200': { description: OK }
+  /api/interactions:
+    post:
+      summary: Ghi nhận tương tác của buyer với sản phẩm
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, action]
+              properties:
+                productId: { type: string }
+                action:
+                  type: string
+                  enum: [view, click, cart, buy]
+      responses:
+        '201': { description: Interaction recorded }
+        '400': { description: Invalid interaction payload }
+        '401': { description: Authentication required }
+        '404': { description: Product not found }
   /api/products/{id}/reviews:
     get:
       summary: Lấy danh sách đánh giá

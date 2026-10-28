@@ -11,6 +11,7 @@
 - `GET /api/orders/me` (Buyer; order history)
 - `GET /api/orders/:id` (Buyer who placed the order or the seller who owns all its listings)
 - `PATCH /api/orders/:id/status` (Seller who owns all order listings; status transitions: `pending -> processing -> shipped -> delivered`, or cancellation before shipping)
+- `POST /api/interactions` (Buyer; body: `productId`, `action` in `view | click | cart | buy`)
 - `GET /api/seller/listings` (Seller only)
 
 ## 3. AI Features (Gọi sang FastAPI)

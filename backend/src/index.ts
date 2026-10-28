@@ -626,6 +626,42 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const productId = typeof req.body?.productId === 'string' ? req.body.productId.trim() : '';
+  const action = typeof req.body?.action === 'string' ? req.body.action : '';
+  const allowedActions = ['view', 'click', 'cart', 'buy'];
+
+  if (!productId || !allowedActions.includes(action)) {
+    return res.status(400).json({
+      success: false,
+      message: 'productId and an action of view, click, cart or buy are required',
+    });
+  }
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const interaction = await prisma.interaction.create({
+      data: {
+        userId: req.user!.id,
+        productId: product.id,
+        action,
+      },
+    });
+
+    return res.status(201).json({ success: true, data: interaction });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to log interaction', details: error });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Backend đang chạy tại http://localhost:${PORT}`);
   console.log(`📚 Swagger UI tại http://localhost:${PORT}/docs`);
