@@ -1,9 +1,15 @@
 import json
 import os
 import psycopg2
+from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/eamora")
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL is None:
+    print("LỖI: DATABASE_URL không được tìm thấy trong biến môi trường. Vui lòng kiểm tra file .env")
+    exit(1)
 
 
 def main():
@@ -20,18 +26,57 @@ def main():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
 
+    # Tạo Shop mặc định nếu chưa có
+    cur.execute(
+        'INSERT INTO "Shop" ("id", "sellerId", "name", "description", "reputationScore") VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING',
+        ("shop-default", "seller-default", "Default Shop", "Cửa hàng mặc định", 0),
+    )
+    conn.commit()
+
+    # Tự động tạo Category từ data.json
+    category_map = {}
+    unique_categories = set(p["category"] for p in products)
+    for cat_name in unique_categories:
+        slug = cat_name.lower().replace(" ", "-")
+        cur.execute(
+            'INSERT INTO "Category" ("id", "name", "slug") VALUES (gen_random_uuid(), %s, %s) ON CONFLICT ("slug") DO NOTHING RETURNING "id"',
+            (cat_name, slug),
+        )
+        row = cur.fetchone()
+        if row:
+            category_map[cat_name] = row[0]
+        else:
+            # Category đã tồn tại, lấy ID qua slug
+            cur.execute('SELECT "id" FROM "Category" WHERE "slug" = %s', (slug,))
+            row = cur.fetchone()
+            if row:
+                category_map[cat_name] = row[0]
+    conn.commit()
+
     total = len(products)
     for idx, product in enumerate(products, 1):
+        product_id = str(product["id"])
+
         # Tạo embedding từ name + description
         text = f"{product['name']} {product.get('description', '')}"
         embedding = model.encode(text)
         vector_str = "[" + ",".join(str(float(x)) for x in embedding) + "]"
 
-        # Xóa embedding cũ (nếu có) rồi chèn mới
-        cur.execute("DELETE FROM \"Embedding\" WHERE productId = %s", (product["id"],))
+        # Lấy categoryId từ category_map
+        category_id = category_map.get(product["category"])
+
+        # Chèn sản phẩm vào bảng Product (ON CONFLICT DO NOTHING)
         cur.execute(
-            "INSERT INTO \"Embedding\" (id, productId, vector) VALUES (gen_random_uuid(), %s, %s::vector)",
-            (product["id"], vector_str),
+            'INSERT INTO "Product" ("id", "categoryId", "name", "description", "basePrice") VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING',
+            (product_id, category_id, product["name"], product.get("description", ""), product["price"]),
+        )
+        conn.commit()
+
+        # Xóa embedding cũ (nếu có) rồi chèn mới
+        cur.execute('DELETE FROM "Embedding" WHERE "productId" = %s', (product_id,))
+        cur.execute(
+            'INSERT INTO "Embedding" ("id", "productId", "vector") VALUES (gen_random_uuid(), %s, %s::vector)',
+            (product_id, vector_str),
         )
         conn.commit()
 
