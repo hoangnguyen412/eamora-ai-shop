@@ -356,6 +356,15 @@ app.use(helmet({
 app.use('/api', apiRateLimiter);
 app.use(express.json({ limit: '100kb' }));
 
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${req.method}] ${req.originalUrl} - ${duration}ms`);
+  });
+  next();
+});
+
 const swaggerDocument = YAML.load(path.join(__dirname, '../openapi.yaml'));
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
