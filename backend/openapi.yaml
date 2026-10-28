@@ -2,7 +2,10 @@ openapi: 3.0.0
 info:
   title: Eamora AI Shop API
   version: 1.0.0
-  description: API Express currently implemented for the Eamora AI Shop marketplace.
+  description: |
+    API Express currently implemented for the Eamora AI Shop marketplace.
+    Production requires a 32-byte JWT_SECRET. CORS_ORIGINS is an exact-origin allowlist and TRUST_PROXY_HOPS must match the trusted proxy topology.
+    JSON request bodies are limited to 100 KB; internal error details are never returned to clients.
 servers:
   - url: http://localhost:4000
 paths:
@@ -48,6 +51,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '409':
           description: Email is already registered
           content:
@@ -76,6 +80,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401':
           description: Invalid email or password
           content:
@@ -100,6 +105,7 @@ paths:
                   user:
                     $ref: '#/components/schemas/User'
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { $ref: '#/components/responses/AuthUnavailable' }
   /api/products:
     get:
       summary: Danh sách sản phẩm (từ khóa, filter và phân trang)
@@ -197,6 +203,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/InteractionResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -225,6 +232,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SearchSessionResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '500': { $ref: '#/components/responses/ServerError' }
   /api/search/sessions/{id}/clicks:
     post:
@@ -254,6 +262,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SearchClickResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -301,6 +310,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReviewResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -349,6 +359,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -419,6 +430,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -492,6 +504,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/WatchResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -533,6 +546,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RulesResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -584,6 +598,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeduplicatedQueueItemResponse'
         '400': { $ref: '#/components/responses/BadRequest' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -646,6 +661,18 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    PayloadTooLarge:
+      description: JSON request body exceeds 100 KB
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    AuthUnavailable:
+      description: Authentication cannot be checked because the database is unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
       description: Missing or invalid authentication token
       content:
@@ -682,14 +709,12 @@ components:
       properties:
         success: { type: boolean, enum: [false] }
         message: { type: string }
-        details: {}
     HealthError:
       type: object
       required: [status, db]
       properties:
         status: { type: string, enum: [error] }
         db: { type: string, enum: [disconnected] }
-        details: {}
     User:
       type: object
       required: [id, email, role, createdAt]

@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
 import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -17,9 +18,15 @@ const connectionString = process.env.DATABASE_URL as string;
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'];
+const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const TRUST_PROXY_HOPS = Number(process.env.TRUST_PROXY_HOPS ?? 0);
 const AUTO_BUY_WORKER_ENABLED = process.env.AUTO_BUY_WORKER_ENABLED === 'true';
 const AUTO_BUY_WORKER_INTERVAL_MS = Number(process.env.AUTO_BUY_WORKER_INTERVAL_MS ?? 10000);
 const AUTO_BUY_WORKER_BATCH_SIZE = Number(process.env.AUTO_BUY_WORKER_BATCH_SIZE ?? 10);
@@ -31,6 +38,24 @@ if (!Number.isInteger(AUTO_BUY_WORKER_INTERVAL_MS) || AUTO_BUY_WORKER_INTERVAL_M
 }
 if (!Number.isInteger(AUTO_BUY_WORKER_BATCH_SIZE) || AUTO_BUY_WORKER_BATCH_SIZE < 1 || AUTO_BUY_WORKER_BATCH_SIZE > 100) {
   throw new Error('AUTO_BUY_WORKER_BATCH_SIZE must be an integer from 1 to 100');
+}
+if (NODE_ENV === 'production' && (!process.env.JWT_SECRET || Buffer.byteLength(JWT_SECRET, 'utf8') < 32)) {
+  throw new Error('JWT_SECRET must be explicitly configured with at least 32 bytes in production');
+}
+if (!Number.isInteger(TRUST_PROXY_HOPS) || TRUST_PROXY_HOPS < 0) {
+  throw new Error('TRUST_PROXY_HOPS must be a non-negative integer');
+}
+
+for (const origin of CORS_ORIGINS) {
+  let parsedOrigin: URL;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    throw new Error(`Invalid origin in CORS_ORIGINS: ${origin}`);
+  }
+  if (!['http:', 'https:'].includes(parsedOrigin.protocol) || parsedOrigin.origin !== origin) {
+    throw new Error(`CORS_ORIGINS entries must be exact http(s) origins: ${origin}`);
+  }
 }
 
 type UserPayload = {
@@ -66,6 +91,16 @@ const createToken = (user: Pick<UserPayload, 'id' | 'email' | 'role'>) =>
   jwt.sign({ sub: user.id, email: user.email, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
+
+const sendServerError = (
+  res: Response,
+  message: string,
+  error: unknown,
+  responseBody: Record<string, unknown> = { success: false, message },
+) => {
+  console.error(message, error);
+  return res.status(500).json(responseBody);
+};
 
 const readMockProductDatabase = (): { products?: Array<Record<string, any>> } => {
   const candidatePaths = [
@@ -205,43 +240,34 @@ const requireAuth = async (
     return res.status(401).json({ message: 'Authentication required' });
   }
 
+  let payload: jwt.JwtPayload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as {
-      sub?: string;
-      email?: string;
-      role?: string;
-    };
-
-    if (!payload.sub) {
+    const verifiedPayload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    if (typeof verifiedPayload === 'string') {
       return res.status(401).json({ message: 'Invalid token payload' });
     }
+    payload = verifiedPayload;
+  } catch {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
 
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
+  if (typeof payload.sub !== 'string' || !payload.sub) {
+    return res.status(401).json({ message: 'Invalid token payload' });
+  }
 
-      if (user) {
-        req.user = sanitizeUser(user);
-        return next();
-      }
-    } catch (dbError) {
-      console.warn('JWT auth database lookup failed, using token payload fallback:', dbError);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
     }
 
-    if (payload.email && payload.role) {
-      req.user = {
-        id: payload.sub,
-        email: payload.email,
-        role: payload.role,
-        createdAt: new Date(),
-      };
-      return next();
-    }
-
-    return res.status(401).json({ message: 'User not found' });
+    req.user = sanitizeUser(user);
+    return next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid or expired token', details: error });
+    console.error('JWT authentication database lookup failed:', error);
+    return res.status(503).json({ message: 'Authentication service temporarily unavailable' });
   }
 };
 
@@ -266,8 +292,32 @@ const requireRole = (allowedRoles: Role[]) => {
   };
 };
 
-app.use(cors());
-app.use(express.json());
+app.set('trust proxy', TRUST_PROXY_HOPS);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || (NODE_ENV !== 'production' && CORS_ORIGINS.length === 0)) {
+      return callback(null, true);
+    }
+    return callback(null, CORS_ORIGINS.includes(origin));
+  },
+}));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", 'https:', 'data:'],
+      formAction: ["'self'"],
+      frameAncestors: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+    },
+  },
+}));
+app.use(express.json({ limit: '100kb' }));
 
 const swaggerDocument = YAML.load(path.join(__dirname, '../openapi.yaml'));
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -277,7 +327,7 @@ app.get('/health', async (_req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ status: 'ok', db: 'connected' });
   } catch (error) {
-    res.status(500).json({ status: 'error', db: 'disconnected', details: error });
+    sendServerError(res, 'Health check database query failed', error, { status: 'error', db: 'disconnected' });
   }
 });
 
@@ -327,7 +377,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
       user: sanitizeUser(user),
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Unable to create user', details: error });
+    return sendServerError(res, 'Unable to create user', error, { message: 'Unable to create user' });
   }
 });
 
@@ -365,7 +415,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       user: sanitizeUser(user),
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Unable to login', details: error });
+    return sendServerError(res, 'Unable to login', error, { message: 'Unable to login' });
   }
 });
 
@@ -400,7 +450,7 @@ app.get('/api/orders/me', requireAuth, requireRole(['buyer']), async (req: Authe
     if (message.includes('ECONNREFUSED') || message.includes('connect') || message.includes('database')) {
       return res.json({ success: true, data: [] });
     }
-    return res.status(500).json({ success: false, message: 'Unable to fetch order history', details: error });
+    return sendServerError(res, 'Unable to fetch order history', error);
   }
 });
 
@@ -487,7 +537,7 @@ app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: Authent
     if (error instanceof OrderRequestError) {
       return res.status(error.statusCode).json({ success: false, message: error.message });
     }
-    return res.status(500).json({ success: false, message: 'Unable to create order', details: error });
+    return sendServerError(res, 'Unable to create order', error);
   }
 });
 
@@ -520,7 +570,7 @@ app.get('/api/orders/:id', requireAuth, async (req: AuthenticatedRequest, res: R
 
     return res.status(403).json({ success: false, message: 'You do not have access to this order' });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch order', details: error });
+    return sendServerError(res, 'Unable to fetch order', error);
   }
 });
 
@@ -589,7 +639,7 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole(['seller']), async 
     if (error instanceof OrderRequestError) {
       return res.status(error.statusCode).json({ success: false, message: error.message });
     }
-    return res.status(500).json({ success: false, message: 'Unable to update order status', details: error });
+    return sendServerError(res, 'Unable to update order status', error);
   }
 });
 
@@ -629,7 +679,7 @@ app.get('/api/seller/listings', requireAuth, requireRole(['seller']), async (req
       })),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch seller listings', details: error });
+    return sendServerError(res, 'Unable to fetch seller listings', error);
   }
 });
 
@@ -682,7 +732,7 @@ app.get('/api/seller/orders', requireAuth, requireRole(['seller']), async (req: 
       }),
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch seller orders', details: error });
+    return sendServerError(res, 'Unable to fetch seller orders', error);
   }
 });
 
@@ -732,7 +782,7 @@ app.get('/api/seller/stats', requireAuth, requireRole(['seller']), async (req: A
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch seller stats', details: error });
+    return sendServerError(res, 'Unable to fetch seller stats', error);
   }
 });
 
@@ -785,7 +835,7 @@ app.get('/api/products', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch products', details: error });
+    return sendServerError(res, 'Unable to fetch products', error);
   }
 });
 
@@ -801,7 +851,7 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
 
     return res.json({ success: true, data: product });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch product detail', details: error });
+    return sendServerError(res, 'Unable to fetch product detail', error);
   }
 });
 
@@ -879,7 +929,7 @@ app.get('/api/products/:id/price-history', async (req: Request, res: Response) =
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch product price history', details: error });
+    return sendServerError(res, 'Unable to fetch product price history', error);
   }
 });
 
@@ -907,7 +957,7 @@ app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
 
     return res.json({ success: true, data: product.reviews });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch product reviews', details: error });
+    return sendServerError(res, 'Unable to fetch product reviews', error);
   }
 });
 
@@ -957,7 +1007,7 @@ app.post('/api/products/:id/reviews', requireAuth, requireRole(['buyer']), async
 
     return res.status(201).json({ success: true, data: review });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to create product review', details: error });
+    return sendServerError(res, 'Unable to create product review', error);
   }
 });
 
@@ -991,7 +1041,7 @@ app.post('/api/agent/watch', requireAuth, requireRole(['buyer']), async (req: Au
 
     return res.status(201).json({ success: true, data: watch });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to add price watch', details: error });
+    return sendServerError(res, 'Unable to add price watch', error);
   }
 });
 
@@ -1007,7 +1057,7 @@ app.get('/api/agent/rules', requireAuth, requireRole(['buyer']), async (req: Aut
 
     return res.json({ success: true, data: { auto_buy: user.autoBuyEnabled } });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch price agent rules', details: error });
+    return sendServerError(res, 'Unable to fetch price agent rules', error);
   }
 });
 
@@ -1026,7 +1076,7 @@ app.put('/api/agent/rules', requireAuth, requireRole(['buyer']), async (req: Aut
 
     return res.json({ success: true, data: { auto_buy: user.autoBuyEnabled } });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to update price agent rules', details: error });
+    return sendServerError(res, 'Unable to update price agent rules', error);
   }
 });
 
@@ -1092,7 +1142,7 @@ app.post('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: Au
       throw error;
     }
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to queue auto-buy watch', details: error });
+    return sendServerError(res, 'Unable to queue auto-buy watch', error);
   }
 });
 
@@ -1120,7 +1170,7 @@ app.get('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: Aut
 
     return res.json({ success: true, data: queueItems });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch auto-buy queue', details: error });
+    return sendServerError(res, 'Unable to fetch auto-buy queue', error);
   }
 });
 
@@ -1221,7 +1271,7 @@ app.post('/api/agent/queue/:id/execute', requireAuth, requireRole(['buyer']), as
     const execution = await executeAutoBuySandboxJob(req.user!.id, queueItemId);
     return res.status(execution.statusCode).json(execution.body);
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to execute auto-buy sandbox job', details: error });
+    return sendServerError(res, 'Unable to execute auto-buy sandbox job', error);
   }
 });
 
@@ -1344,7 +1394,7 @@ app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: A
 
     return res.json({ success: true, data: { watchlist, orders } });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to fetch price agent history', details: error });
+    return sendServerError(res, 'Unable to fetch price agent history', error);
   }
 });
 
@@ -1380,7 +1430,7 @@ app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: A
 
     return res.status(201).json({ success: true, data: interaction });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to log interaction', details: error });
+    return sendServerError(res, 'Unable to log interaction', error);
   }
 });
 
@@ -1405,7 +1455,7 @@ app.post('/api/search/sessions', optionalAuth, async (req: AuthenticatedRequest,
     });
     return res.status(201).json({ success: true, data: session });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to create search session', details: error });
+    return sendServerError(res, 'Unable to create search session', error);
   }
 });
 
@@ -1436,8 +1486,26 @@ app.post('/api/search/sessions/:id/clicks', optionalAuth, async (req: Authentica
     });
     return res.status(201).json({ success: true, data: click });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Unable to log search click', details: error });
+    return sendServerError(res, 'Unable to log search click', error);
   }
+});
+
+app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) {
+    return next(error);
+  }
+
+  if (error && typeof error === 'object' && 'type' in error) {
+    const bodyParserError = error as { type?: string };
+    if (bodyParserError.type === 'entity.too.large') {
+      return res.status(413).json({ success: false, message: 'Request body exceeds the 100 KB limit' });
+    }
+    if (bodyParserError.type === 'entity.parse.failed') {
+      return res.status(400).json({ success: false, message: 'Malformed JSON request body' });
+    }
+  }
+
+  return sendServerError(res, 'Unhandled request error', error);
 });
 
 app.listen(PORT, () => {

@@ -1,5 +1,12 @@
 # API CONTRACT (Node.js Backend)
 
+## Security Configuration
+- `JWT_SECRET` is required in production and must contain at least 32 bytes; development retains the local fallback.
+- `CORS_ORIGINS` is a comma-separated allowlist of exact `http(s)://host[:port]` origins. It is unrestricted in development only when unset; production denies browser origins unless explicitly listed.
+- `TRUST_PROXY_HOPS` defaults to `0`; configure it only to the exact number of trusted reverse-proxy hops so client IP headers cannot be spoofed.
+- JSON request bodies are limited to 100 KB. Authentication checks the current user against the database on every protected request and fails closed if the database is unavailable.
+- Internal exception details are logged by the backend and are not returned in HTTP 500 responses.
+
 ## 1. Auth & User
 - `POST /api/auth/register` (body: email, password, role)
 - `POST /api/auth/login` (body: email, password) -> { token, user }
