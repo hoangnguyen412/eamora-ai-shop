@@ -61,12 +61,39 @@ paths:
   /api/products/{id}/reviews:
     get:
       summary: Lấy danh sách đánh giá
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
       responses:
         '200': { description: OK }
+        '404': { description: Product not found }
     post:
-      summary: Tạo đánh giá mới
+      summary: Buyer tạo đánh giá mới
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: string, maxLength: 2000 }
       responses:
         '201': { description: Created }
+        '400': { description: Invalid review payload }
+        '401': { description: Authentication required }
+        '403': { description: Buyer role required }
+        '404': { description: Product not found }
   /api/orders:
     post:
       summary: Tạo đơn hàng

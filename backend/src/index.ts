@@ -626,6 +626,85 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
+  const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const reviews = await prisma.review.findMany({
+      where: { productId },
+      select: {
+        id: true,
+        productId: true,
+        rating: true,
+        comment: true,
+        user: { select: { id: true } },
+      },
+    });
+
+    return res.json({ success: true, data: reviews });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch product reviews', details: error });
+  }
+});
+
+app.post('/api/products/:id/reviews', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const rating = req.body?.rating;
+  const rawComment = req.body?.comment;
+
+  if (typeof rating !== 'number' || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.status(400).json({ success: false, message: 'Rating must be an integer from 1 to 5' });
+  }
+  if (rawComment !== undefined && rawComment !== null && typeof rawComment !== 'string') {
+    return res.status(400).json({ success: false, message: 'Comment must be a string' });
+  }
+
+  const comment = typeof rawComment === 'string' ? rawComment.trim() : null;
+  if (comment && comment.length > 2000) {
+    return res.status(400).json({ success: false, message: 'Comment must be 2000 characters or fewer' });
+  }
+
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const review = await prisma.review.create({
+      data: {
+        productId,
+        userId: req.user!.id,
+        rating,
+        comment: comment || null,
+        isFake: false,
+      },
+      select: {
+        id: true,
+        productId: true,
+        userId: true,
+        rating: true,
+        comment: true,
+        isFake: true,
+      },
+    });
+
+    return res.status(201).json({ success: true, data: review });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to create product review', details: error });
+  }
+});
+
 app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
   const productId = typeof req.body?.productId === 'string' ? req.body.productId.trim() : '';
   const action = typeof req.body?.action === 'string' ? req.body.action : '';

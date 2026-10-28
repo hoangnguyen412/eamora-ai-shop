@@ -7,6 +7,8 @@
 ## 2. Core Marketplace
 - `GET /api/products` (query: category, brand, page)
 - `GET /api/products/:id`
+- `GET /api/products/:id/reviews` (Public; returns reviews without reviewer email)
+- `POST /api/products/:id/reviews` (Buyer; body: integer `rating` from 1 to 5, optional `comment` up to 2000 characters)
 - `POST /api/orders` (Buyer; body: `items: [{ listingId, quantity }]`, `shipping_info: { fullName, phone, address, city }`, optional `payment_method`; price and shipping fee are calculated by the server)
 - `GET /api/orders/me` (Buyer; order history)
 - `GET /api/orders/:id` (Buyer who placed the order or the seller who owns all its listings)
