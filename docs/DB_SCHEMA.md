@@ -11,7 +11,7 @@
 - **Interaction**: id, user_id, product_id, action (view/click/cart/buy), created_at
 
 ## 2. AI & Agent Entities
-- **SearchSession**: id, user_id, query_text, filters (JSONB), created_at
+- **SearchSession / SearchClick**: session query/filter JSONB and ordered product click events, with optional user ownership
 - **ChatMessage**: id, session_id, role (user/assistant), content, retrieved_products (JSONB)
 - **Embedding**: id, product_id, vector (vector 768), updated_at
 - **Watchlist**: id, user_id, product_id, target_price, status (active/bought/cancelled)

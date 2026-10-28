@@ -58,6 +58,50 @@ paths:
         '400': { description: Invalid interaction payload }
         '401': { description: Authentication required }
         '404': { description: Product not found }
+  /api/search/sessions:
+    post:
+      summary: Lưu query và bộ lọc tìm kiếm (hỗ trợ guest)
+      security:
+        - {}
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [queryText]
+              properties:
+                queryText: { type: string, maxLength: 500 }
+                filters: { type: object, additionalProperties: true }
+      responses:
+        '201': { description: Search session created }
+        '400': { description: Invalid search session payload }
+  /api/search/sessions/{id}/clicks:
+    post:
+      summary: Ghi nhận sản phẩm được click trong search session
+      security:
+        - {}
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId]
+              properties:
+                productId: { type: string }
+      responses:
+        '201': { description: Click recorded }
+        '400': { description: Invalid click payload }
+        '403': { description: Search session belongs to another user }
+        '404': { description: Search session or product not found }
   /api/products/{id}/reviews:
     get:
       summary: Lấy danh sách đánh giá

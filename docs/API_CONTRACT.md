@@ -14,6 +14,8 @@
 - `GET /api/orders/:id` (Buyer who placed the order or the seller who owns all its listings)
 - `PATCH /api/orders/:id/status` (Seller who owns all order listings; status transitions: `pending -> processing -> shipped -> delivered`, or cancellation before shipping)
 - `POST /api/interactions` (Buyer; body: `productId`, `action` in `view | click | cart | buy`)
+- `POST /api/search/sessions` (Optional bearer auth; body: `queryText`, optional `filters` JSON object)
+- `POST /api/search/sessions/:id/clicks` (Optional bearer auth; body: `productId`; authenticated sessions can only be updated by their owner)
 - `GET /api/seller/listings` (Seller only)
 
 ## 3. AI Features (Gọi sang FastAPI)

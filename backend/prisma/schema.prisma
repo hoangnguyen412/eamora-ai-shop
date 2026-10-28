@@ -112,6 +112,15 @@ model SearchSession {
   queryText String
   filters   Json?
   createdAt DateTime @default(now())
+  clicks    SearchClick[]
+}
+
+model SearchClick {
+  id        String       @id @default(uuid())
+  sessionId String
+  productId String
+  createdAt DateTime     @default(now())
+  session   SearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 model ChatMessage {

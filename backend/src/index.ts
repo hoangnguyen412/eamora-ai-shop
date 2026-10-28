@@ -211,6 +211,13 @@ const requireAuth = async (
   }
 };
 
+const optionalAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.headers.authorization) {
+    return next();
+  }
+  return requireAuth(req, res, next);
+};
+
 const requireRole = (allowedRoles: Role[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -738,6 +745,62 @@ app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: A
     return res.status(201).json({ success: true, data: interaction });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Unable to log interaction', details: error });
+  }
+});
+
+app.post('/api/search/sessions', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const queryText = typeof req.body?.queryText === 'string' ? req.body.queryText.trim() : '';
+  const filters = req.body?.filters;
+
+  if (!queryText || queryText.length > 500) {
+    return res.status(400).json({ success: false, message: 'queryText is required and must be 500 characters or fewer' });
+  }
+  if (filters !== undefined && (filters === null || typeof filters !== 'object' || Array.isArray(filters))) {
+    return res.status(400).json({ success: false, message: 'filters must be a JSON object' });
+  }
+
+  try {
+    const session = await prisma.searchSession.create({
+      data: {
+        queryText,
+        userId: req.user?.id,
+        ...(filters !== undefined ? { filters } : {}),
+      },
+    });
+    return res.status(201).json({ success: true, data: session });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to create search session', details: error });
+  }
+});
+
+app.post('/api/search/sessions/:id/clicks', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const sessionId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const productId = typeof req.body?.productId === 'string' ? req.body.productId.trim() : '';
+
+  if (!productId) {
+    return res.status(400).json({ success: false, message: 'productId is required' });
+  }
+
+  try {
+    const session = await prisma.searchSession.findUnique({ where: { id: sessionId } });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Search session not found' });
+    }
+    if (session.userId && session.userId !== req.user?.id) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this search session' });
+    }
+
+    const products = await getProductData();
+    if (!products.some((product) => product.id === productId)) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const click = await prisma.searchClick.create({
+      data: { sessionId: session.id, productId },
+    });
+    return res.status(201).json({ success: true, data: click });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to log search click', details: error });
   }
 });
 
