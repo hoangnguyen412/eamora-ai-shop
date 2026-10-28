@@ -35,12 +35,9 @@ def embed_texts(req: EmbedRequest):
     return {"embeddings": embeddings_list}
 
 # 3. Task T3-2-3: Constraint Parser
-class ParseRequest(BaseModel):
-    query: str
-
-@app.post("/search/parse")
-def parse_query(req: ParseRequest):
-    text = req.query.lower()
+def parse_filters(text: str) -> dict:
+    """Bóc tách hard filter (budget_max, brand, category) từ câu query."""
+    text = text.lower()
 
     # Bóc tách giá tiền (triệu, tr, k, nghìn)
     budget_max = None
@@ -72,6 +69,55 @@ def parse_query(req: ParseRequest):
         "budget_max": budget_max,
         "brand": brand,
         "category": category
+    }
+
+class ParseRequest(BaseModel):
+    query: str
+
+@app.post("/search/parse")
+def parse_query(req: ParseRequest):
+    return parse_filters(req.query)
+
+class SemanticSearchRequest(BaseModel):
+    query: str
+
+@app.post("/search/semantic")
+def semantic_search(req: SemanticSearchRequest):
+    start_time = time.time()
+
+    # Bóc tách bộ lọc (hard filter) từ câu query
+    filters = parse_filters(req.query)
+
+    # Tạo embedding cho câu query (vector 768 chiều)
+    embedding = model.encode(req.query)
+    embedding_length = len(embedding)
+
+    # Mock Vector Search: danh sách 5 sản phẩm giả (Database chưa có dữ liệu thật)
+    mock_products = [
+        {"id": 1, "name": "Laptop Asus ROG Strix", "price": 25000000, "brand": "Asus", "category": "laptop"},
+        {"id": 2, "name": "iPhone 15 Pro Max", "price": 32000000, "brand": "Apple", "category": "điện thoại"},
+        {"id": 3, "name": "Samsung Galaxy S24", "price": 24000000, "brand": "Samsung", "category": "điện thoại"},
+        {"id": 4, "name": "Tai nghe Sony WH-1000XM5", "price": 8500000, "brand": "Sony", "category": "tai nghe"},
+        {"id": 5, "name": "Balo Dell Pro", "price": 1200000, "brand": "Dell", "category": "phụ kiện"},
+    ]
+
+    # Áp dụng hard filter
+    results = mock_products
+    if filters.get("budget_max") is not None:
+        results = [p for p in results if p["price"] <= filters["budget_max"]]
+    if filters.get("brand") is not None:
+        results = [p for p in results if p["brand"].lower() == filters["brand"].lower()]
+    if filters.get("category") is not None:
+        results = [p for p in results if p["category"].lower() == filters["category"].lower()]
+
+    elapsed_time = time.time() - start_time
+    print(f"Latency: {elapsed_time}")
+
+    return {
+        "query": req.query,
+        "embedding_length": embedding_length,
+        "filters": filters,
+        "results": results,
     }
 
 # --- Các Mock Endpoints từ Task T3-1-2 (Giữ nguyên để M2 test) ---
