@@ -34,6 +34,12 @@ type AuthenticatedRequest = Request & {
   user?: UserPayload;
 };
 
+class OrderRequestError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
+  }
+}
+
 const sanitizeUser = (user: {
   id: string;
   email: string;
@@ -354,6 +360,196 @@ app.get('/api/orders/me', requireAuth, requireRole(['buyer']), async (req: Authe
       return res.json({ success: true, data: [] });
     }
     return res.status(500).json({ success: false, message: 'Unable to fetch order history', details: error });
+  }
+});
+
+app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const rawItems = req.body?.items;
+  const shippingInfo = req.body?.shipping_info ?? req.body?.shippingInfo;
+  const paymentMethod = typeof req.body?.payment_method === 'string'
+    ? req.body.payment_method
+    : typeof req.body?.paymentMethod === 'string'
+      ? req.body.paymentMethod
+      : 'cod';
+
+  if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 50) {
+    return res.status(400).json({ success: false, message: 'Items must contain between 1 and 50 entries' });
+  }
+
+  const itemQuantities = new Map<string, number>();
+  for (const item of rawItems) {
+    const listingId = typeof item?.listingId === 'string' ? item.listingId.trim() : '';
+    const quantity = Number(item?.quantity);
+    if (!listingId || !Number.isInteger(quantity) || quantity < 1) {
+      return res.status(400).json({ success: false, message: 'Each item requires a listingId and positive integer quantity' });
+    }
+    itemQuantities.set(listingId, (itemQuantities.get(listingId) ?? 0) + quantity);
+  }
+
+  const addressFields = ['fullName', 'phone', 'address', 'city'] as const;
+  if (!shippingInfo || addressFields.some((field) => typeof shippingInfo[field] !== 'string' || !shippingInfo[field].trim())) {
+    return res.status(400).json({ success: false, message: 'Shipping info requires fullName, phone, address and city' });
+  }
+
+  if (!['cod', 'vnpay', 'credit_card'].includes(paymentMethod)) {
+    return res.status(400).json({ success: false, message: 'Unsupported payment method' });
+  }
+
+  try {
+    const order = await prisma.$transaction(async (transaction) => {
+      const listingIds = [...itemQuantities.keys()];
+      const listings = await transaction.listing.findMany({
+        where: { id: { in: listingIds } },
+        include: { shop: true },
+      });
+
+      if (listings.length !== listingIds.length) {
+        throw new OrderRequestError(404, 'One or more listings were not found');
+      }
+
+      if (new Set(listings.map((listing) => listing.shopId)).size !== 1) {
+        throw new OrderRequestError(400, 'An order can contain listings from only one seller');
+      }
+
+      const orderItems = listings.map((listing) => ({
+        listingId: listing.id,
+        quantity: itemQuantities.get(listing.id) as number,
+        price: listing.price,
+      }));
+
+      for (const item of orderItems) {
+        const stockUpdate = await transaction.listing.updateMany({
+          where: { id: item.listingId, stock: { gte: item.quantity } },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (stockUpdate.count !== 1) {
+          throw new OrderRequestError(409, 'One or more listings have insufficient stock');
+        }
+      }
+
+      const totalAmount = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + 30000;
+      return transaction.order.create({
+        data: {
+          buyerId: req.user!.id,
+          totalAmount,
+          status: 'pending',
+          shippingInfo,
+          paymentMethod,
+          items: { create: orderItems },
+        },
+        include: { items: true },
+      });
+    });
+
+    return res.status(201).json({ success: true, data: order });
+  } catch (error) {
+    if (error instanceof OrderRequestError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({ success: false, message: 'Unable to create order', details: error });
+  }
+});
+
+app.get('/api/orders/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const orderItems = await prisma.orderItem.findMany({ where: { orderId: order.id } });
+
+    if (req.user?.role === 'buyer' && order.buyerId === req.user.id) {
+      return res.json({ success: true, data: { ...order, items: orderItems } });
+    }
+
+    if (req.user?.role === 'seller') {
+      const listingIds = orderItems.map((item) => item.listingId);
+      const ownedListings = await prisma.listing.findMany({
+        where: { id: { in: listingIds }, shop: { sellerId: req.user.id } },
+        select: { id: true },
+      });
+      if (ownedListings.length === listingIds.length) {
+        return res.json({ success: true, data: { ...order, items: orderItems } });
+      }
+    }
+
+    return res.status(403).json({ success: false, message: 'You do not have access to this order' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch order', details: error });
+  }
+});
+
+app.patch('/api/orders/:id/status', requireAuth, requireRole(['seller']), async (req: AuthenticatedRequest, res: Response) => {
+  const nextStatus = typeof req.body?.status === 'string' ? req.body.status : '';
+  const allowedTransitions: Record<string, string[]> = {
+    pending: ['processing', 'cancelled'],
+    processing: ['shipped', 'cancelled'],
+    shipped: ['delivered'],
+    delivered: [],
+    cancelled: [],
+  };
+
+  if (!Object.prototype.hasOwnProperty.call(allowedTransitions, nextStatus)) {
+    return res.status(400).json({ success: false, message: 'Unsupported order status' });
+  }
+
+  try {
+    const updatedOrder = await prisma.$transaction(async (transaction) => {
+      const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+      });
+      if (!order) {
+        throw new OrderRequestError(404, 'Order not found');
+      }
+      const orderItems = await transaction.orderItem.findMany({ where: { orderId: order.id } });
+      if (!allowedTransitions[order.status]?.includes(nextStatus)) {
+        throw new OrderRequestError(409, `Cannot change order status from ${order.status} to ${nextStatus}`);
+      }
+
+      const listingIds = orderItems.map((item) => item.listingId);
+      const ownedListings = await transaction.listing.findMany({
+        where: { id: { in: listingIds }, shop: { sellerId: req.user!.id } },
+        select: { id: true },
+      });
+      if (ownedListings.length !== listingIds.length) {
+        throw new OrderRequestError(403, 'You do not have access to update this order');
+      }
+
+      const statusUpdate = await transaction.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: { status: nextStatus },
+      });
+      if (statusUpdate.count !== 1) {
+        throw new OrderRequestError(409, 'Order status changed; reload and try again');
+      }
+
+      if (nextStatus === 'cancelled') {
+        for (const item of orderItems) {
+          await transaction.listing.update({
+            where: { id: item.listingId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      }
+
+      const updated = await transaction.order.findUnique({
+        where: { id: order.id },
+      });
+      return updated ? { ...updated, items: orderItems } : null;
+    });
+
+    return res.json({ success: true, data: updatedOrder });
+  } catch (error) {
+    if (error instanceof OrderRequestError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({ success: false, message: 'Unable to update order status', details: error });
   }
 });
 

@@ -6,7 +6,7 @@
 - **Category**: id, name, slug
 - **Product**: id, category_id, name, description, specs (JSONB), base_price
 - **Listing**: id, product_id, shop_id, price, stock, condition, created_at
-- **Order / OrderItem**: id, buyer_id, total_amount, status, created_at
+- **Order / OrderItem**: id, buyer_id, total_amount, status, shipping_info (JSONB), payment_method, created_at; order items snapshot listing price and quantity
 - **Review**: id, product_id, user_id, rating, comment, is_fake (boolean)
 - **Interaction**: id, user_id, product_id, action (view/click/cart/buy), created_at
 

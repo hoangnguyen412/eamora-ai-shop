@@ -64,13 +64,15 @@ model Listing {
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  buyerId     String
-  totalAmount Float
-  status      String      // pending, completed, cancelled
-  createdAt   DateTime    @default(now())
-  buyer       User        @relation(fields: [buyerId], references: [id])
-  items       OrderItem[]
+  id            String      @id @default(uuid())
+  buyerId       String
+  totalAmount   Float
+  status        String      // pending, processing, shipped, delivered, cancelled
+  shippingInfo  Json?
+  paymentMethod String      @default("cod")
+  createdAt     DateTime    @default(now())
+  buyer         User        @relation(fields: [buyerId], references: [id])
+  items         OrderItem[]
 }
 
 model OrderItem {

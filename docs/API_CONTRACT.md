@@ -7,7 +7,10 @@
 ## 2. Core Marketplace
 - `GET /api/products` (query: category, brand, page)
 - `GET /api/products/:id`
-- `POST /api/orders` (body: items, shipping_info)
+- `POST /api/orders` (Buyer; body: `items: [{ listingId, quantity }]`, `shipping_info: { fullName, phone, address, city }`, optional `payment_method`; price and shipping fee are calculated by the server)
+- `GET /api/orders/me` (Buyer; order history)
+- `GET /api/orders/:id` (Buyer who placed the order or the seller who owns all its listings)
+- `PATCH /api/orders/:id/status` (Seller who owns all order listings; status transitions: `pending -> processing -> shipped -> delivered`, or cancellation before shipping)
 - `GET /api/seller/listings` (Seller only)
 
 ## 3. AI Features (Gọi sang FastAPI)
