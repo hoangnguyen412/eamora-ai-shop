@@ -1,0 +1,804 @@
+[
+  {
+    "id": 1,
+    "name": "Laptop Asus ROG Strix G15",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 25000000,
+    "description": "Laptop gaming mạnh mẽ với card đồ họa rời và màn hình tần số quét cao. Phù hợp cho các game thủ chuyên nghiệp và người làm đồ họa nặng."
+  },
+  {
+    "id": 2,
+    "name": "iPhone 15 Pro Max",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 32000000,
+    "description": "Điện thoại cao cấp vỏ titan với hệ thống camera đỉnh cao và chip A17 Pro mạnh mẽ. Lựa chọn hoàn hảo cho quay phim, chụp ảnh và giải trí."
+  },
+  {
+    "id": 3,
+    "name": "Samsung Galaxy S24 Ultra",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 29000000,
+    "description": "Smartphone flagship tích hợp bút S-Pen và các tính năng AI thông minh vượt trội. Màn hình lớn sắc nét, pin trâu phục vụ tối đa công việc."
+  },
+  {
+    "id": 4,
+    "name": "Laptop Dell Inspiron 15",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 15000000,
+    "description": "Laptop văn phòng bền bỉ với thiết kế thanh lịch và bàn phím gõ êm ái. Đáp ứng tốt các tác vụ học tập, soạn thảo văn bản và làm việc hàng ngày."
+  },
+  {
+    "id": 5,
+    "name": "Xiaomi Redmi Note 13",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 5500000,
+    "description": "Điện thoại tầm trung giá rẻ sở hữu màn hình AMOLED mượt mà và camera sắc nét. Pin dung lượng lớn hỗ trợ sạc nhanh dùng thoải mái cả ngày."
+  },
+  {
+    "id": 6,
+    "name": "Laptop Lenovo ThinkPad X1 Carbon",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 28000000,
+    "description": "Dòng laptop doanh nhân cao cấp mỏng nhẹ, độ bền đạt chuẩn quân đội. Bàn phím huyền thoại và bảo mật vân tay tối ưu cho người dùng văn phòng."
+  },
+  {
+    "id": 7,
+    "name": "MacBook Air M2",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 24000000,
+    "description": "Laptop mỏng nhẹ thiết kế sang trọng với chip Apple M2 tiết kiệm pin. Thời lượng pin ấn tượng và màn hình Retina sắc nét cho đồ họa."
+  },
+  {
+    "id": 8,
+    "name": "Sony Xperia 1 V",
+    "brand": "Sony",
+    "category": "điện thoại",
+    "price": 22000000,
+    "description": "Điện thoại chuyên quay phim chụp ảnh với cảm biến chuyên nghiệp từ máy ảnh Alpha. Âm thanh sống động và màn hình tỷ lệ điện ảnh."
+  },
+  {
+    "id": 9,
+    "name": "Laptop HP Pavilion 14",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 14500000,
+    "description": "Laptop học sinh sinh viên giá tốt với hiệu năng ổn định cho mọi tác vụ cơ bản. Thiết kế trẻ trung, gọn nhẹ dễ dàng mang đi học mỗi ngày."
+  },
+  {
+    "id": 10,
+    "name": "Samsung Galaxy Z Flip5",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 18000000,
+    "description": "Điện thoại gập thời trang với màn hình phụ lớn tiện lợi chụp ảnh selfie linh hoạt. Thiết kế nhỏ gọn, cá tính và đầy phong cách."
+  },
+  {
+    "id": 11,
+    "name": "Laptop Asus ZenBook 14",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 21000000,
+    "description": "Laptop ultrabook mỏng nhẹ thời trang với màn hình OLED rực rỡ sắc nét. Pin trâu và hiệu năng mượt mà đáp ứng tốt công việc di chuyển nhiều."
+  },
+  {
+    "id": 12,
+    "name": "iPhone 14",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 19000000,
+    "description": "Smartphone ổn định với chip A15 Bionic và khả năng chụp thiếu sáng ấn tượng. Thiết kế sang trọng cùng hệ sinh thái Apple mượt mà."
+  },
+  {
+    "id": 13,
+    "name": "Xiaomi 14",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 16000000,
+    "description": "Điện thoại cấu hình khủng hợp tác cùng Leica mang lại chất ảnh nghệ thuật. Sạc siêu nhanh và hiệu năng hàng đầu phân khúc."
+  },
+  {
+    "id": 14,
+    "name": "Laptop Dell XPS 13",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 31000000,
+    "description": "Laptop cao cấp viền màn hình siêu mỏng với vỏ nhôm CNC nguyên khối sang trọng. Hiệu suất mạnh mẽ cho doanh nhân và nhà sáng tạo nội dung."
+  },
+  {
+    "id": 15,
+    "name": "Lenovo Legion 5",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 26000000,
+    "description": "Laptop gaming tản nhiệt cực tốt cân mọi tựa game đồ họa nặng hiện nay. Màn hình chuẩn màu phục vụ cả nhu cầu thiết kế đồ họa."
+  },
+  {
+    "id": 16,
+    "name": "Samsung Galaxy A55",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 8500000,
+    "description": "Điện thoại tầm trung chống nước cao cấp với thiết kế mặt lưng kính sang trọng. Camera ổn định và pin bền bỉ cho ngày dài năng động."
+  },
+  {
+    "id": 17,
+    "name": "MacBook Pro 16 M3",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 55000000,
+    "description": "Laptop workstation đỉnh cao cho lập trình viên và dựng phim chuyên nghiệp. Màn hình Liquid Retina XDR và hiệu năng vô địch."
+  },
+  {
+    "id": 18,
+    "name": "HP Envy 13",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 20000000,
+    "description": "Laptop cao cấp mỏng nhẹ phong cách doanh nhân với âm thanh Bang & Olufsen. Hoạt động mượt mà, bảo mật vân tay an toàn."
+  },
+  {
+    "id": 19,
+    "name": "Oppo Find N3",
+    "brand": "Oppo",
+    "category": "điện thoại",
+    "price": 35000000,
+    "description": "Điện thoại gập cao cấp với nếp gấp tàng hình và cụm camera Hasselblad đỉnh cao. Đa nhiệm mượt mà như một chiếc máy tính bảng nhỏ."
+  },
+  {
+    "id": 20,
+    "name": "Asus TUF Gaming F15",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 19000000,
+    "description": "Laptop gaming bền bỉ đạt chuẩn quân đội với giá thành cực kỳ dễ tiếp cận. Chiến game mượt mà, tản nhiệt hiệu quả."
+  },
+  {
+    "id": 21,
+    "name": "iPhone 13",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 15000000,
+    "description": "Lựa chọn tiết kiệm trong hệ sinh thái Apple với camera kép và pin ổn định. Hiệu năng vẫn cực kỳ mượt mà cho mọi tác vụ hàng ngày."
+  },
+  {
+    "id": 22,
+    "name": "Xiaomi Poco X6 Pro",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 7800000,
+    "description": "Smartphone hiệu năng chiến game cực đỉnh trong tầm giá với chip Dimensity mạnh mẽ. Màn hình AMOLED 120Hz siêu mượt."
+  },
+  {
+    "id": 23,
+    "name": "Dell Latitude 5430",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 17500000,
+    "description": "Laptop chuyên dụng cho dân văn phòng và cơ quan với độ bền cao và bảo mật tốt. Kết nối đa dạng, hoạt động ổn định suốt cả ngày."
+  },
+  {
+    "id": 24,
+    "name": "Lenovo IdeaPad Slim 3",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 11500000,
+    "description": "Laptop học tập giá rẻ với thiết kế gọn gàng và thời lượng pin tốt. Phù hợp cho học sinh, sinh viên làm việc với Word, Excel và lướt web."
+  },
+  {
+    "id": 25,
+    "name": "Samsung Galaxy S23",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 17000000,
+    "description": "Flagship nhỏ gọn cầm nắm cực kỳ thoải mái với cấu hình mạnh mẽ Snapdragon 8 Gen 2. Chụp ảnh đẹp, sắc nét trong mọi điều kiện ánh sáng."
+  },
+  {
+    "id": 26,
+    "name": "HP Victus 16",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 22000000,
+    "description": "Laptop gaming màn hình lớn 16 inch rộng rãi giúp nâng tầm trải nghiệm thị giác. Hiệu năng ổn định cho cả chơi game lẫn đồ họa."
+  },
+  {
+    "id": 27,
+    "name": "MacBook Pro 14 M2",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 38000000,
+    "description": "Laptop chuyên nghiệp hiệu năng cao đáp ứng trọn vẹn các tác vụ đồ họa và code nặng. Màn hình xuất sắc và thời lượng pin cực khủng."
+  },
+  {
+    "id": 28,
+    "name": "Vivo V30",
+    "brand": "Vivo",
+    "category": "điện thoại",
+    "price": 10500000,
+    "description": "Điện thoại chuyên chân dung với đèn flash vòng ánh sáng dịu mắt. Thiết kế mỏng nhẹ, mặt lưng đổi màu bắt mắt."
+  },
+  {
+    "id": 29,
+    "name": "Asus Vivobook 15",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 13000000,
+    "description": "Laptop phổ thông thiết kế hiện đại, bàn phím rộng rãi có cụm phím số tiện lợi. Phục vụ hoàn hảo cho học tập và công việc văn phòng."
+  },
+  {
+    "id": 30,
+    "name": "iPhone 12",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 11500000,
+    "description": "Thiết kế vuông vức thời thượng với màn hình OLED sắc nét và hỗ trợ 5G. Giá cực tốt cho người muốn trải nghiệm iOS."
+  },
+  {
+    "id": 31,
+    "name": "Xiaomi Redmi 13C",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 3200000,
+    "description": "Điện thoại giá rẻ pin trâu màn hình lớn giải trí cơ bản mượt mà. Phù hợp làm máy phụ hoặc cho người lớn tuổi sử dụng."
+  },
+  {
+    "id": 32,
+    "name": "Dell Vostro 3520",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 14000000,
+    "description": "Laptop văn phòng đáng tin cậy với cấu hình ổn định và bảo mật doanh nghiệp tốt. Màn hình chống chói bảo vệ mắt khi làm việc lâu."
+  },
+  {
+    "id": 33,
+    "name": "Lenovo Yoga Slim 7",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 23000000,
+    "description": "Laptop xoay gập linh hoạt sang trọng với màn hình cảm ứng độ phân giải cao. Thời lượng pin ấn tượng phục vụ người làm sáng tạo."
+  },
+  {
+    "id": 34,
+    "name": "Samsung Galaxy Z Fold5",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 31000000,
+    "description": "Siêu phẩm điện thoại gập mở ra trải nghiệm màn hình lớn như máy tính bảng. Hỗ trợ đa nhiệm tuyệt vời cho công việc bận rộn."
+  },
+  {
+    "id": 35,
+    "name": "HP Omen 16",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 32000000,
+    "description": "Laptop gaming cao cấp thiết kế hầm hố với hệ thống tản nhiệt thông minh. Cấu hình phần cứng mạnh mẽ chiến mọi tựa game AAA."
+  },
+  {
+    "id": 36,
+    "name": "Realme 11 Pro",
+    "brand": "Realme",
+    "category": "điện thoại",
+    "price": 9000000,
+    "description": "Điện thoại thiết kế mặt lưng da cao cấp uốn cong tràn viền độc đáo. Sạc siêu nhanh 67W và camera độ phân giải cao."
+  },
+  {
+    "id": 37,
+    "name": "Asus ProArt Studiobook",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 48000000,
+    "description": "Laptop chuyên dụng cho nhà sáng tạo nội dung, thiết kế đồ họa và dựng phim 4K. Màn hình chuẩn màu tuyệt đối."
+  },
+  {
+    "id": 38,
+    "name": "iPhone SE 2022",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 10000000,
+    "description": "Điện thoại nhỏ gọn cấu hình mạnh mẽ với chip A15 Bionic trong thân máy cổ điển. Nút Home Touch ID quen thuộc dễ sử dụng."
+  },
+  {
+    "id": 39,
+    "name": "Xiaomi Redmi Note 13 Pro",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 6800000,
+    "description": "Camera 200MP siêu nét cùng màn hình AMOLED 120Hz viền siêu mỏng ấn tượng. Sạc nhanh đầy pin trong tích tắc."
+  },
+  {
+    "id": 40,
+    "name": "Dell G15 Gaming",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 23500000,
+    "description": "Laptop gaming thiết kế đậm chất game thủ với hiệu năng tản nhiệt bền bỉ. Chơi game nặng và làm đồ họa không lo giật lag."
+  },
+  {
+    "id": 41,
+    "name": "Lenovo ThinkBook 14",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 16500000,
+    "description": "Laptop phong cách hiện đại cho doanh nghiệp trẻ với vỏ nhôm xám sang trọng. Tích hợp nhiều tính năng bảo mật và cổng kết nối tiện lợi."
+  },
+  {
+    "id": 42,
+    "name": "Samsung Galaxy A25",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 5200000,
+    "description": "Điện thoại phổ thông màn hình Super AMOLED sắc nét hỗ trợ chống rung quang học OIS. Pin 5000mAh dùng bền bỉ cả ngày."
+  },
+  {
+    "id": 43,
+    "name": "HP EliteBook 840 G9",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 27000000,
+    "description": "Laptop doanh nhân cao cấp siêu bền với tính năng bảo mật cấp độ doanh nghiệp. Thiết kế mỏng nhẹ lịch lãm khi gặp đối tác."
+  },
+  {
+    "id": 44,
+    "name": "MacBook Air M1",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 18500000,
+    "description": "Mẫu laptop quốc dân mỏng nhẹ pin trâu giá tốt nhất từ Apple. Hoạt động cực kỳ mượt mà cho văn phòng và học tập."
+  },
+  {
+    "id": 45,
+    "name": "Vivo X100 Pro",
+    "brand": "Vivo",
+    "category": "điện thoại",
+    "price": 21000000,
+    "description": "Camera ZEISS đỉnh cao chụp chân dung xóa phông như máy ảnh cơ chuyên nghiệp. Hiệu năng khủng với chip đầu bảng."
+  },
+  {
+    "id": 46,
+    "name": "Asus ROG Flow X13",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 35000000,
+    "description": "Laptop gaming lai máy tính bảng xoay gập 360 độ siêu cơ động mạnh mẽ. Phù hợp game thủ thích sự nhỏ gọn di động cao."
+  },
+  {
+    "id": 47,
+    "name": "iPhone 11",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 9500000,
+    "description": "Dòng máy kinh tế với camera kép góc rộng và pin bền bỉ ổn định. Vẫn chạy tốt các ứng dụng phổ biến hiện nay."
+  },
+  {
+    "id": 48,
+    "name": "Xiaomi Pad 6 (Phone version)",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 7500000,
+    "description": "Thiết bị giải trí màn hình lớn sắc nét, âm thanh Dolby Atmos sống động. Pin cực khủng xem phim chơi game thả ga."
+  },
+  {
+    "id": 49,
+    "name": "Dell Inspiron 14",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 14200000,
+    "description": "Laptop gọn nhẹ màn hình 14 inch vừa vặn cho balo học sinh sinh viên. Hiệu năng ổn định xử lý nhanh mọi công việc văn phòng."
+  },
+  {
+    "id": 50,
+    "name": "Lenovo Legion Pro 7",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 52000000,
+    "description": "Laptop gaming phân khúc cao cấp nhất trang bị chip cấu hình khủng long. Tản nhiệt buồng hơi đỉnh cao không sợ quá nhiệt."
+  },
+  {
+    "id": 51,
+    "name": "Samsung Galaxy S24+",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 23000000,
+    "description": "Màn hình lớn sắc nét viền siêu mỏng cùng hiệu năng mạnh mẽ toàn diện. Tích hợp AI hỗ trợ dịch thuật và tìm kiếm thông minh."
+  },
+  {
+    "id": 52,
+    "name": "HP ProBook 450 G10",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 17800000,
+    "description": "Laptop doanh nghiệp vỏ nhôm bền bỉ có bàn phím số đầy đủ nhập liệu cực nhanh. Bảo mật vân tay an toàn tuyệt đối."
+  },
+  {
+    "id": 53,
+    "name": "MacBook Pro 16 M2 Max",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 62000000,
+    "description": "Siêu phẩm đồ họa chuyên nghiệp cho editor và nhà dựng phim Hollywood. Sức mạnh xử lý vượt trội mọi giới hạn."
+  },
+  {
+    "id": 54,
+    "name": "Oppo Reno11 Pro",
+    "brand": "Oppo",
+    "category": "điện thoại",
+    "price": 11500000,
+    "description": "Chuyên gia chân dung với thiết kế cong tràn viền thời trang và quyến rũ. Sạc nhanh siêu tốc 80W không phải chờ đợi lâu."
+  },
+  {
+    "id": 55,
+    "name": "Asus ExpertBook B9",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 29000000,
+    "description": "Laptop doanh nhân siêu nhẹ trọng lượng chưa đến 1kg dễ dàng mang theo công tác. Thời lượng pin ấn tượng suốt ngày dài."
+  },
+  {
+    "id": 56,
+    "name": "iPhone 14 Pro",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 26000000,
+    "description": "Dynamic Island độc đáo cùng màn hình Always-On sắc nét và camera 48MP. Thiết kế sang trọng đẳng cấp."
+  },
+  {
+    "id": 57,
+    "name": "Xiaomi 13T Pro",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 13500000,
+    "description": "Smartphone cận cao cấp kháng nước IP68 ống kính Leica chất lượng cao. Hiệu năng mạnh mẽ chiến mọi tựa game đồ họa."
+  },
+  {
+    "id": 58,
+    "name": "Dell Precision 3570",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 30000000,
+    "description": "Laptop trạm đồ họa chuyên dụng cho kỹ sư, kiến trúc sư vẽ CAD và dựng hình 3D. Độ bền và ổn định cực cao."
+  },
+  {
+    "id": 59,
+    "name": "Lenovo Legion Slim 5",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 27500000,
+    "description": "Laptop gaming mỏng nhẹ cấu hình cao mang lại sự cân bằng hoàn hảo giữa học tập và chơi game. Màn hình chuẩn màu sắc nét."
+  },
+  {
+    "id": 60,
+    "name": "Samsung Galaxy A15",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 4500000,
+    "description": "Điện thoại giá rẻ màn hình Super AMOLED sáng rõ mượt mà. Pin dung lượng lớn 5000mAh phục vụ liên tục cả ngày."
+  },
+  {
+    "id": 61,
+    "name": "HP Spectre x360",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 34000000,
+    "description": "Laptop cao cấp xoay gập 360 độ thiết kế cắt kim cương cực kỳ sang trọng. Màn hình cảm ứng OLED tuyệt mỹ cho sáng tạo."
+  },
+  {
+    "id": 62,
+    "name": "MacBook Pro 14 M3 Pro",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 45000000,
+    "description": "Laptop chuyên nghiệp chip M3 Pro mạnh mẽ cho lập trình viên và nhà thiết kế. Màu Space Black lịch lãm đẳng cấp."
+  },
+  {
+    "id": 63,
+    "name": "Realme C55",
+    "brand": "Realme",
+    "category": "điện thoại",
+    "price": 4200000,
+    "description": "Điện thoại phổ thông tích hợp tính năng Mini Capsule độc đáo tiện ích. Camera sắc nét và sạc nhanh trong tầm giá rẻ."
+  },
+  {
+    "id": 64,
+    "name": "Asus Zenbook Pro Duo",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 42000000,
+    "description": "Laptop hai màn hình độc đáo tối ưu hóa đa nhiệm cho nhà sáng tạo nội dung và streamer. Cấu hình đỉnh cao."
+  },
+  {
+    "id": 65,
+    "name": "iPhone 15",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "phone": "điện thoại",
+    "price": 21000000,
+    "description": "Chuyển sang cổng USB-C tiện lợi cùng thiết kế mặt lưng kính nhám màu pastel xinh xắn. Camera 48MP chụp ảnh cực nghệ."
+  },
+  {
+    "id": 66,
+    "name": "Xiaomi Redmi Note 12",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 4100000,
+    "description": "Điện thoại quốc dân giá rẻ màn hình AMOLED 120Hz mượt mà pin trâu. Phù hợp học sinh sinh viên học tập giải trí."
+  },
+  {
+    "id": 67,
+    "name": "Dell Alienware m16",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 49000000,
+    "description": "Laptop gaming ngoài hình đẳng cấp quái vật hiệu năng với hệ thống tản nhiệt tiên tiến. Trải nghiệm game đỉnh cao."
+  },
+  {
+    "id": 68,
+    "name": "Lenovo ThinkPad E14",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 15500000,
+    "description": "Laptop văn phòng bền bỉ gõ phím cực sướng với khả năng bảo mật vân tay một chạm. Người bạn đồng hành tin cậy cho dân công sở."
+  },
+  {
+    "id": 69,
+    "name": "Samsung Galaxy M34",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 6200000,
+    "description": "Điện thoại pin khủng 6000mAh thách thức mọi giới hạn sử dụng liên tục 2 ngày. Màn hình sắc nét và camera chống rung OIS."
+  },
+  {
+    "id": 70,
+    "name": "HP 245 G9",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 9800000,
+    "description": "Laptop giá rẻ học tập văn phòng cơ bản với thiết kế gọn gàng chắc chắn. Xử lý tốt các ứng dụng Office và lướt web."
+  },
+  {
+    "id": 71,
+    "name": "MacBook Air 15 M2",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 28000000,
+    "description": "Phiên bản màn hình lớn 15 inch của dòng MacBook Air mỏng nhẹ bán chạy nhất. Không gian hiển thị rộng rãi, pin trâu."
+  },
+  {
+    "id": 72,
+    "name": "Oppo A58",
+    "brand": "Oppo",
+    "category": "điện thoại",
+    "price": 4600000,
+    "description": "Điện thoại pin trâu sạc nhanh loa kép âm thanh sống động giải trí tuyệt vời. Thiết kế trẻ trung năng động."
+  },
+  {
+    "id": 73,
+    "name": "Asus ROG Zephyrus G14",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 36000000,
+    "description": "Laptop gaming mỏng nhẹ cao cấp thiết kế tương lai màn hình hiển thị xuất sắc. Sức mạnh cấu hình đáng kinh ngạc."
+  },
+  {
+    "id": 74,
+    "name": "iPhone 15 Plus",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 24000000,
+    "description": "Màn hình lớn phóng khoáng cùng thời lượng pin cực trâu cho cả ngày dài bận rộn. Cổng Type-C tiện lợi."
+  },
+  {
+    "id": 75,
+    "name": "Xiaomi Poco F5",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 8200000,
+    "description": "Kẻ hủy diệt phân khúc cấu hình với chip Snapdragon mạnh mẽ tản nhiệt mát lạnh. Chơi game đỉnh cao không lo giật lag."
+  },
+  {
+    "id": 76,
+    "name": "Dell Inspiron 16",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 18500000,
+    "description": "Laptop màn hình lớn 16 inch không gian làm việc rộng rãi thoải mái chia đôi cửa sổ. Hiệu năng ổn định cho mọi việc."
+  },
+  {
+    "id": 77,
+    "name": "Lenovo Yoga Pro 7",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 25500000,
+    "description": "Laptop sáng tạo cao cấp màn hình PureSight OLED chuẩn màu sắc nét tuyệt đối. Thiết kế nhôm nguyên khối sang trọng."
+  },
+  {
+    "id": 78,
+    "name": "Samsung Galaxy S23 FE",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 12500000,
+    "description": "Phiên bản Fan Edition cấu hình cao cấp giá thành cực kỳ hợp lý. Camera chụp đêm sắc nét và kháng nước bền bỉ."
+  },
+  {
+    "id": 79,
+    "name": "HP Pavilion Aero 13",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 16000000,
+    "description": "Laptop siêu nhẹ dưới 1kg làm bằng hợp kim nhôm magie cực kỳ cao cấp và bền chắc. Tiện lợi bỏ balo đi học đi làm."
+  },
+  {
+    "id": 80,
+    "name": "MacBook Pro 13 M2",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 26000000,
+    "description": "Laptop trang bị quạt tản nhiệt chủ động duy trì hiệu năng cao liên tục trong thời gian dài. Tiện ích Touch Bar quen thuộc."
+  },
+  {
+    "id": 81,
+    "name": "Vivo V29",
+    "brand": "Vivo",
+    "category": "điện thoại",
+    "price": 9200000,
+    "description": "Điện thoại thiết kế ánh sáng Aura thông minh chuyên chụp ảnh chân dung studio. Màn hình cong 120Hz cao cấp."
+  },
+  {
+    "id": 82,
+    "name": "Asus TUF Gaming A15",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 20500000,
+    "description": "Laptop gaming bền bỉ cấu hình AMD Ryzen mạnh mẽ tối ưu hiệu năng và nhiệt độ. Chiến game mượt mà."
+  },
+  {
+    "id": 83,
+    "name": "iPhone 14 Pro Max",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "price": 29000000,
+    "description": "Màn hình lớn Dynamic Island sắc nét pin cực trâu và camera 48MP đỉnh cao. Biểu tượng đẳng cấp và sang trọng."
+  },
+  {
+    "id": 84,
+    "name": "Xiaomi 13 Lite",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 7200000,
+    "description": "Điện thoại selfie kép góc rộng với thiết kế siêu mỏng nhẹ thời trang. Thích hợp cho giới trẻ thích chụp ảnh sống ảo."
+  },
+  {
+    "id": 85,
+    "name": "Dell XPS 15",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 38000000,
+    "description": "Laptop multimedia cao cấp màn hình OLED 3.5K đẹp xuất sắc cho đồ họa và xem phim. Vỏ nhôm cắt CNC tinh xảo."
+  },
+  {
+    "id": 86,
+    "name": "Lenovo IdeaPad Pro 5",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 21500000,
+    "description": "Laptop hiệu năng cao vỏ nhôm sang trọng màn hình 2.2K tần số quét cao mượt mà. Đáp ứng tốt cả code và đồ họa."
+  },
+  {
+    "id": 87,
+    "name": "Samsung Galaxy A35",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 7500000,
+    "description": "Thiết kế mặt lưng kính cao cấp cùng khả năng kháng nước bụi chuẩn IP67. Camera sắc nét và pin dùng trọn vẹn cả ngày."
+  },
+  {
+    "id": 88,
+    "name": "HP ZBook Firefly 14",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 28000000,
+    "description": "Laptop máy trạm di động mỏng nhẹ cho kỹ sư và chuyên gia thiết kế đồ họa cần sự di chuyển nhiều."
+  },
+  {
+    "id": 89,
+    "name": "MacBook Pro 16 M3 Max Ultra",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 75000000,
+    "description": "Đỉnh cao công nghệ laptop với cấu hình mạnh mẽ vô song cho mọi tác vụ nặng nhất hành tinh. Màn hình đỉnh cao."
+  },
+  {
+    "id": 90,
+    "name": "Oppo Reno10",
+    "brand": "Oppo",
+    "category": "điện thoại",
+    "price": 8800000,
+    "description": "Điện thoại chụp chân dung tele cực nét với thiết kế cong 3D cầm ôm tay thoải mái. Sạc nhanh 67W tiện lợi."
+  },
+  {
+    "id": 91,
+    "name": "Asus Vivobook Pro 15",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 22500000,
+    "description": "Laptop sáng tạo tầm trung trang bị màn hình OLED tuyệt đẹp và card đồ họa rời. Làm video, render mượt mà."
+  },
+  {
+    "id": 92,
+    "name": "iPhone 13 Pro",
+    "brand": "Apple",
+    "category": "điện thoại",
+    "phone": "điện thoại",
+    "price": 17500000,
+    "description": "Màn hình ProMotion 120Hz mượt mà cùng bộ ba camera chuyên nghiệp đẳng cấp. Thời lượng pin ấn tượng."
+  },
+  {
+    "id": 93,
+    "name": "Xiaomi Redmi Note 12 Pro",
+    "brand": "Xiaomi",
+    "category": "điện thoại",
+    "price": 5900000,
+    "description": "Camera chống rung OIS cao cấp kết hợp sạc nhanh 67W trong phân khúc giá tốt. Trải nghiệm giải trí tuyệt vời."
+  },
+  {
+    "id": 94,
+    "name": "Dell Latitude 7430",
+    "brand": "Dell",
+    "category": "laptop",
+    "price": 22000000,
+    "description": "Laptop doanh nhân cao cấp siêu bền thiết kế gọn nhẹ sang trọng. Hỗ trợ bảo mật tối đa cho thông tin doanh nghiệp."
+  },
+  {
+    "id": 95,
+    "name": "Lenovo V15 G3",
+    "brand": "Lenovo",
+    "category": "laptop",
+    "price": 10500000,
+    "description": "Laptop văn phòng giá rẻ hiệu năng ổn định phục vụ tốt công việc hành chính và học tập. Bàn phím gõ êm."
+  },
+  {
+    "id": 96,
+    "name": "Samsung Galaxy Note 20 (Refurbished)",
+    "brand": "Samsung",
+    "category": "điện thoại",
+    "price": 8000000,
+    "description": "Điện thoại tích hợp bút S-Pen quyền năng với màn hình lớn vô cực Dynamic AMOLED. Thích hợp ghi chú công việc."
+  },
+  {
+    "id": 97,
+    "name": "HP Dragonfly G4",
+    "brand": "Hp",
+    "category": "laptop",
+    "price": 39000000,
+    "description": "Laptop doanh nhân siêu cao cấp mỏng nhẹ đẳng cấp nhất từ HP. Tích hợp tính năng bảo mật hàng đầu và âm thanh hay."
+  },
+  {
+    "id": 98,
+    "name": "MacBook Air M3",
+    "brand": "Apple",
+    "category": "laptop",
+    "price": 27900000,
+    "description": "Laptop mỏng nhẹ đời mới nhất trang bị chip Apple M3 mạnh mẽ hỗ trợ xuất 2 màn hình ngoài. Siêu tiết kiệm pin."
+  },
+  {
+    "id": 99,
+    "name": "Realme GT Neo 3",
+    "brand": "Realme",
+    "category": "điện thoại",
+    "price": 7900000,
+    "description": "Smartphone tốc độ với công nghệ sạc siêu tốc 150W đầy pin trong chớp mắt. Cấu hình mạnh mẽ chơi game mượt."
+  },
+  {
+    "id": 100,
+    "name": "Asus ROG Strix Scar 18",
+    "brand": "Asus",
+    "category": "laptop",
+    "price": 78000000,
+    "description": "Siêu máy tính xách tay gaming đỉnh cao màn hình 18 inch rực rỡ cấu hình mạnh nhất hiện nay. Trải nghiệm không đối thủ."
+  }
+]

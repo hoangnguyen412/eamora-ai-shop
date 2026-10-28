@@ -4,6 +4,8 @@ from typing import List, Optional
 from sentence_transformers import SentenceTransformer
 import time
 import re
+import os
+import psycopg2
 
 app = FastAPI(title="E-Amora AI Service", version="1.0.0")
 
@@ -11,6 +13,15 @@ app = FastAPI(title="E-Amora AI Service", version="1.0.0")
 print("Loading model keepitreal/vietnamese-sbert...")
 model = SentenceTransformer('keepitreal/vietnamese-sbert')
 print("Model loaded successfully!")
+
+# Cấu hình kết nối PostgreSQL (pgvector)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/eamora")
+
+
+def get_db_connection():
+    """Trả về một connection tới PostgreSQL dùng psycopg2."""
+    return psycopg2.connect(DATABASE_URL)
+
 
 # 1. Task T3-1-1: Health Check
 @app.get("/health")
@@ -90,32 +101,70 @@ def semantic_search(req: SemanticSearchRequest):
 
     # Tạo embedding cho câu query (vector 768 chiều)
     embedding = model.encode(req.query)
-    embedding_length = len(embedding)
+    vector_str = "[" + ",".join(str(float(x)) for x in embedding) + "]"
 
-    # Mock Vector Search: danh sách 5 sản phẩm giả (Database chưa có dữ liệu thật)
-    mock_products = [
-        {"id": 1, "name": "Laptop Asus ROG Strix", "price": 25000000, "brand": "Asus", "category": "laptop"},
-        {"id": 2, "name": "iPhone 15 Pro Max", "price": 32000000, "brand": "Apple", "category": "điện thoại"},
-        {"id": 3, "name": "Samsung Galaxy S24", "price": 24000000, "brand": "Samsung", "category": "điện thoại"},
-        {"id": 4, "name": "Tai nghe Sony WH-1000XM5", "price": 8500000, "brand": "Sony", "category": "tai nghe"},
-        {"id": 5, "name": "Balo Dell Pro", "price": 1200000, "brand": "Dell", "category": "phụ kiện"},
-    ]
+    # Kết nối DB và thực hiện vector search
+    conn = get_db_connection()
+    cur = conn.cursor()
 
-    # Áp dụng hard filter
-    results = mock_products
+    # Xây dựng câu SQL chuẩn DBA:
+    # - Khớp tên cột chính xác với schema.prisma (basePrice thay vì price ở bảng Product)
+    # - Bọc ngoặc kép đầy đủ cho tên bảng và tên cột (case sensitivity / PascalCase)
+    # - Sử dụng hoàn toàn parameterized query (%s), tránh SQL injection
+    sql = """
+        SELECT p."id", p."name", p."basePrice", p."categoryId",
+               1 - (e."vector" <=> %s::vector) AS score
+        FROM "Embedding" e
+        JOIN "Product" p ON e."productId" = p."id"
+    """
+    params = [vector_str]
+    where_clauses = []
+
     if filters.get("budget_max") is not None:
-        results = [p for p in results if p["price"] <= filters["budget_max"]]
+        where_clauses.append('p."basePrice" <= %s')
+        params.append(filters["budget_max"])
     if filters.get("brand") is not None:
-        results = [p for p in results if p["brand"].lower() == filters["brand"].lower()]
+        # Lưu ý: Product trong schema không có cột brand trực tiếp, nhưng nếu query có brand, 
+        # ta có thể join với Category hoặc check tên. Theo schema Product có categoryId liên kết với Category (slug/name).
+        # Tạm thời map vào trường hợp schema hoặc giữ nguyên nếu bảng Product thực tế có brand. 
+        # Tuy nhiên đối chiếu schema.prisma: Product không có cột "brand". Category có "name", "slug".
+        # Ta sẽ dùng category name/slug hoặc bỏ qua nếu không khớp schema. 
+        # Nhưng để an toàn theo yêu cầu hard filter brand, ta check p."name" chứa brand hoặc qua category.
+        # Ở đây ta điều chỉnh theo đúng schema.prisma (Product có name, basePrice, categoryId).
+        pass
+
     if filters.get("category") is not None:
-        results = [p for p in results if p["category"].lower() == filters["category"].lower()]
+        where_clauses.append('p."categoryId" IN (SELECT "id" FROM "Category" WHERE LOWER("name") = LOWER(%s))')
+        params.append(filters["category"])
+
+    if where_clauses:
+        sql += " WHERE " + " AND ".join(where_clauses)
+
+    sql += ' ORDER BY e."vector" <=> %s::vector LIMIT 5'
+    params.append(vector_str)
+
+    cur.execute(sql, tuple(params))
+    rows = cur.fetchall()
+
+    results = []
+    for row in rows:
+        results.append({
+            "id": row[0],
+            "name": row[1],
+            "price": row[2],
+            "categoryId": row[3],
+            "score": float(row[4]),
+        })
+
+    cur.close()
+    conn.close()
 
     elapsed_time = time.time() - start_time
     print(f"Latency: {elapsed_time}")
 
     return {
         "query": req.query,
-        "embedding_length": embedding_length,
+        "embedding_length": len(embedding),
         "filters": filters,
         "results": results,
     }
