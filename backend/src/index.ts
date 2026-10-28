@@ -8,6 +8,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 const app = express();
@@ -48,6 +49,108 @@ const createToken = (user: Pick<UserPayload, 'id' | 'email' | 'role'>) =>
   jwt.sign({ sub: user.id, email: user.email, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
+
+const readMockProductDatabase = (): { products?: Array<Record<string, any>> } => {
+  const candidatePaths = [
+    path.resolve(__dirname, '../../src/mocks/db.json'),
+    path.resolve(process.cwd(), 'src/mocks/db.json'),
+    path.resolve(process.cwd(), '../src/mocks/db.json'),
+  ];
+
+  for (const candidatePath of candidatePaths) {
+    try {
+      if (fs.existsSync(candidatePath)) {
+        const raw = fs.readFileSync(candidatePath, 'utf-8');
+        return JSON.parse(raw) as { products?: Array<Record<string, any>> };
+      }
+    } catch (error) {
+      console.warn('Unable to load mock product data:', error);
+    }
+  }
+
+  return { products: [] };
+};
+
+const normalizeProductRecord = (product: Record<string, any>) => {
+  const images = Array.isArray(product.images) && product.images.length > 0
+    ? product.images
+    : [product.thumbnailUrl].filter(Boolean);
+
+  const basePrice = Number(product.price ?? product.basePrice ?? 0);
+  const originalPrice = Number(product.originalPrice ?? basePrice ?? 0);
+  const categoryName = product.category ?? product.categoryName ?? 'General';
+  const brandName = product.brand ?? product.name?.split(' ')[0] ?? 'Brand';
+
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug ?? product.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? product.id,
+    brand: brandName,
+    category: categoryName,
+    price: basePrice,
+    originalPrice,
+    discountPercent: Number(product.discountPercent ?? (originalPrice > 0 ? Math.round(((originalPrice - basePrice) / originalPrice) * 100) : 0)),
+    stock: Number(product.stock ?? 0),
+    rating: Number(product.rating ?? 0),
+    reviewCount: Number(product.reviewCount ?? 0),
+    thumbnailUrl: product.thumbnailUrl ?? images[0],
+    images,
+    isFeatured: Boolean(product.isFeatured),
+    specs: product.specs ?? {},
+    recommendationBadge: product.recommendationBadge ?? null,
+    createdAt: product.createdAt ?? new Date().toISOString(),
+    description: product.description ?? '',
+  };
+};
+
+const getProductData = async () => {
+  try {
+    const productsFromDb = await prisma.product.findMany({
+      include: {
+        category: true,
+        reviews: true,
+        listings: true,
+      },
+    });
+
+    if (productsFromDb.length > 0) {
+      return productsFromDb.map((product) => {
+        const listingPrices = product.listings.map((listing) => listing.price);
+        const averageRating = product.reviews.length > 0
+          ? product.reviews.reduce((total, item) => total + item.rating, 0) / product.reviews.length
+          : 0;
+        const stockTotal = product.listings.reduce((total, listing) => total + listing.stock, 0);
+        const price = listingPrices.length > 0 ? Math.min(...listingPrices) : Number(product.basePrice ?? 0);
+
+        return {
+          id: product.id,
+          name: product.name,
+          slug: product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          brand: product.name.split(' ')[0] ?? 'Brand',
+          category: product.category?.name ?? 'General',
+          price,
+          originalPrice: price,
+          discountPercent: 0,
+          stock: stockTotal,
+          rating: averageRating,
+          reviewCount: product.reviews.length,
+          thumbnailUrl: '',
+          images: [],
+          isFeatured: false,
+          specs: (product.specs as Record<string, any>) ?? {},
+          recommendationBadge: null,
+          createdAt: new Date().toISOString(),
+          description: product.description ?? '',
+        };
+      });
+    }
+  } catch (error) {
+    console.warn('Prisma product query failed, falling back to mock product data:', error);
+  }
+
+  const mockData = readMockProductDatabase();
+  return (mockData.products ?? []).map((product) => normalizeProductRecord(product));
+};
 
 const requireAuth = async (
   req: AuthenticatedRequest,
@@ -200,6 +303,56 @@ app.get('/api/auth/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 
   return res.json({ user: sanitizeUser(user) });
+});
+
+app.get('/api/products', async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 12);
+    const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+    const brand = typeof req.query.brand === 'string' ? req.query.brand.trim() : '';
+
+    const products = await getProductData();
+    const filteredProducts = products.filter((product) => {
+      const matchesCategory = !category || product.category.toLowerCase() === category.toLowerCase();
+      const matchesBrand = !brand || product.brand.toLowerCase() === brand.toLowerCase();
+      return matchesCategory && matchesBrand;
+    });
+
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 12;
+    const startIndex = (safePage - 1) * safeLimit;
+    const paginated = filteredProducts.slice(startIndex, startIndex + safeLimit);
+
+    return res.json({
+      success: true,
+      data: paginated,
+      pagination: {
+        currentPage: safePage,
+        totalPages: Math.max(1, Math.ceil(filteredProducts.length / safeLimit || 1)),
+        totalItems: filteredProducts.length,
+        limit: safeLimit,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch products', details: error });
+  }
+});
+
+app.get('/api/products/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const products = await getProductData();
+    const product = products.find((item) => item.id === id || item.slug === id);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    return res.json({ success: true, data: product });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Unable to fetch product detail', details: error });
+  }
 });
 
 app.listen(PORT, () => {
