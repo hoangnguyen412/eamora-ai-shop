@@ -46,6 +46,8 @@ model Product {
   description String?
   specs       Json?
   basePrice   Float
+  imageUrl    String?
+  brand       String?
   category    Category    @relation(fields: [categoryId], references: [id])
   listings    Listing[]
   reviews     Review[]

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import { Suspense } from "react";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
@@ -41,6 +41,7 @@ function SearchContent() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
@@ -111,6 +112,7 @@ function SearchContent() {
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tìm sản phẩm</h1>
         <p className="text-sm text-muted-foreground">Lọc theo danh mục, thương hiệu hoặc khoảng giá.</p>
       </header>
+      
       {/* Search bar */}
       <div className="mb-8 space-y-4">
         <div className="flex items-center gap-3">

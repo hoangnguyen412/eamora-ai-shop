@@ -44,3 +44,5 @@ next-env.d.ts
 
 # local project files
 /structure.txt
+
+__pycache__/

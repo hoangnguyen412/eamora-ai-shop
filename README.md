@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛍️ E-Amora: AI-Driven B2C Marketplace
 
-## Getting Started
+## 📖 Overview
+A highly scalable, decoupled e-commerce platform featuring real-time semantic search, an autonomous shopping assistant (RAG), and a Price Monitor Agent.
 
-First, run the development server:
+## 🏗️ Architecture & Tech Stack
+- **Frontend (`/src`)**: Next.js 14 (App Router), React, Tailwind CSS, shadcn/ui.
+- **Backend (`/backend`)**: Node.js, Express, Prisma ORM (Port 4000).
+- **AI Service (`/AI_features`)**: Python 3.11, FastAPI, Sentence-Transformers (Port 8000).
+- **Database**: PostgreSQL hosted on Neon Cloud with `pgvector` extension.
 
+## 🚀 Prerequisites
+- Node.js (v18+)
+- Python (v3.11+)
+- Git
+
+## ⚙️ Environment Variables
+You need to create `.env` files in specific directories:
+1. In `/backend/.env` and `/AI_features/.env`:
+   `DATABASE_URL="your_postgresql_neon_url"`
+2. In `/AI_features/.env` (for Chatbot RAG):
+   `NVIDIA_API_KEY="your_nvidia_nim_api_key"`
+
+## 🛠️ How to Run Locally
+
+### 1. AI Service (FastAPI)
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd AI_features
+# Create and activate virtual environment
+python -m venv venv
+# Windows: venv\Scripts\activate | Mac/Linux: source venv/bin/activate
+pip install -r requirements.txt
+# Seed the database with initial products & embeddings (Run only once)
+python seed_db.py 
+# Start the AI server
+uvicorn main:app --reload
+API Docs available at: http://localhost:8000/docs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Backend (Express + Prisma)
+```bash
+cd backend
+npm install
+npx prisma generate
+npx prisma migrate dev
+npm run dev
+API Docs available at: http://localhost:4000/docs
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Frontend (Next.js)
+```bash
+# In the root directory
+npm install
+npm run dev
+Web App available at: http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 👥 Team Members & Roles
+M1: Frontend Developer
 
-## Learn More
+M2: Backend Developer
 
-To learn more about Next.js, take a look at the following resources:
+M3: AI Engineer & Fullstack AI
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+M4: DevOps & Data Engineer

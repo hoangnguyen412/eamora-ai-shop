@@ -73,12 +73,16 @@ export default function ProductCard({ product }: ProductCardProps) {
       <Link href={`/products/${product.id}`}>
         <div className="aspect-square overflow-hidden bg-muted/50">
           <Image
-            src={product.thumbnailUrl}
+            src={product.imageUrl || "https://placehold.co/400x400?text=No+Image"}
             alt={product.name}
             width={400}
             height={400}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             unoptimized
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                "https://placehold.co/400x400?text=No+Image";
+            }}
           />
         </div>
       </Link>
