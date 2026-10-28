@@ -48,6 +48,15 @@ export interface Product {
   specs: ProductSpecs;
   recommendationBadge?: RecommendationBadge;
   createdAt: string;
+  offers?: ProductOffer[];
+}
+
+export interface ProductOffer {
+  listingId: string;
+  shopId: string;
+  shopName: string;
+  price: number;
+  stock: number;
 }
 
 // ---------- Cart ----------
@@ -57,6 +66,9 @@ export interface CartItem {
   product: Product;
   quantity: number;
   selectedPrice: number;
+  listingId?: string;
+  shopId?: string;
+  shopName?: string;
 }
 
 export interface Cart {

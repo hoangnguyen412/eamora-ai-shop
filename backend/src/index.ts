@@ -116,18 +116,28 @@ const getProductData = async () => {
       include: {
         category: true,
         reviews: true,
-        listings: true,
+        listings: { include: { shop: true } },
       },
     });
 
     if (productsFromDb.length > 0) {
       return productsFromDb.map((product) => {
         const listingPrices = product.listings.map((listing) => listing.price);
+        const offers = product.listings
+          .filter((listing) => listing.stock > 0)
+          .map((listing) => ({
+            listingId: listing.id,
+            shopId: listing.shopId,
+            shopName: listing.shop.name,
+            price: listing.price,
+            stock: listing.stock,
+          }))
+          .sort((left, right) => left.price - right.price);
         const averageRating = product.reviews.length > 0
           ? product.reviews.reduce((total, item) => total + item.rating, 0) / product.reviews.length
           : 0;
         const stockTotal = product.listings.reduce((total, listing) => total + listing.stock, 0);
-        const price = listingPrices.length > 0 ? Math.min(...listingPrices) : Number(product.basePrice ?? 0);
+        const price = offers[0]?.price ?? (listingPrices.length > 0 ? Math.min(...listingPrices) : Number(product.basePrice ?? 0));
 
         return {
           id: product.id,
@@ -148,6 +158,7 @@ const getProductData = async () => {
           recommendationBadge: null,
           createdAt: new Date().toISOString(),
           description: product.description ?? '',
+          offers,
         };
       });
     }

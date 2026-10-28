@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartProvider";
@@ -29,6 +29,17 @@ export default function CheckoutPage() {
   const { items, subtotal, shippingFee, totalAmount, clearCart } = useCart();
   const [submitted, setSubmitted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [token, setToken] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
   if (submitted) {
     return (
@@ -38,7 +49,7 @@ export default function CheckoutPage() {
         </div>
         <h2 className="text-2xl font-bold">Đặt hàng thành công!</h2>
         <p className="text-muted-foreground">
-          Mã đơn hàng: <strong>ORD-20261020-01</strong>
+          Mã đơn hàng: <strong>{orderId}</strong>
         </p>
         <p className="text-sm text-muted-foreground">
           Cảm ơn bạn đã mua sắm tại TechAI Shop. Đơn hàng sẽ được xử lý trong
@@ -67,10 +78,90 @@ export default function CheckoutPage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    clearCart();
-    setSubmitted(true);
+    if (!city) {
+      setError("Vui lòng chọn thành phố giao hàng.");
+      return;
+    }
+
+    if (items.some((item) => !item.listingId || !item.shopId)) {
+      setError("Vui lòng chọn nhà bán cho tất cả sản phẩm trong giỏ hàng.");
+      return;
+    }
+
+    if (new Set(items.map((item) => item.shopId)).size !== 1) {
+      setError("Một đơn hàng chỉ có thể chứa sản phẩm từ cùng một nhà bán.");
+      return;
+    }
+
+    if (items.some((item) => item.quantity > (item.product.offers?.find((offer) => offer.listingId === item.listingId)?.stock ?? 0))) {
+      setError("Số lượng trong giỏ vượt quá tồn kho của nhà bán đã chọn.");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      let activeToken = token;
+      if (!activeToken) {
+        const loginResponse = await fetch(`${apiBaseUrl}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const loginResult = await loginResponse.json() as {
+          token?: string;
+          message?: string;
+          user?: { role?: string };
+        };
+
+        if (!loginResponse.ok || !loginResult.token) {
+          throw new Error(loginResult.message || "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.");
+        }
+        if (loginResult.user?.role !== "buyer") {
+          throw new Error("Tài khoản seller không thể đặt hàng. Vui lòng đăng nhập bằng tài khoản buyer.");
+        }
+
+        activeToken = loginResult.token;
+        setToken(activeToken);
+      }
+
+      const orderResponse = await fetch(`${apiBaseUrl}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${activeToken}`,
+        },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            listingId: item.listingId,
+            quantity: item.quantity,
+          })),
+          shipping_info: { fullName, phone, address, city },
+          payment_method: paymentMethod,
+        }),
+      });
+      const orderResult = await orderResponse.json() as {
+        success?: boolean;
+        data?: { id?: string };
+        message?: string;
+      };
+
+      if (!orderResponse.ok || !orderResult.success || !orderResult.data?.id) {
+        if (orderResponse.status === 401) setToken("");
+        throw new Error(orderResult.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+      }
+
+      setOrderId(orderResult.data.id);
+      clearCart();
+      setSubmitted(true);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Không thể hoàn tất đơn hàng.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -81,6 +172,40 @@ export default function CheckoutPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Shipping + Payment */}
           <div className="lg:col-span-2 space-y-6">
+            {!token && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Đăng nhập tài khoản buyer</CardTitle>
+                </CardHeader>
+                <CardContent className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label htmlFor="buyer-email" className="text-sm font-medium">Email</label>
+                    <Input
+                      id="buyer-email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                      placeholder="Email tài khoản"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="buyer-password" className="text-sm font-medium">Mật khẩu</label>
+                    <Input
+                      id="buyer-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                      placeholder="Mật khẩu"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Shipping info */}
             <Card>
               <CardHeader>
@@ -91,7 +216,10 @@ export default function CheckoutPage() {
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Họ và tên</label>
                     <Input
-                      defaultValue="Nguyễn Văn A"
+                      id="shipping-name"
+                      autoComplete="name"
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
                       required
                       placeholder="Nhập họ tên"
                     />
@@ -99,7 +227,11 @@ export default function CheckoutPage() {
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium">Số điện thoại</label>
                     <Input
-                      defaultValue="0901234567"
+                      id="shipping-phone"
+                      type="tel"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
                       required
                       placeholder="Nhập số điện thoại"
                     />
@@ -108,21 +240,24 @@ export default function CheckoutPage() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Địa chỉ</label>
                   <Input
-                    defaultValue="123 Đường Lý Thường Kiệt, Q.10"
+                    id="shipping-address"
+                    autoComplete="street-address"
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
                     required
                     placeholder="Nhập địa chỉ"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Thành phố</label>
-                  <Select defaultValue="hcm">
+                  <Select value={city || null} onValueChange={(value) => setCity(value ?? "")}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Chọn thành phố" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hcm">TP. Hồ Chí Minh</SelectItem>
-                      <SelectItem value="hn">Hà Nội</SelectItem>
-                      <SelectItem value="dn">Đà Nẵng</SelectItem>
+                      <SelectItem value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</SelectItem>
+                      <SelectItem value="Hà Nội">Hà Nội</SelectItem>
+                      <SelectItem value="Đà Nẵng">Đà Nẵng</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -238,12 +373,16 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
+                {error && (
+                  <p role="alert" className="text-sm text-destructive">{error}</p>
+                )}
                 <Button
                   type="submit"
                   className="w-full bg-gradient-brand text-white hover:opacity-90 h-12"
                   size="lg"
+                  disabled={isSubmitting}
                 >
-                  Đặt hàng
+                  {isSubmitting ? "Đang xử lý..." : "Đặt hàng"}
                 </Button>
               </CardContent>
             </Card>

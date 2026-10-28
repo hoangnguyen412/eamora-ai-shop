@@ -5,8 +5,8 @@
 - `POST /api/auth/login` (body: email, password) -> { token, user }
 
 ## 2. Core Marketplace
-- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page`, `limit`; returns `filterOptions` and pagination; invalid price ranges return 400)
-- `GET /api/products/:id`
+- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page`, `limit`; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid price ranges return 400)
+- `GET /api/products/:id` (includes in-stock seller `offers`: `listingId`, `shopId`, `shopName`, `price`, and `stock`)
 - `GET /api/products/:id/reviews` (Public; returns reviews without reviewer email)
 - `POST /api/products/:id/reviews` (Buyer; body: integer `rating` from 1 to 5, optional `comment` up to 2000 characters)
 - `POST /api/orders` (Buyer; body: `items: [{ listingId, quantity }]`, `shipping_info: { fullName, phone, address, city }`, optional `payment_method`; price and shipping fee are calculated by the server)

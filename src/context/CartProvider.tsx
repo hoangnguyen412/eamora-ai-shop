@@ -1,11 +1,12 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import type { Product, CartItem } from "@/types";
+import type { Product, ProductOffer, CartItem } from "@/types";
 
 interface CartContextType {
   items: CartItem[];
   addItem: (product: Product, quantity?: number) => void;
+  selectListing: (productId: string, offer: ProductOffer) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -43,6 +44,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const selectListing = useCallback((productId: string, offer: ProductOffer) => {
+    setItems((prev) => prev.map((item) => item.productId === productId
+      ? {
+        ...item,
+        listingId: offer.listingId,
+        shopId: offer.shopId,
+        shopName: offer.shopName,
+        selectedPrice: offer.price,
+      }
+      : item));
+  }, []);
+
   const removeItem = useCallback((productId: string) => {
     setItems((prev) => prev.filter((item) => item.productId !== productId));
   }, []);
@@ -74,6 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{
         items,
         addItem,
+        selectListing,
         removeItem,
         updateQuantity,
         clearCart,

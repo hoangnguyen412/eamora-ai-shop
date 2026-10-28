@@ -53,11 +53,11 @@ paths:
           name: limit
           schema: { type: integer, minimum: 1, maximum: 100, default: 12 }
       responses:
-        '200': { description: OK; gồm data, pagination và filterOptions }
+        '200': { description: OK; gồm data, pagination, filterOptions và offers còn hàng (listingId, shopId, shopName, price, stock) cho từng sản phẩm }
         '400': { description: Invalid price range }
   /api/products/{id}:
     get:
-      summary: Chi tiết sản phẩm
+      summary: Chi tiết sản phẩm, gồm các listing còn hàng để chọn nhà bán
       responses:
         '200': { description: OK }
   /api/interactions:
