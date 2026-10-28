@@ -707,24 +707,43 @@ app.get('/api/products', async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page ?? 1);
     const limit = Number(req.query.limit ?? 12);
+    const query = typeof req.query.q === 'string' ? req.query.q.trim().toLocaleLowerCase() : '';
     const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
     const brand = typeof req.query.brand === 'string' ? req.query.brand.trim() : '';
+    const minPrice = req.query.minPrice === undefined ? undefined : Number(req.query.minPrice);
+    const maxPrice = req.query.maxPrice === undefined ? undefined : Number(req.query.maxPrice);
+
+    if ((minPrice !== undefined && (!Number.isFinite(minPrice) || minPrice < 0))
+      || (maxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice < 0))
+      || (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice)) {
+      return res.status(400).json({ success: false, message: 'Invalid price range' });
+    }
 
     const products = await getProductData();
     const filteredProducts = products.filter((product) => {
+      const matchesQuery = !query
+        || product.name.toLocaleLowerCase().includes(query)
+        || product.brand.toLocaleLowerCase().includes(query)
+        || product.category.toLocaleLowerCase().includes(query);
       const matchesCategory = !category || product.category.toLowerCase() === category.toLowerCase();
       const matchesBrand = !brand || product.brand.toLowerCase() === brand.toLowerCase();
-      return matchesCategory && matchesBrand;
+      const matchesMinPrice = minPrice === undefined || product.price >= minPrice;
+      const matchesMaxPrice = maxPrice === undefined || product.price <= maxPrice;
+      return matchesQuery && matchesCategory && matchesBrand && matchesMinPrice && matchesMaxPrice;
     });
 
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 12;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 12;
     const startIndex = (safePage - 1) * safeLimit;
     const paginated = filteredProducts.slice(startIndex, startIndex + safeLimit);
 
     return res.json({
       success: true,
       data: paginated,
+      filterOptions: {
+        categories: [...new Set(products.map((product) => product.category))].sort(),
+        brands: [...new Set(products.map((product) => product.brand))].sort(),
+      },
       pagination: {
         currentPage: safePage,
         totalPages: Math.max(1, Math.ceil(filteredProducts.length / safeLimit || 1)),

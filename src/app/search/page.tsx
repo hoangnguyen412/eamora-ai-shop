@@ -1,43 +1,97 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/shared/ProductCard";
-import mockData from "@/mocks/db.json";
 import { Product } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
-import { formatPrice, filterProducts } from "@/lib/helpers";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Suspense } from "react";
 
-const products = mockData.products as unknown as Product[];
-const brands = Array.from(new Set(products.map((p) => p.brand)));
-const categories = Array.from(new Set(products.map((p) => p.category)));
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
+const PAGE_SIZE = 12;
+
+interface ProductSearchResponse {
+  success: boolean;
+  data: Product[];
+  filterOptions: {
+    categories: string[];
+    brands: string[];
+  };
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    limit: number;
+  };
+  message?: string;
+}
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "";
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedBrand, setSelectedBrand] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filtered = useMemo(() => {
-    return filterProducts(products, {
-      search,
-      category: selectedCategory,
-      brand: selectedBrand,
-      minPrice: minPrice ? parseInt(minPrice) : undefined,
-      maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
-    });
-  }, [search, selectedCategory, selectedBrand, minPrice, maxPrice]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+      if (search.trim()) params.set("q", search.trim());
+      if (selectedCategory) params.set("category", selectedCategory);
+      if (selectedBrand) params.set("brand", selectedBrand);
+      if (minPrice) params.set("minPrice", minPrice);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/products?${params}`, {
+          signal: controller.signal,
+        });
+        const result = await response.json() as ProductSearchResponse;
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Không thể tải danh sách sản phẩm");
+        }
+
+        setProducts(result.data);
+        setCategories(result.filterOptions.categories);
+        setBrands(result.filterOptions.brands);
+        setTotalPages(result.pagination.totalPages);
+        setTotalItems(result.pagination.totalItems);
+      } catch (fetchError) {
+        if (fetchError instanceof Error && fetchError.name === "AbortError") return;
+        setError(fetchError instanceof Error ? fetchError.message : "Không thể tải danh sách sản phẩm");
+        setProducts([]);
+        setTotalItems(0);
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search, selectedCategory, selectedBrand, minPrice, maxPrice, page]);
 
   const clearFilters = () => {
     setSearch("");
@@ -45,6 +99,7 @@ function SearchContent() {
     setSelectedBrand("");
     setMinPrice("");
     setMaxPrice("");
+    setPage(1);
   };
 
   const hasFilters = search || selectedCategory || selectedBrand || minPrice || maxPrice;
@@ -57,9 +112,12 @@ function SearchContent() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Tìm kiếm sản phẩm bằng AI... (VD: laptop dưới 25 triệu cho lập trình)"
+              placeholder="Tìm sản phẩm theo tên, thương hiệu hoặc danh mục"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-10 h-12 text-sm"
             />
             {search && (
@@ -67,7 +125,10 @@ function SearchContent() {
                 variant="ghost"
                 size="icon"
                 className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                onClick={() => setSearch("")}
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -85,10 +146,10 @@ function SearchContent() {
 
         {search && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Search className="h-4 w-4 text-primary" />
             <span className="text-sm text-muted-foreground">
-              AI đang phân tích: &ldquo;<strong className="text-foreground">{search}</strong>&rdquo;
-              — Tìm thấy <strong className="text-primary">{filtered.length}</strong> kết quả phù hợp
+              Đang tìm: &ldquo;<strong className="text-foreground">{search}</strong>&rdquo;
+              — Tìm thấy <strong className="text-primary">{totalItems}</strong> sản phẩm phù hợp
             </span>
           </div>
         )}
@@ -118,9 +179,10 @@ function SearchContent() {
                       key={cat}
                       variant={selectedCategory === cat ? "default" : "outline"}
                       className="cursor-pointer hover:bg-primary/10 transition-colors"
-                      onClick={() =>
-                        setSelectedCategory(selectedCategory === cat ? "" : cat)
-                      }
+                      onClick={() => {
+                        setSelectedCategory(selectedCategory === cat ? "" : cat);
+                        setPage(1);
+                      }}
                     >
                       {cat}
                     </Badge>
@@ -139,9 +201,10 @@ function SearchContent() {
                       key={brand}
                       variant={selectedBrand === brand ? "default" : "outline"}
                       className="cursor-pointer hover:bg-primary/10 transition-colors"
-                      onClick={() =>
-                        setSelectedBrand(selectedBrand === brand ? "" : brand)
-                      }
+                      onClick={() => {
+                        setSelectedBrand(selectedBrand === brand ? "" : brand);
+                        setPage(1);
+                      }}
                     >
                       {brand}
                     </Badge>
@@ -159,7 +222,10 @@ function SearchContent() {
                     type="number"
                     placeholder="Từ"
                     value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
+                    onChange={(e) => {
+                      setMinPrice(e.target.value);
+                      setPage(1);
+                    }}
                     className="text-sm"
                   />
                   <span className="text-muted-foreground">—</span>
@@ -167,7 +233,10 @@ function SearchContent() {
                     type="number"
                     placeholder="Đến"
                     value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
+                    onChange={(e) => {
+                      setMaxPrice(e.target.value);
+                      setPage(1);
+                    }}
                     className="text-sm"
                   />
                 </div>
@@ -180,29 +249,41 @@ function SearchContent() {
         <div className="flex-1 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Hiển thị <strong>{filtered.length}</strong> sản phẩm
+              Hiển thị <strong>{totalItems}</strong> sản phẩm
             </p>
             {hasFilters && (
               <div className="flex flex-wrap gap-1.5">
                 {selectedCategory && (
                   <Badge variant="secondary" className="gap-1 text-xs">
                     {selectedCategory}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedCategory("")} />
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => {
+                      setSelectedCategory("");
+                      setPage(1);
+                    }} />
                   </Badge>
                 )}
                 {selectedBrand && (
                   <Badge variant="secondary" className="gap-1 text-xs">
                     {selectedBrand}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedBrand("")} />
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => {
+                      setSelectedBrand("");
+                      setPage(1);
+                    }} />
                   </Badge>
                 )}
               </div>
             )}
           </div>
 
-          {filtered.length > 0 ? (
+          {error ? (
+            <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              {error}
+            </div>
+          ) : isLoading ? (
+            <p role="status" className="py-12 text-center text-sm text-muted-foreground">Đang tải sản phẩm...</p>
+          ) : products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((product) => (
+              {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
@@ -215,6 +296,26 @@ function SearchContent() {
               </p>
               <Button variant="outline" onClick={clearFilters}>
                 Xóa bộ lọc
+              </Button>
+            </div>
+          )}
+
+          {!error && totalItems > 0 && (
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <Button
+                variant="outline"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+              >
+                Trang trước
+              </Button>
+              <span className="text-sm text-muted-foreground">Trang {page} / {totalPages}</span>
+              <Button
+                variant="outline"
+                disabled={page >= totalPages || isLoading}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+              >
+                Trang sau
               </Button>
             </div>
           )}
