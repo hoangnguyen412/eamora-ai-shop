@@ -118,7 +118,7 @@ def semantic_search(req: SemanticSearchRequest):
     # - Bọc ngoặc kép đầy đủ cho tên bảng và tên cột (case sensitivity / PascalCase)
     # - Sử dụng hoàn toàn parameterized query (%s), tránh SQL injection
     sql = """
-        SELECT p."id", p."name", p."basePrice", p."categoryId",
+        SELECT p."id", p."name", p."basePrice", p."imageUrl", p."description", p."brand",
                1 - (e."vector" <=> %s::vector) AS score
         FROM "Embedding" e
         JOIN "Product" p ON e."productId" = p."id"
@@ -152,8 +152,10 @@ def semantic_search(req: SemanticSearchRequest):
             "id": row[0],
             "name": row[1],
             "price": row[2],
-            "categoryId": row[3],
-            "score": float(row[4]),
+            "imageUrl": row[3],
+            "description": row[4],
+            "brand": row[5],
+            "score": float(row[6]),
         })
 
     cur.close()
