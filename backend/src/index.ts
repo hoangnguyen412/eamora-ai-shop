@@ -20,8 +20,18 @@ const prisma = new PrismaClient({ adapter });
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'];
+const AUTO_BUY_WORKER_ENABLED = process.env.AUTO_BUY_WORKER_ENABLED === 'true';
+const AUTO_BUY_WORKER_INTERVAL_MS = Number(process.env.AUTO_BUY_WORKER_INTERVAL_MS ?? 10000);
+const AUTO_BUY_WORKER_BATCH_SIZE = Number(process.env.AUTO_BUY_WORKER_BATCH_SIZE ?? 10);
 const ALLOWED_ROLES = ['buyer', 'seller'] as const;
 type Role = (typeof ALLOWED_ROLES)[number];
+
+if (!Number.isInteger(AUTO_BUY_WORKER_INTERVAL_MS) || AUTO_BUY_WORKER_INTERVAL_MS < 1000) {
+  throw new Error('AUTO_BUY_WORKER_INTERVAL_MS must be an integer of at least 1000');
+}
+if (!Number.isInteger(AUTO_BUY_WORKER_BATCH_SIZE) || AUTO_BUY_WORKER_BATCH_SIZE < 1 || AUTO_BUY_WORKER_BATCH_SIZE > 100) {
+  throw new Error('AUTO_BUY_WORKER_BATCH_SIZE must be an integer from 1 to 100');
+}
 
 type UserPayload = {
   id: string;
@@ -1025,104 +1035,171 @@ app.get('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: Aut
   }
 });
 
-app.post('/api/agent/queue/:id/execute', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
-  const queueItemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-
-  try {
-    const execution = await prisma.$transaction(async (transaction) => {
-      const includeExecutionDetails = {
-        watchlist: {
-          select: {
-            id: true,
-            status: true,
-            targetPrice: true,
-            product: {
-              select: {
-                id: true,
-                listings: {
-                  where: { stock: { gt: 0 } },
-                  orderBy: { price: 'asc' },
-                  take: 1,
-                  select: { id: true, price: true },
-                },
+const executeAutoBuySandboxJob = async (userId: string, queueItemId: string) => {
+  return prisma.$transaction(async (transaction) => {
+    const includeExecutionDetails = {
+      watchlist: {
+        select: {
+          id: true,
+          status: true,
+          targetPrice: true,
+          product: {
+            select: {
+              id: true,
+              listings: {
+                where: { stock: { gt: 0 } },
+                orderBy: { price: 'asc' },
+                take: 1,
+                select: { id: true, price: true },
               },
             },
           },
         },
-      } satisfies Prisma.AutoBuyQueueItemInclude;
+      },
+    } satisfies Prisma.AutoBuyQueueItemInclude;
 
-      const queueItem = await transaction.autoBuyQueueItem.findFirst({
-        where: {
-          id: queueItemId,
-          watchlist: { is: { userId: req.user!.id } },
-        },
+    const queueItem = await transaction.autoBuyQueueItem.findFirst({
+      where: {
+        id: queueItemId,
+        watchlist: { is: { userId } },
+      },
+      include: includeExecutionDetails,
+    });
+    if (!queueItem) {
+      return { statusCode: 404, body: { success: false, message: 'Queue item not found' } };
+    }
+    if (queueItem.status === 'completed') {
+      return { statusCode: 200, body: { success: true, data: queueItem, already_executed: true } };
+    }
+    if (queueItem.status !== 'pending') {
+      return { statusCode: 409, body: { success: false, message: 'Queue item is not pending' } };
+    }
+
+    const user = await transaction.user.findUnique({
+      where: { id: userId },
+      select: { autoBuyEnabled: true },
+    });
+    if (!user || !user.autoBuyEnabled) {
+      return { statusCode: 409, body: { success: false, message: 'Auto-buy must remain enabled to execute this sandbox job' } };
+    }
+    if (queueItem.watchlist.status !== 'active') {
+      return { statusCode: 409, body: { success: false, message: 'Price watch is no longer active' } };
+    }
+
+    const claimed = await transaction.autoBuyQueueItem.updateMany({
+      where: { id: queueItem.id, status: 'pending' },
+      data: { status: 'processing' },
+    });
+    if (claimed.count === 0) {
+      const latestItem = await transaction.autoBuyQueueItem.findUnique({
+        where: { id: queueItem.id },
         include: includeExecutionDetails,
       });
-      if (!queueItem) {
-        return { statusCode: 404, body: { success: false, message: 'Queue item not found' } };
+      if (latestItem?.status === 'completed') {
+        return { statusCode: 200, body: { success: true, data: latestItem, already_executed: true } };
       }
-      if (queueItem.status === 'completed') {
-        return { statusCode: 200, body: { success: true, data: queueItem, already_executed: true } };
-      }
-      if (queueItem.status !== 'pending') {
-        return { statusCode: 409, body: { success: false, message: 'Queue item is not pending' } };
-      }
+      return { statusCode: 409, body: { success: false, message: 'Queue item is no longer pending' } };
+    }
 
-      const user = await transaction.user.findUnique({
-        where: { id: req.user!.id },
-        select: { autoBuyEnabled: true },
-      });
-      if (!user || !user.autoBuyEnabled) {
-        return { statusCode: 409, body: { success: false, message: 'Auto-buy must remain enabled to execute this sandbox job' } };
-      }
-      if (queueItem.watchlist.status !== 'active') {
-        return { statusCode: 409, body: { success: false, message: 'Price watch is no longer active' } };
-      }
-
-      const listing = queueItem.watchlist.product.listings[0];
-      const targetPrice = queueItem.watchlist.targetPrice;
-      const result = {
-        sandbox: true,
-        would_buy: Boolean(listing && listing.price <= targetPrice),
-        reason: !listing
-          ? 'no_available_listing'
-          : listing.price <= targetPrice
-            ? 'target_price_met'
-            : 'price_above_target',
-        evaluated_price: listing?.price ?? null,
-        listing_id: listing?.id ?? null,
-        target_price: targetPrice,
-      };
-      const update = await transaction.autoBuyQueueItem.updateMany({
-        where: { id: queueItem.id, status: 'pending' },
-        data: { status: 'completed', result },
-      });
-
-      if (update.count === 0) {
-        const latestItem = await transaction.autoBuyQueueItem.findUnique({
-          where: { id: queueItem.id },
-          include: includeExecutionDetails,
-        });
-        if (latestItem?.status === 'completed') {
-          return { statusCode: 200, body: { success: true, data: latestItem, already_executed: true } };
-        }
-        return { statusCode: 409, body: { success: false, message: 'Queue item is no longer pending' } };
-      }
-
-      return {
-        statusCode: 200,
-        body: {
-          success: true,
-          data: { ...queueItem, status: 'completed', result },
-        },
-      };
+    const listing = queueItem.watchlist.product.listings[0];
+    const targetPrice = queueItem.watchlist.targetPrice;
+    const result = {
+      sandbox: true,
+      would_buy: Boolean(listing && listing.price <= targetPrice),
+      reason: !listing
+        ? 'no_available_listing'
+        : listing.price <= targetPrice
+          ? 'target_price_met'
+          : 'price_above_target',
+      evaluated_price: listing?.price ?? null,
+      listing_id: listing?.id ?? null,
+      target_price: targetPrice,
+    };
+    const completedItem = await transaction.autoBuyQueueItem.update({
+      where: { id: queueItem.id },
+      data: { status: 'completed', result },
+      include: includeExecutionDetails,
     });
 
+    return { statusCode: 200, body: { success: true, data: completedItem } };
+  });
+};
+
+app.post('/api/agent/queue/:id/execute', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const queueItemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  try {
+    const execution = await executeAutoBuySandboxJob(req.user!.id, queueItemId);
     return res.status(execution.statusCode).json(execution.body);
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Unable to execute auto-buy sandbox job', details: error });
   }
 });
+
+let isAutoBuyWorkerRunning = false;
+const runAutoBuyWorker = async () => {
+  if (isAutoBuyWorkerRunning) return;
+  isAutoBuyWorkerRunning = true;
+
+  try {
+    const pendingItems = await prisma.autoBuyQueueItem.findMany({
+      where: {
+        status: 'pending',
+        watchlist: {
+          is: {
+            status: 'active',
+            user: { is: { autoBuyEnabled: true } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: AUTO_BUY_WORKER_BATCH_SIZE,
+      select: {
+        id: true,
+        watchlist: { select: { userId: true } },
+      },
+    });
+
+    let completedCount = 0;
+    for (const item of pendingItems) {
+      try {
+        const execution = await executeAutoBuySandboxJob(item.watchlist.userId, item.id);
+        if (execution.statusCode === 200 && !('already_executed' in execution.body)) {
+          completedCount += 1;
+        } else if (execution.statusCode !== 200 && execution.statusCode !== 409) {
+          console.error('Auto-buy sandbox worker could not process queue item:', {
+            queueItemId: item.id,
+            statusCode: execution.statusCode,
+            message: execution.body.message,
+          });
+        }
+      } catch (error) {
+        console.error('Auto-buy sandbox worker failed to process queue item:', { queueItemId: item.id, error });
+      }
+    }
+
+    if (completedCount > 0) {
+      console.info(`Auto-buy sandbox worker completed ${completedCount} queue item(s).`);
+    }
+  } catch (error) {
+    console.error('Auto-buy sandbox worker poll failed:', error);
+  } finally {
+    isAutoBuyWorkerRunning = false;
+  }
+};
+
+const startAutoBuyWorker = () => {
+  if (!AUTO_BUY_WORKER_ENABLED) {
+    console.info('Auto-buy sandbox worker is disabled; set AUTO_BUY_WORKER_ENABLED=true to enable it.');
+    return;
+  }
+
+  console.info(
+    `Auto-buy sandbox worker enabled (interval=${AUTO_BUY_WORKER_INTERVAL_MS}ms, batch=${AUTO_BUY_WORKER_BATCH_SIZE}).`,
+  );
+  void runAutoBuyWorker();
+  setInterval(() => void runAutoBuyWorker(), AUTO_BUY_WORKER_INTERVAL_MS);
+};
 
 app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
   const requestedLimit = req.query.limit === undefined ? 50 : Number(req.query.limit);
@@ -1276,4 +1353,5 @@ app.post('/api/search/sessions/:id/clicks', optionalAuth, async (req: Authentica
 app.listen(PORT, () => {
   console.log(`🚀 Backend đang chạy tại http://localhost:${PORT}`);
   console.log(`📚 Swagger UI tại http://localhost:${PORT}/docs`);
+  startAutoBuyWorker();
 });
