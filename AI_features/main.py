@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from sentence_transformers import SentenceTransformer
@@ -9,6 +10,14 @@ import psycopg2
 from dotenv import load_dotenv
 
 app = FastAPI(title="E-Amora AI Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Khởi tạo model (Lần đầu chạy sẽ tự tải model về, hơi lâu)
 print("Loading model keepitreal/vietnamese-sbert...")
@@ -118,7 +127,7 @@ def semantic_search(req: SemanticSearchRequest):
     # - Bọc ngoặc kép đầy đủ cho tên bảng và tên cột (case sensitivity / PascalCase)
     # - Sử dụng hoàn toàn parameterized query (%s), tránh SQL injection
     sql = """
-        SELECT p."id", p."name", p."basePrice", p."imageUrl", p."description", p."brand",
+        SELECT p."id", p."name", p."basePrice", p."description",
                1 - (e."vector" <=> %s::vector) AS score
         FROM "Embedding" e
         JOIN "Product" p ON e."productId" = p."id"
@@ -152,10 +161,10 @@ def semantic_search(req: SemanticSearchRequest):
             "id": row[0],
             "name": row[1],
             "price": row[2],
-            "imageUrl": row[3],
-            "description": row[4],
-            "brand": row[5],
-            "score": float(row[6]),
+            "imageUrl": None,  # Bảng Product không có cột ảnh trong schema.prisma
+            "description": row[3],
+            "brand": None,     # Bảng Product không có cột brand riêng
+            "score": float(row[4]),
         })
 
     cur.close()
