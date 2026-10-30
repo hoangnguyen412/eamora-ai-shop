@@ -6,8 +6,12 @@ from sentence_transformers import SentenceTransformer
 import time
 import re
 import os
+import uuid
+import math
 import psycopg2
+from psycopg2.extras import Json
 from dotenv import load_dotenv
+from openai import OpenAI
 
 app = FastAPI(title="E-Amora AI Service", version="1.0.0")
 
@@ -29,7 +33,7 @@ load_dotenv()
 # Cấu hình kết nối PostgreSQL (pgvector)
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL is None:
-    print("LỖI: DATABASE_URL không được tìm thấy trong biến môi trường. Vui lòng kiểm tra file .env")
+    print("LOI: DATABASE_URL khong duoc tim thay trong bien moi truong. Vui long kiem tra file .env")
     exit(1)
 
 
@@ -180,7 +184,7 @@ def semantic_search(req: SemanticSearchRequest):
         "results": results,
     }
 
-# --- Các Mock Endpoints từ Task T3-1-2 (Giữ nguyên để M2 test) ---
+# --- Các Endpoints từ Task T3-1-2 & RAG Chat ---
 class SearchRequest(BaseModel):
     query: str
     filters: Optional[dict] = None
@@ -193,9 +197,170 @@ class ChatRequest(BaseModel):
     sessionId: str
     message: str
 
+@app.post("/chat/message")
 @app.post("/chat/rag")
-def chat_rag(req: ChatRequest):
-    return {"answer": "Mock trả lời", "products": [1, 2], "groundedness": 0.98}
+def chat_message(req: ChatRequest):
+    """
+    Luồng RAG Chatbot:
+    1. Lưu tin nhắn của user vào ChatMessage (role: 'user').
+    2. Tạo embedding từ message, query pgvector lấy top 3 sản phẩm liên quan nhất.
+    3. Khởi tạo client OpenAI trỏ tới NVIDIA NIM (meta/llama-3.3-70b-instruct).
+    4. Gửi prompt cho LLM để tạo câu trả lời tư vấn bán hàng.
+    5. Lưu câu trả lời của assistant vào ChatMessage (role: 'assistant').
+    6. Trả về {answer, products, groundedness_score: 0.95}.
+    """
+    user_msg_id = str(uuid.uuid4())
+    products = []
+
+    # Bước 1 & Bước 2: Lưu tin nhắn user và query top 3 sản phẩm từ DB
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Bước 1: Lưu tin nhắn user vào bảng ChatMessage
+        insert_user_sql = """
+            INSERT INTO "ChatMessage" ("id", "sessionId", "role", "content", "retrievedProducts", "createdAt")
+            VALUES (%s, %s, %s, %s, %s, NOW())
+        """
+        cur.execute(insert_user_sql, (user_msg_id, req.sessionId, "user", req.message, None))
+        conn.commit()
+
+        # Bước 2: Tạo vector từ message và query pgvector top 3 sản phẩm
+        embedding = model.encode(req.message)
+        vector_str = "[" + ",".join(str(float(x)) for x in embedding) + "]"
+
+        search_sql = """
+            SELECT p."id", p."name", p."basePrice", p."description", p."imageUrl", p."brand",
+                   1 - (e."vector" <=> %s::vector) AS score
+            FROM "Embedding" e
+            JOIN "Product" p ON e."productId" = p."id"
+            ORDER BY e."vector" <=> %s::vector
+            LIMIT 3
+        """
+        cur.execute(search_sql, (vector_str, vector_str))
+        rows = cur.fetchall()
+
+        for row in rows:
+            raw_score = row[6]
+            if raw_score is None or math.isnan(raw_score):
+                score_val = 0.0
+            else:
+                score_val = float(raw_score)
+
+            products.append({
+                "id": row[0],
+                "name": row[1],
+                "price": row[2],
+                "description": row[3],
+                "imageUrl": row[4],
+                "brand": row[5],
+                "score": score_val,
+            })
+
+    except Exception as db_err:
+        err_msg = str(db_err).encode("ascii", "replace").decode("ascii")
+        print(f"[Chat RAG] Database error during user message / search: {err_msg}")
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    # Bước 3: Khởi tạo client OpenAI trỏ tới NVIDIA NIM
+    openai_client = OpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=os.getenv("NVIDIA_API_KEY", "")
+    )
+
+    # Bước 4: Tạo prompt gửi LLM
+    if products:
+        product_lines = []
+        for i, p in enumerate(products, 1):
+            price_val = f"{p['price']:,.0f} VND" if p.get("price") is not None else "Liên hệ"
+            brand_val = f", Thương hiệu: {p['brand']}" if p.get("brand") else ""
+            desc_val = f", Mô tả: {p['description']}" if p.get("description") else ""
+            product_lines.append(f"{i}. {p['name']} (Giá: {price_val}{brand_val}{desc_val})")
+        product_text = "\n".join(product_lines)
+    else:
+        product_text = "Hiện tại không có thông tin sản phẩm phù hợp trong hệ thống."
+
+    prompt = f"Bạn là trợ lý bán hàng E-Amora. Dựa vào sản phẩm sau:\n{product_text}\n\nhãy trả lời câu hỏi: {req.message}"
+
+    answer = ""
+    try:
+        completion = openai_client.chat.completions.create(
+            model="meta/llama-3.3-70b-instruct",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1024,
+        )
+        answer = completion.choices[0].message.content
+    except Exception as llm_err:
+        err_msg = str(llm_err).encode("ascii", "replace").decode("ascii")
+        print(f"[Chat RAG] LLM error with meta/llama-3.3-70b-instruct: {err_msg}")
+        if products:
+            suggested = ", ".join([p["name"] for p in products])
+            answer = f"Dựa trên yêu cầu của bạn, E-Amora gợi ý các sản phẩm phù hợp sau: {suggested}. Vui lòng tham khảo danh sách sản phẩm chi tiết bên dưới!"
+        else:
+            answer = "Chào bạn! Hiện tại E-Amora chưa tìm thấy sản phẩm phù hợp với yêu cầu của bạn. Bạn vui lòng thử lại với câu hỏi khác nhé!"
+
+    # Bước 5: Lưu câu trả lời của LLM vào bảng ChatMessage (role: 'assistant')
+    assistant_msg_id = str(uuid.uuid4())
+    save_conn = None
+    save_cur = None
+    try:
+        save_conn = get_db_connection()
+        save_cur = save_conn.cursor()
+        insert_assistant_sql = """
+            INSERT INTO "ChatMessage" ("id", "sessionId", "role", "content", "retrievedProducts", "createdAt")
+            VALUES (%s, %s, %s, %s, %s, NOW())
+        """
+        save_cur.execute(
+            insert_assistant_sql,
+            (assistant_msg_id, req.sessionId, "assistant", answer, Json(products) if products else None)
+        )
+        save_conn.commit()
+    except Exception as save_err:
+        err_msg = str(save_err).encode("ascii", "replace").decode("ascii")
+        print(f"[Chat RAG] Database error during assistant message save: {err_msg}")
+        if save_conn:
+            try:
+                save_conn.rollback()
+            except Exception:
+                pass
+    finally:
+        if save_cur:
+            try:
+                save_cur.close()
+            except Exception:
+                pass
+        if save_conn:
+            try:
+                save_conn.close()
+            except Exception:
+                pass
+
+    # Bước 6: Trả về JSON kết quả
+    return {
+        "answer": answer,
+        "products": products,
+        "groundedness_score": 0.95
+    }
 
 class ScoreDealRequest(BaseModel):
     productId: int
