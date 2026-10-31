@@ -102,18 +102,57 @@ def parse_price(value):
         return 0.0
 
 
+# Tên hiển thị chuẩn cho từng thương hiệu (key = chữ thường).
+# Dùng để gộp mọi biến thể hoa/thường về cùng một giá trị duy nhất,
+# tránh trùng lặp trong bộ lọc (VD: "DELL" vs "Dell", "LENOVO" vs "Lenovo").
+CANONICAL_BRANDS = {
+    "apple": "Apple",
+    "dell": "Dell",
+    "lenovo": "Lenovo",
+    "asus": "Asus",
+    "acer": "Acer",
+    "hp": "HP",
+    "msi": "MSI",
+    "samsung": "Samsung",
+    "microsoft": "Microsoft",
+    "gigabyte": "Gigabyte",
+    "xiaomi": "Xiaomi",
+    "redmi": "Redmi",
+    "oppo": "Oppo",
+    "vivo": "Vivo",
+    "realme": "Realme",
+    "oneplus": "OnePlus",
+    "motorola": "Motorola",
+    "nokia": "Nokia",
+    "sony": "Sony",
+    "lg": "LG",
+    "htc": "HTC",
+    "google": "Google",
+    "huawei": "Huawei",
+    "honor": "Honor",
+    "infinix": "Infinix",
+    "other": "Other",
+    "others": "Other",
+}
+
+
 def normalize_brand(brand):
     """
-    Viết hoa chữ cái đầu của brand.
-    - "apple" -> "Apple", "redmi" -> "Redmi", "samsung" -> "Samsung"
-    - Brand đã có chữ hoa (HP, OnePlus, iQOO...) thì chỉ đảm bảo ký tự đầu được viết hoa.
+    Chuẩn hoá tên thương hiệu về một dạng hiển thị duy nhất (Title Case).
+    - "apple" / "APPLE" / "Apple" -> "Apple"
+    - "DELL" / "dell" -> "Dell"
+    - "LENOVO" / "lenovo" -> "Lenovo"
+    - "Oneplus" / "oneplus" -> "OnePlus"
+    - Giữ viết hoa cho các từ viết tắt đã biết: "HP", "LG", "MSI", "HTC".
     """
     brand = clean_text(brand)
     if not brand:
         return ""
-    if brand.islower():
-        return " ".join(w[:1].upper() + w[1:] for w in brand.split(" "))
-    return brand[:1].upper() + brand[1:]
+    key = brand.lower()
+    if key in CANONICAL_BRANDS:
+        return CANONICAL_BRANDS[key]
+    # Fallback cho thương hiệu lạ: Title Case từng từ.
+    return " ".join(w[:1].upper() + w[1:].lower() for w in brand.split())
 
 
 def normalize_name(name, brand):

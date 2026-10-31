@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import urllib.parse
 import psycopg2
 import psycopg2.extras
@@ -86,11 +87,25 @@ def main():
             category_data
         )
 
+        # Lấy (hoặc tạo) một Shop để gắn Listing. Shop không bị TRUNCATE ở trên.
+        cur.execute('SELECT "id" FROM "Shop" ORDER BY "id" LIMIT 1')
+        shop_row = cur.fetchone()
+        if shop_row:
+            shop_id = shop_row[0]
+        else:
+            shop_id = str(uuid.uuid4())
+            cur.execute(
+                'INSERT INTO "Shop" ("id", "sellerId", "name", "description", "reputationScore") '
+                'VALUES (%s, %s, %s, %s, %s)',
+                (shop_id, "system-seed", "E-Amora Official", "Shop mặc định do seed tạo", 4.8),
+            )
+
         total = len(products)
         print(f"Bắt đầu chuẩn bị dữ liệu chèn cho {total} sản phẩm...")
 
         products_data = []
         embeddings_data = []
+        listings_data = []
 
         for idx, product in enumerate(products):
             product_id = str(product["id"])
@@ -112,6 +127,15 @@ def main():
                 product.get("brand", "")
             ))
 
+            # Mỗi sản phẩm có 1 Listing với stock ngẫu nhiên 20..100
+            listings_data.append((
+                str(uuid.uuid4()),
+                product_id,
+                shop_id,
+                product["price"],
+                random.randint(20, 100),
+            ))
+
             embedding_id = str(uuid.uuid4())
             embeddings_data.append((
                 embedding_id,
@@ -125,6 +149,14 @@ def main():
             cur,
             'INSERT INTO "Product" ("id", "categoryId", "name", "description", "basePrice", "imageUrl", "brand") VALUES %s',
             products_data
+        )
+
+        # Bulk Insert Listing (stock ngẫu nhiên 20..100) để sản phẩm không bị "hết hàng"
+        print("Đang thực hiện bulk insert vào bảng Listing...")
+        psycopg2.extras.execute_values(
+            cur,
+            'INSERT INTO "Listing" ("id", "productId", "shopId", "price", "stock") VALUES %s',
+            listings_data
         )
 
         # Bulk Insert Embedding với template ép kiểu ::vector

@@ -1058,12 +1058,37 @@ app.get('/api/products', async (req: Request, res: Response) => {
       return [productsResult, countResult] as const;
     });
 
+    // Lấy TẤT CẢ danh mục (không phụ thuộc vào trang sản phẩm hiện tại).
+    const allCategories = await prisma.category.findMany({
+      select: { name: true },
+      orderBy: { name: 'asc' },
+    });
+    const categories = allCategories.map((c) => c.name).filter(Boolean);
+
+    // Lấy TẤT CẢ thương hiệu (không phụ thuộc vào trang sản phẩm hiện tại).
+    // Nếu người dùng đã chọn một danh mục, chỉ liệt kê thương hiệu trong danh mục đó.
+    const brandWhere: Prisma.ProductWhereInput = {};
+    if (effectiveCategory) {
+      brandWhere.category = { name: { equals: effectiveCategory, mode: 'insensitive' } };
+    }
+    brandWhere.brand = { not: null };
+    const brandRows = await prisma.product.findMany({
+      select: { brand: true },
+      distinct: ['brand'],
+      orderBy: { brand: 'asc' },
+      where: brandWhere,
+    });
+    const brands = brandRows
+      .map((r) => r.brand)
+      .filter((b): b is string => Boolean(b))
+      .sort();
+
     return res.json({
       success: true,
       data: products,
       filterOptions: {
-        categories: [...new Set(products.map((product: { category: string }) => product.category))].sort(),
-        brands: [...new Set(products.map((product: { brand: string }) => product.brand))].sort(),
+        categories,
+        brands,
       },
       pagination: {
         currentPage: page,
