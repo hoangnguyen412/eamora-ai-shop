@@ -77,6 +77,23 @@ class OrderRequestError extends Error {
   }
 }
 
+const MOCK_BUYER_ID = 'mock-user-123';
+
+const ensureMockBuyer = async () => {
+  let user = await prisma.user.findUnique({ where: { id: MOCK_BUYER_ID } });
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        id: MOCK_BUYER_ID,
+        email: 'mock-buyer@example.com',
+        passwordHash: 'mock',
+        role: 'buyer',
+      },
+    });
+  }
+  return user;
+};
+
 const sanitizeUser = (user: {
   id: string;
   email: string;
@@ -608,7 +625,7 @@ app.get('/api/orders/me', requireAuth, requireRole(['buyer']), async (req: Authe
   }
 });
 
-app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/orders', async (req: Request, res: Response) => {
   const rawItems = req.body?.items;
   const shippingInfo = req.body?.shipping_info ?? req.body?.shippingInfo;
   const rawPaymentMethod = req.body?.payment_method ?? req.body?.paymentMethod;
@@ -658,6 +675,8 @@ app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: Authent
   }
 
   try {
+    await ensureMockBuyer();
+
     const order = await prisma.$transaction(async (transaction) => {
       const listingIds = [...itemQuantities.keys()];
       const listings = await transaction.listing.findMany({
@@ -692,7 +711,7 @@ app.post('/api/orders', requireAuth, requireRole(['buyer']), async (req: Authent
       const totalAmount = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + 30000;
       return transaction.order.create({
         data: {
-          buyerId: req.user!.id,
+          buyerId: MOCK_BUYER_ID,
           totalAmount,
           status: 'pending',
           shippingInfo: validatedShippingInfo,
@@ -811,6 +830,27 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole(['seller']), async 
       return res.status(error.statusCode).json({ success: false, message: error.message });
     }
     return sendServerError(res, 'Unable to update order status', error);
+  }
+});
+
+app.get('/api/orders', async (_req: Request, res: Response) => {
+  try {
+    const orders = await prisma.order.findMany({
+      include: {
+        items: {
+          include: {
+            listing: {
+              include: { product: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({ success: true, data: orders });
+  } catch (error) {
+    return sendServerError(res, 'Unable to fetch orders', error);
   }
 });
 

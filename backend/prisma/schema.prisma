@@ -68,6 +68,7 @@ model Listing {
   product    Product        @relation(fields: [productId], references: [id])
   shop       Shop           @relation(fields: [shopId], references: [id])
   priceHistory PriceHistory[]
+  orderItems   OrderItem[]
 
   @@index([productId, stock, price])
   @@index([shopId])
@@ -94,6 +95,7 @@ model OrderItem {
   quantity  Int
   price     Float
   order     Order  @relation(fields: [orderId], references: [id])
+  listing   Listing @relation(fields: [listingId], references: [id])
 
   @@index([orderId])
   @@index([listingId])

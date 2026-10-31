@@ -4,7 +4,6 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartProvider";
-import { useAuth } from "@/context/AuthProvider";
 import { formatPrice } from "@/lib/helpers";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +27,6 @@ import {
 
 export default function CheckoutPage() {
   const { items, subtotal, shippingFee, totalAmount, clearCart } = useCart();
-  const { token, user, isLoading: isAuthLoading, signOut } = useAuth();
   const [submitted, setSubmitted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [fullName, setFullName] = useState("");
@@ -102,18 +100,10 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      if (!token || !user) {
-        throw new Error("Vui lòng đăng nhập trước khi đặt hàng.");
-      }
-      if (user.role !== "buyer") {
-        throw new Error("Tài khoản seller không thể đặt hàng. Vui lòng đăng nhập bằng tài khoản buyer.");
-      }
-
       const orderResponse = await fetch(`${apiBaseUrl}/api/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           items: items.map((item) => ({
@@ -131,7 +121,6 @@ export default function CheckoutPage() {
       };
 
       if (!orderResponse.ok || !orderResult.success || !orderResult.data?.id) {
-        if (orderResponse.status === 401) signOut();
         throw new Error(orderResult.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
       }
 
@@ -157,45 +146,6 @@ export default function CheckoutPage() {
         <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
           {/* Shipping + Payment */}
           <div className="space-y-5 lg:col-span-2">
-            {isAuthLoading ? (
-              <Card>
-                <CardContent className="py-4 text-sm text-muted-foreground" role="status">
-                  Đang kiểm tra phiên đăng nhập...
-                </CardContent>
-              </Card>
-            ) : !user ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Đăng nhập để đặt hàng</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Đăng nhập hoặc tạo tài khoản buyer để tiếp tục. Phiên đăng nhập được dùng chung trên cửa hàng.
-                  </p>
-                  <Link
-                    href="/login?next=%2Fcheckout"
-                    className={buttonVariants({ variant: "outline" })}
-                  >
-                    Đăng nhập / Đăng ký buyer
-                  </Link>
-                </CardContent>
-              </Card>
-            ) : user.role !== "buyer" ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Cần tài khoản buyer</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Bạn đang đăng nhập bằng tài khoản seller ({user.email}). Đăng xuất rồi đăng nhập buyer để đặt hàng.
-                  </p>
-                  <Button type="button" variant="outline" onClick={signOut}>Đăng xuất</Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <p className="text-sm text-muted-foreground">Đang đặt hàng với tài khoản {user.email}</p>
-            )}
-
             {/* Shipping info */}
             <Card>
               <CardHeader>
@@ -281,22 +231,11 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => setPaymentMethod(method.id)}
                       aria-pressed={paymentMethod === method.id}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                        paymentMethod === method.id
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-border hover:border-muted-foreground/30"
-                      }`}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${paymentMethod === method.id ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-muted-foreground/30"}`}
                     >
                       <method.icon
-                        className={`h-6 w-6 ${
-                          paymentMethod === method.id
-                            ? "text-primary"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                      <span className="text-xs font-medium">
-                        {method.label}
-                      </span>
+                        className={`h-6 w-6 ${paymentMethod === method.id ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className="text-xs font-medium">{method.label}</span>
                     </button>
                   ))}
                 </div>
@@ -328,9 +267,7 @@ export default function CheckoutPage() {
                         </Badge>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium line-clamp-1">
-                          {item.product.name}
-                        </p>
+                        <p className="text-xs font-medium line-clamp-1">{item.product.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {formatPrice(item.selectedPrice)} × {item.quantity}
                         </p>
@@ -359,9 +296,7 @@ export default function CheckoutPage() {
 
                 <div className="flex justify-between font-bold">
                   <span>Tổng cộng</span>
-                  <span className="text-lg text-primary">
-                    {formatPrice(totalAmount)}
-                  </span>
+                  <span className="text-lg text-primary">{formatPrice(totalAmount)}</span>
                 </div>
 
                 {error && (
@@ -371,7 +306,7 @@ export default function CheckoutPage() {
                   type="submit"
                   className="w-full bg-gradient-brand text-white hover:opacity-90 h-12"
                   size="lg"
-                  disabled={isSubmitting || isAuthLoading || user?.role !== "buyer"}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? "Đang xử lý..." : "Đặt hàng"}
                 </Button>

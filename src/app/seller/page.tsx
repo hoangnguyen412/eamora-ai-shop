@@ -1,6 +1,6 @@
 "use client";
 
-import mockData from "@/mocks/db.json";
+import { useEffect, useState } from "react";
 import { Order } from "@/types";
 import { formatPrice, formatDate, getStatusColor, getStatusLabel } from "@/lib/helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,17 +9,113 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
 
-const orders = mockData.orders as unknown as Order[];
+import mockData from "@/mocks/db.json";
+
 const sellerProducts = mockData.sellerProducts;
 
-const stats = [
-  { label: "Doanh thu", value: formatPrice(orders.reduce((s, o) => s + o.totalAmount, 0)), icon: DollarSign, color: "from-emerald-500 to-teal-500" },
-  { label: "Đơn hàng", value: orders.length.toString(), icon: ShoppingCart, color: "from-blue-500 to-cyan-500" },
-  { label: "Sản phẩm", value: sellerProducts.length.toString(), icon: Package, color: "from-violet-500 to-indigo-500" },
-  { label: "Tăng trưởng", value: "+12.5%", icon: TrendingUp, color: "from-amber-500 to-orange-500" },
-];
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
 export default function SellerPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/orders`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Không thể tải danh sách đơn hàng.");
+        }
+        const result = await response.json() as { success?: boolean; data?: any[]; message?: string };
+        if (!result.success) {
+          throw new Error(result.message || "Không thể tải danh sách đơn hàng.");
+        }
+
+        const mapped: Order[] = (result.data ?? []).map((o) => ({
+          id: o.id,
+          userId: o.buyerId ?? o.userId ?? "",
+          items: (o.items ?? []).map((item: any) => ({
+            productId: item.listing?.product?.id ?? item.listingId ?? "",
+            productName: item.listing?.product?.name ?? item.productName ?? "Sản phẩm",
+            productImage: item.listing?.product?.thumbnailUrl ?? item.productImage ?? "",
+            price: item.price ?? 0,
+            quantity: item.quantity ?? 0,
+          })),
+          totalAmount: o.totalAmount ?? 0,
+          status: o.status as Order["status"],
+          paymentMethod: o.paymentMethod as Order["paymentMethod"],
+          shippingAddress: o.shippingInfo ?? {},
+          createdAt: o.createdAt ?? new Date().toISOString(),
+        }));
+
+        if (!cancelled) {
+          setOrders(mapped);
+        }
+      } catch (err) {
+        if (!cancelled && err instanceof Error && err.name !== "AbortError") {
+          setError(err.message);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    fetchOrders();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
+
+  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalOrders = orders.length;
+
+  const stats = [
+    { label: "Doanh thu", value: formatPrice(totalRevenue), icon: DollarSign, color: "from-emerald-500 to-teal-500" },
+    { label: "Đơn hàng", value: totalOrders.toString(), icon: ShoppingCart, color: "from-blue-500 to-cyan-500" },
+    { label: "Sản phẩm", value: sellerProducts.length.toString(), icon: Package, color: "from-violet-500 to-indigo-500" },
+    { label: "Tăng trưởng", value: "+12.5%", icon: TrendingUp, color: "from-amber-500 to-orange-500" },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Đang tải đơn hàng...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+          </div>
+        </div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -28,14 +124,6 @@ export default function SellerPage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
           <p className="text-sm text-muted-foreground">Quản lý đơn hàng và sản phẩm của bạn</p>
         </div>
-        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-300">
-          Bản xem trước
-        </span>
-      </div>
-
-      <div role="status" className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-900 dark:text-amber-200">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>Các số liệu và bảng bên dưới là dữ liệu minh họa, chưa được kết nối với tài khoản nhà bán.</p>
       </div>
 
       {/* Stats */}
@@ -68,19 +156,26 @@ export default function SellerPage() {
               <CardTitle className="text-base">Quản lý đơn hàng</CardTitle>
             </CardHeader>
             <CardContent>
-                <Table containerLabel="Bảng quản lý đơn hàng, có thể cuộn ngang">
-                  <TableHeader>
+              <Table containerLabel="Bảng quản lý đơn hàng, có thể cuộn ngang">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mã đơn</TableHead>
+                    <TableHead>Sản phẩm</TableHead>
+                    <TableHead>Tổng tiền</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Thanh toán</TableHead>
+                    <TableHead>Ngày tạo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.length === 0 ? (
                     <TableRow>
-                      <TableHead>Mã đơn</TableHead>
-                      <TableHead>Sản phẩm</TableHead>
-                      <TableHead>Tổng tiền</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Thanh toán</TableHead>
-                      <TableHead>Ngày tạo</TableHead>
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                        Chưa có đơn hàng nào.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
+                  ) : (
+                    orders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono text-xs font-medium">{order.id}</TableCell>
                         <TableCell>
@@ -97,9 +192,10 @@ export default function SellerPage() {
                         <TableCell className="text-xs uppercase">{order.paymentMethod}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

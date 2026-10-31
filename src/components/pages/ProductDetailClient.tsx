@@ -41,6 +41,10 @@ export default function ProductDetailClient({ id }: { id: string }) {
   });
   const [watchMessage, setWatchMessage] = useState("");
   const [isSavingWatch, setIsSavingWatch] = useState(false);
+  const [cartToast, setCartToast] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: "",
+  });
   const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
   useEffect(() => {
@@ -90,6 +94,13 @@ export default function ProductDetailClient({ id }: { id: string }) {
       </div>
     );
   }
+
+  {cartToast.open && (
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-green-900 text-white shadow-lg animate-in fade-in slide-in-from-right-2 duration-300">
+      <ShoppingCart className="h-5 w-5" />
+      <span className="text-sm font-medium">{cartToast.message}</span>
+    </div>
+  )}
 
   const currentPriceHistory = priceHistoryState?.productId === id ? priceHistoryState : null;
   const specEntries = Object.entries(product.specs).filter(([, v]) => v !== undefined);
@@ -226,7 +237,11 @@ export default function ProductDetailClient({ id }: { id: string }) {
               </div>
             </div>
             <div className="flex gap-3">
-              <Button onClick={() => addItem(product, quantity)} className="flex-1 gap-2 bg-gradient-brand text-white hover:opacity-90 h-12" size="lg">
+              <Button onClick={() => {
+                addItem(product, quantity);
+                setCartToast({ open: true, message: `Đã thêm ${quantity} × ${product.name} vào giỏ hàng.` });
+                setTimeout(() => setCartToast({ open: false, message: "" }), 3000);
+              }} className="flex-1 gap-2 bg-gradient-brand text-white hover:opacity-90 h-12" size="lg">
                 <ShoppingCart className="h-5 w-5" /> Thêm vào giỏ hàng
               </Button>
               <Link
