@@ -47,5 +47,7 @@ next-env.d.ts
 
 __pycache__/
 
-
+# AI cache files (large)
 embeddings_cache.json
+AI_features/data.json
+AI_features/data_with_embeddings.json

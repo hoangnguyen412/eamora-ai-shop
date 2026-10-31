@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthProvider";
+import { useState, useEffect } from "react";
 
 interface HeaderProps {
   menuOpen: boolean;
@@ -31,6 +32,11 @@ interface HeaderProps {
 export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
   const { itemCount } = useCart();
   const { user, isLoading, signOut } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 glass border-b">
@@ -84,10 +90,10 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
             <Link
               href="/cart"
               className={buttonVariants({ variant: "ghost", size: "icon", className: "relative" })}
-              aria-label={`Giỏ hàng${itemCount > 0 ? `, ${itemCount} sản phẩm` : ""}`}
+              aria-label={`Giỏ hàng${isMounted && itemCount > 0 ? `, ${itemCount} sản phẩm` : ""}`}
             >
               <ShoppingCart className="h-5 w-5" aria-hidden="true" />
-              {itemCount > 0 && (
+              {isMounted && itemCount > 0 && (
                 <Badge aria-hidden="true" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-gradient-brand text-white border-0">
                   {itemCount}
                 </Badge>
