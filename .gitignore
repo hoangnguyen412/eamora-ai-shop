@@ -46,3 +46,6 @@ next-env.d.ts
 /structure.txt
 
 __pycache__/
+
+
+embeddings_cache.json

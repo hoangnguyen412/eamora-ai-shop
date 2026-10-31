@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Product } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +44,31 @@ function getBadgeStyle(type: string): string {
   }
 }
 
+function getValidImageUrl(product: Product): string | null {
+  const productRecord = product as unknown as Record<string, unknown>;
+  const raw =
+    product.thumbnailUrl ||
+    (typeof productRecord.imageUrl === "string" ? productRecord.imageUrl : undefined) ||
+    (typeof productRecord.image === "string" ? productRecord.image : undefined) ||
+    product.images?.[0];
+
+  if (!raw || typeof raw !== "string" || raw.trim() === "") {
+    return null;
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+  return `https://${trimmed}`;
+}
+
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const imageUrl = getValidImageUrl(product);
 
   return (
     <Card className="group relative overflow-hidden border-border/70 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
@@ -72,18 +94,22 @@ export default function ProductCard({ product }: ProductCardProps) {
       {/* Image */}
       <Link href={`/products/${product.id}`}>
         <div className="aspect-square overflow-hidden bg-muted/50">
-          <Image
-            src={product.imageUrl || "https://placehold.co/400x400?text=No+Image"}
-            alt={product.name}
-            width={400}
-            height={400}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            unoptimized
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                "https://placehold.co/400x400?text=No+Image";
-            }}
-          />
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={product.name}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  "https://placehold.co/400x400?text=No+Image";
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+              No Image
+            </div>
+          )}
         </div>
       </Link>
 

@@ -6,7 +6,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   ShoppingCart,
   Search,
-  MessageSquareText,
   Menu,
   Cpu,
   User,
@@ -68,10 +67,6 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
             <Link href="/search" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
               <Search className="mr-1 h-4 w-4" aria-hidden="true" />
               Tìm kiếm
-            </Link>
-            <Link href="/chat" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
-              <MessageSquareText className="mr-1 h-4 w-4" aria-hidden="true" />
-              AI Chat
             </Link>
             <Link href="/watchlist" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
               <TrendingDown className="mr-1 h-4 w-4" aria-hidden="true" />

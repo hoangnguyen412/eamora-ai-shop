@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "api.dicebear.com" },
       { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "rukminim2.flixcart.com" },
+      { protocol: "https", hostname: "m.media-amazon.com" },
+      { protocol: "https", hostname: "placehold.co" },
+      { protocol: "https", hostname: "cdn2.cellphones.com.vn" },
     ],
   },
   turbopack: {

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import { Suspense } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 const PAGE_SIZE = 12;
@@ -36,6 +37,7 @@ function SearchContent() {
   const initialCategory = searchParams.get("category") || "";
 
   const [search, setSearch] = useState(searchParams.get("q") || "");
+  const debouncedSearch = useDebounce(search, 500);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedBrand, setSelectedBrand] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -53,9 +55,10 @@ function SearchContent() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
+
+    (async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-      if (search.trim()) params.set("q", search.trim());
+      if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
       if (selectedCategory) params.set("category", selectedCategory);
       if (selectedBrand) params.set("brand", selectedBrand);
       if (minPrice) params.set("minPrice", minPrice);
@@ -86,13 +89,12 @@ function SearchContent() {
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);
       }
-    }, 250);
+    })();
 
     return () => {
-      window.clearTimeout(timer);
       controller.abort();
     };
-  }, [search, selectedCategory, selectedBrand, minPrice, maxPrice, page]);
+  }, [debouncedSearch, selectedCategory, selectedBrand, minPrice, maxPrice, page]);
 
   const clearFilters = () => {
     setSearch("");

@@ -191,15 +191,114 @@ const normalizeProductRecord = (product: Record<string, any>) => {
   };
 };
 
-const getProductData = async () => {
+type NaturalLanguageSearchFilters = {
+  keyword: string;
+  categoryId: 'cat-laptop' | 'cat-phone' | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+};
+
+const PRICE_UNIT_MULTIPLIER = 1_000_000;
+
+const NATURAL_LANGUAGE_NOISE_PATTERNS: RegExp[] = [
+  /giá\s*rẻ/g,
+  /giá\s*tốt/g,
+  /giá\s*phải\s*chăng/g,
+  /rẻ\s*nhất/g,
+  /sản\s*phẩm/g,
+  /tìm\s*kiếm/g,
+  /\btìm\b/g,
+  /\bmua\b/g,
+  /\bcần\b/g,
+  /tư\s*vấn/g,
+  /\bcho\s*(?:mình|tôi|em)\b/g,
+  /\bshop\b/g,
+];
+
+/**
+ * Bóc tách truy vấn tìm kiếm ngôn ngữ tự nhiên, ví dụ: "laptop dưới 20 triệu giá rẻ".
+ * Trả về: categoryId, minPrice, maxPrice và từ khoá còn lại sau khi đã loại bỏ các cụm điều kiện.
+ */
+const parseNaturalLanguageSearch = (rawSearch: string): NaturalLanguageSearchFilters => {
+  let remaining = ` ${rawSearch.toLocaleLowerCase()} `;
+  let categoryId: NaturalLanguageSearchFilters['categoryId'] = null;
+  let minPrice: number | null = null;
+  let maxPrice: number | null = null;
+
+  const toVnd = (value: string): number => Math.round(Number(value.replace(',', '.')) * PRICE_UNIT_MULTIPLIER);
+
+  // "dưới 20 triệu" (hoặc 20tr / 20 củ) -> maxPrice
+  const maxMatch = remaining.match(/dưới\s*(\d+(?:[.,]\d+)?)\s*(?:triệu|tr|củ)/);
+  if (maxMatch) {
+    const amount = toVnd(maxMatch[1]);
+    if (Number.isFinite(amount) && amount > 0) {
+      maxPrice = amount;
+    }
+    remaining = remaining.replace(maxMatch[0], ' ');
+  }
+
+  // "trên 10 triệu" (hoặc 10tr / 10 củ) -> minPrice
+  const minMatch = remaining.match(/trên\s*(\d+(?:[.,]\d+)?)\s*(?:triệu|tr|củ)/);
+  if (minMatch) {
+    const amount = toVnd(minMatch[1]);
+    if (Number.isFinite(amount) && amount > 0) {
+      minPrice = amount;
+    }
+    remaining = remaining.replace(minMatch[0], ' ');
+  }
+
+  // Ngân sách ước lượng: "khoảng 20 triệu", "laptop 1,5 triệu" -> maxPrice
+  if (minPrice === null && maxPrice === null) {
+    const approxMatch = remaining.match(/(\d+(?:[.,]\d+)?)\s*(?:triệu|tr|củ)/);
+    if (approxMatch) {
+      const amount = toVnd(approxMatch[1]);
+      if (Number.isFinite(amount) && amount > 0) {
+        maxPrice = amount;
+      }
+      remaining = remaining.replace(approxMatch[0], ' ');
+    }
+  }
+
+  // Danh mục: id thật trong DB là "cat-laptop" / "cat-phone" (xem prisma/schema.prisma + seed).
+  if (/\blaptops?\b/.test(remaining)) {
+    categoryId = 'cat-laptop';
+    remaining = remaining.replace(/\blaptops?\b/g, ' ');
+  } else if (/điện\s*thoại|dien\s*thoai|smartphone|mobile|cell\s*phone/.test(remaining)) {
+    categoryId = 'cat-phone';
+    remaining = remaining.replace(/điện\s*thoại|dien\s*thoai|smartphone|mobile|cell\s*phone/g, ' ');
+  }
+
+  // Loại bỏ từ nhiễu ("giá rẻ", "tìm", "mua", ...) để lấy từ khoá sản phẩm thật sự.
+  for (const pattern of NATURAL_LANGUAGE_NOISE_PATTERNS) {
+    remaining = remaining.replace(pattern, ' ');
+  }
+
+  const keyword = remaining
+    .replace(/[.,!?;:()"']+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return { keyword, categoryId, minPrice, maxPrice };
+};
+
+const getProductData = async (
+  where?: Prisma.ProductWhereInput,
+  skip = 0,
+  take = 100,
+) => {
   try {
     const productsFromDb = await prisma.product.findMany({
+      where,
+      skip,
+      take,
       select: {
         id: true,
         name: true,
         description: true,
         specs: true,
         basePrice: true,
+        imageUrl: true,
+        brand: true,
         category: { select: { name: true } },
         reviews: { select: { rating: true } },
         listings: {
@@ -232,12 +331,13 @@ const getProductData = async () => {
           : 0;
         const stockTotal = product.listings.reduce((total, listing) => total + listing.stock, 0);
         const price = offers[0]?.price ?? (listingPrices.length > 0 ? Math.min(...listingPrices) : Number(product.basePrice ?? 0));
+        const imgUrl = product.imageUrl ?? '';
 
         return {
           id: product.id,
           name: product.name,
           slug: product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          brand: product.name.split(' ')[0] ?? 'Brand',
+          brand: product.brand ?? product.name.split(' ')[0] ?? 'Brand',
           category: product.category?.name ?? 'General',
           price,
           originalPrice: price,
@@ -245,8 +345,8 @@ const getProductData = async () => {
           stock: stockTotal,
           rating: averageRating,
           reviewCount: product.reviews.length,
-          thumbnailUrl: '',
-          images: [],
+          thumbnailUrl: imgUrl,
+          images: imgUrl ? [imgUrl] : [],
           isFeatured: false,
           specs: (product.specs as Record<string, any>) ?? {},
           recommendationBadge: null,
@@ -862,23 +962,26 @@ app.get('/api/products', async (req: Request, res: Response) => {
     const page = parseIntegerQuery(req.query.page, 1, 1, 1_000_000);
     const limit = parseIntegerQuery(req.query.limit, 12, 1, 100);
     const rawQuery = req.query.q;
+    const rawSearch = req.query.search;
     const rawCategory = req.query.category;
     const rawBrand = req.query.brand;
     if ((rawQuery !== undefined && (typeof rawQuery !== 'string' || rawQuery.length > 200))
+      || (rawSearch !== undefined && (typeof rawSearch !== 'string' || rawSearch.length > 200))
       || (rawCategory !== undefined && (typeof rawCategory !== 'string' || rawCategory.length > 120))
       || (rawBrand !== undefined && (typeof rawBrand !== 'string' || rawBrand.length > 120))) {
       return res.status(400).json({ success: false, message: 'Search filters must be single strings within their length limits' });
     }
 
     const query = typeof rawQuery === 'string' ? rawQuery.trim().toLocaleLowerCase() : '';
+    const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
     const category = typeof rawCategory === 'string' ? rawCategory.trim() : '';
     const brand = typeof rawBrand === 'string' ? rawBrand.trim() : '';
-    const minPrice = req.query.minPrice === undefined
+    const explicitMinPrice = req.query.minPrice === undefined
       ? undefined
       : typeof req.query.minPrice === 'string' && req.query.minPrice.trim()
         ? Number(req.query.minPrice)
         : Number.NaN;
-    const maxPrice = req.query.maxPrice === undefined
+    const explicitMaxPrice = req.query.maxPrice === undefined
       ? undefined
       : typeof req.query.maxPrice === 'string' && req.query.maxPrice.trim()
         ? Number(req.query.maxPrice)
@@ -887,39 +990,85 @@ app.get('/api/products', async (req: Request, res: Response) => {
     if (page === null || limit === null) {
       return res.status(400).json({ success: false, message: 'page must be 1–1000000 and limit must be 1–100' });
     }
-    if ((minPrice !== undefined && (!Number.isFinite(minPrice) || minPrice < 0))
-      || (maxPrice !== undefined && (!Number.isFinite(maxPrice) || maxPrice < 0))
-      || (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice)) {
+    if ((explicitMinPrice !== undefined && (!Number.isFinite(explicitMinPrice) || explicitMinPrice < 0))
+      || (explicitMaxPrice !== undefined && (!Number.isFinite(explicitMaxPrice) || explicitMaxPrice < 0))) {
       return res.status(400).json({ success: false, message: 'Invalid price range' });
     }
 
-    const products = await getProductData();
-    const filteredProducts = products.filter((product) => {
-      const matchesQuery = !query
-        || product.name.toLocaleLowerCase().includes(query)
-        || product.brand.toLocaleLowerCase().includes(query)
-        || product.category.toLocaleLowerCase().includes(query);
-      const matchesCategory = !category || product.category.toLowerCase() === category.toLowerCase();
-      const matchesBrand = !brand || product.brand.toLowerCase() === brand.toLowerCase();
-      const matchesMinPrice = minPrice === undefined || product.price >= minPrice;
-      const matchesMaxPrice = maxPrice === undefined || product.price <= maxPrice;
-      return matchesQuery && matchesCategory && matchesBrand && matchesMinPrice && matchesMaxPrice;
-    });
+    // Nhận diện tìm kiếm ngôn ngữ tự nhiên: ưu tiên tham số "search",
+    // đồng thời hỗ trợ cả "q" khi người dùng gõ "dưới/trên ... triệu" vào ô tìm kiếm.
+    const naturalLanguageInput = search
+      || (/(?:dưới|trên)\s*\d+(?:[.,]\d+)?\s*(?:triệu|tr|củ)/.test(query) ? query : '');
+    const naturalLanguageFilters = naturalLanguageInput
+      ? parseNaturalLanguageSearch(naturalLanguageInput)
+      : null;
 
-    const startIndex = (page - 1) * limit;
-    const paginated = filteredProducts.slice(startIndex, startIndex + limit);
+    const minPrice = explicitMinPrice ?? naturalLanguageFilters?.minPrice ?? undefined;
+    const maxPrice = explicitMaxPrice ?? naturalLanguageFilters?.maxPrice ?? undefined;
+
+    if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+      return res.status(400).json({ success: false, message: 'Invalid price range' });
+    }
+
+    // Khi đã bóc tách NL, dùng đúng từ khoá còn lại (có thể rỗng) thay vì chuỗi gốc.
+    const effectiveQuery = naturalLanguageFilters ? naturalLanguageFilters.keyword : query;
+    const naturalLanguageCategoryName = naturalLanguageFilters?.categoryId === 'cat-laptop'
+      ? 'Laptop'
+      : naturalLanguageFilters?.categoryId === 'cat-phone'
+        ? 'Điện thoại'
+        : '';
+    const effectiveCategory = category || naturalLanguageCategoryName;
+
+    // Map điều kiện đã bóc tách vào Prisma query object.
+    // Lưu ý: model Product dùng cột "name" (không có cột "title" trong schema).
+    // Tất cả điều kiện lọc được đẩy xuống DB để tận dụng index (B-tree, GIN, HNSW).
+    const prismaWhere: Prisma.ProductWhereInput = {};
+    if (naturalLanguageFilters?.categoryId) {
+      prismaWhere.categoryId = naturalLanguageFilters.categoryId;
+    }
+    if (effectiveQuery) {
+      prismaWhere.OR = [
+        { name: { contains: effectiveQuery, mode: 'insensitive' } },
+        { brand: { contains: effectiveQuery, mode: 'insensitive' } },
+        { category: { name: { contains: effectiveQuery, mode: 'insensitive' } } },
+      ];
+    }
+    if (brand) {
+      prismaWhere.brand = { equals: brand, mode: 'insensitive' };
+    }
+    if (effectiveCategory) {
+      prismaWhere.category = { name: { equals: effectiveCategory, mode: 'insensitive' } };
+    }
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      prismaWhere.basePrice = {
+        ...(minPrice !== undefined ? { gte: minPrice } : {}),
+        ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+      };
+    }
+
+    const whereClause = Object.keys(prismaWhere).length > 0 ? prismaWhere : undefined;
+    const skip = (page - 1) * limit;
+
+    // Chạy song song truy vấn dữ liệu và truy vấn đếm tổng số để tối ưu hiệu năng.
+    const [products, totalItems] = await prisma.$transaction(async (tx) => {
+      const [productsResult, countResult] = await Promise.all([
+        getProductData(whereClause, skip, limit),
+        tx.product.count({ where: whereClause }),
+      ]);
+      return [productsResult, countResult] as const;
+    });
 
     return res.json({
       success: true,
-      data: paginated,
+      data: products,
       filterOptions: {
-        categories: [...new Set(products.map((product) => product.category))].sort(),
-        brands: [...new Set(products.map((product) => product.brand))].sort(),
+        categories: [...new Set(products.map((product: { category: string }) => product.category))].sort(),
+        brands: [...new Set(products.map((product: { brand: string }) => product.brand))].sort(),
       },
       pagination: {
         currentPage: page,
-        totalPages: Math.max(1, Math.ceil(filteredProducts.length / limit || 1)),
-        totalItems: filteredProducts.length,
+        totalPages: Math.max(1, Math.ceil(totalItems / limit || 1)),
+        totalItems,
         limit,
       },
     });

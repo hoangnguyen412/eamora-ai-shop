@@ -7,7 +7,6 @@ import time
 import re
 import os
 import uuid
-import math
 import psycopg2
 from psycopg2.extras import Json
 from dotenv import load_dotenv
@@ -65,40 +64,141 @@ def embed_texts(req: EmbedRequest):
     return {"embeddings": embeddings_list}
 
 # 3. Task T3-2-3: Constraint Parser
-def parse_filters(text: str) -> dict:
-    """Bóc tách hard filter (budget_max, brand, category) từ câu query."""
-    text = text.lower()
+PRICE_UNIT_MULTIPLIERS = {
+    "triệu": 1_000_000,
+    "tr": 1_000_000,
+    "củ": 1_000_000,
+    "k": 1_000,
+    "nghìn": 1_000,
+    "ngàn": 1_000,
+}
 
-    # Bóc tách giá tiền (triệu, tr, k, nghìn)
-    budget_max = None
-    price_match = re.search(r'(\d+)\s*(triệu|tr|củ)', text)
-    if price_match:
-        budget_max = int(price_match.group(1)) * 1_000_000
-    else:
-        price_match_k = re.search(r'(\d+)\s*(k|nghìn)', text)
-        if price_match_k:
-            budget_max = int(price_match_k.group(1)) * 1_000
+# LƯU Ý: id danh mục thực tế trong DB là "cat-phone" / "cat-laptop"
+# (xem AI_features/seed_db.py). Dùng "cat-mobile" sẽ không khớp bản ghi nào.
+CATEGORY_KEYWORDS = {
+    "cat-laptop": ["laptop", "macbook", "thinkpad", "ideapad", "zenbook", "máy tính xách tay"],
+    "cat-phone": [
+        "mobile", "điện thoại", "smartphone", "iphone", "samsung", "oppo",
+        "redmi", "oneplus", "infinix", "vivo", "realme",
+    ],
+}
 
-    # Bóc tách brand
-    brands = ["asus", "apple", "samsung", "dell", "sony", "xiaomi", "hp", "lenovo"]
+CATEGORY_LABELS = {
+    "cat-laptop": "Laptop",
+    "cat-phone": "Điện thoại",
+}
+
+
+def _parse_price_to_vnd(val_str: Optional[str], unit: Optional[str]) -> Optional[int]:
+    """Chuẩn hoá số tiền người dùng nhập (VD: "20 triệu", "1,5tr", "500k") sang VND."""
+    if not val_str:
+        return None
+    num = float(val_str.replace(',', '.'))
+    if unit in PRICE_UNIT_MULTIPLIERS:
+        return int(num * PRICE_UNIT_MULTIPLIERS[unit])
+    clean_num = int(val_str.replace('.', '').replace(',', ''))
+    return clean_num if clean_num >= 100000 else int(num * 1_000_000)
+
+
+def _detect_category_id(text: str) -> Optional[str]:
+    """Trả về id danh mục nếu câu văn bản có chứa từ khoá danh mục."""
+    lowered = (text or "").lower()
+    for category_id, keywords in CATEGORY_KEYWORDS.items():
+        if any(keyword in lowered for keyword in keywords):
+            return category_id
+    return None
+
+
+def parse_filters(text: str, chat_history: Optional[List[str]] = None) -> dict:
+    """Bóc tách hard filter (min_price, max_price, category_id, brand) từ câu query.
+
+    chat_history: danh sách tin nhắn cũ của user, sắp xếp theo thứ tự thời gian
+    (cũ -> mới). Dùng để kế thừa danh mục khi câu hỏi hiện tại không nêu danh mục.
+    """
+    text = (text or "").lower()
+
+    min_price = None
+    max_price = None
+    category_id = None
     brand = None
-    for b in brands:
-        if b in text:
-            brand = b.capitalize()
-            break
+    strict_budget = False
 
-    # Bóc tách category
-    categories = ["laptop", "điện thoại", "tai nghe", "quần áo", "phụ kiện"]
-    category = None
-    for c in categories:
-        if c in text:
-            category = c
-            break
+    # 1. Price Detection: Range "từ X đến Y", "X đến Y", "X - Y triệu"
+    range_match = re.search(r'(?:từ\s*)?(\d+(?:[.,]\d+)?)\s*(triệu|tr|củ|k|nghìn|ngàn)?\s*(?:đến|tới|-)\s*(\d+(?:[.,]\d+)?)\s*(triệu|tr|củ|k|nghìn|ngàn)?\b', text)
+    if range_match:
+        val1_str, unit1, val2_str, unit2 = range_match.groups()
+        unit1 = unit1 or unit2
+        unit2 = unit2 or unit1
+
+        min_price = _parse_price_to_vnd(val1_str, unit1)
+        max_price = _parse_price_to_vnd(val2_str, unit2)
+    else:
+        # Min price: "trên", "lớn hơn", "cao hơn", "từ", ">=", ">"
+        min_match = re.search(r'(?:trên|lớn hơn|cao hơn|từ|>=|>)\s*(\d+(?:[.,]\d+)?)\s*(triệu|tr|củ|k|nghìn|ngàn)?\b', text)
+        if min_match:
+            val_str, unit = min_match.groups()
+            min_price = _parse_price_to_vnd(val_str, unit)
+
+        # Max price: "dưới", "nhỏ hơn", "ít hơn", "bé hơn", "đến", "tới", "<=", "<"
+        max_match = re.search(r'(?:dưới|nhỏ hơn|ít hơn|bé hơn|đến|tới|<=|<)\s*(\d+(?:[.,]\d+)?)\s*(triệu|tr|củ|k|nghìn|ngàn)?\b', text)
+        if max_match:
+            val_str, unit = max_match.groups()
+            max_price = _parse_price_to_vnd(val_str, unit)
+
+        # Ngưỡng giá tường minh theo đúng đơn vị "triệu":
+        # "dưới 20 triệu" -> max_price = 20_000_000, "trên 10 triệu" -> min_price = 10_000_000
+        if max_price is None:
+            under_trieu = re.search(r'dưới\s*(\d+(?:[.,]\d+)?)\s*triệu', text)
+            if under_trieu:
+                max_price = _parse_price_to_vnd(under_trieu.group(1), "triệu")
+
+        if min_price is None:
+            over_trieu = re.search(r'trên\s*(\d+(?:[.,]\d+)?)\s*triệu', text)
+            if over_trieu:
+                min_price = _parse_price_to_vnd(over_trieu.group(1), "triệu")
+
+        # Approx price: "tầm", "khoảng", "mức", "giá"
+        if min_price is None and max_price is None:
+            approx_match = re.search(r'(?:tầm|khoảng|mức|giá)?\s*(\d+(?:[.,]\d+)?)\s*(triệu|tr|củ|k|nghìn|ngàn)\b', text)
+            if approx_match:
+                val_str, unit = approx_match.groups()
+                if unit in ['triệu', 'tr', 'củ']:
+                    max_price = _parse_price_to_vnd(val_str, unit)
+                elif unit in ['k', 'nghìn', 'ngàn']:
+                    max_price = _parse_price_to_vnd(val_str, unit)
+
+    if max_price is not None and ("dưới" in text or "nhỏ hơn" in text or "<" in text):
+        strict_budget = True
+
+    # 2. Category Detection (câu hiện tại trước)
+    category_id = _detect_category_id(text)
+
+    # 2b. Context retention: kế thừa danh mục từ tin nhắn gần nhất trong lịch sử chat.
+    # chat_history theo thứ tự cũ -> mới, nên reversed() duyệt từ mới nhất trở về trước.
+    if category_id is None and chat_history:
+        for previous_message in reversed(chat_history):
+            historical_category_id = _detect_category_id(previous_message)
+            if historical_category_id:
+                category_id = historical_category_id
+                break
+
+    # 3. Brand Detection
+    if "iphone" in text or "apple" in text:
+        brand = "Apple"
+    elif "samsung" in text:
+        brand = "Samsung"
+    elif "oppo" in text:
+        brand = "Oppo"
 
     return {
-        "budget_max": budget_max,
+        "category_id": category_id,
+        "min_price": min_price,
+        "max_price": max_price,
         "brand": brand,
-        "category": category
+        "category": CATEGORY_LABELS.get(category_id) if category_id else None,
+        "budget_min": min_price,
+        "budget_max": max_price,
+        "strict_budget": strict_budget,
     }
 
 class ParseRequest(BaseModel):
@@ -131,27 +231,31 @@ def semantic_search(req: SemanticSearchRequest):
     # - Bọc ngoặc kép đầy đủ cho tên bảng và tên cột (case sensitivity / PascalCase)
     # - Sử dụng hoàn toàn parameterized query (%s), tránh SQL injection
     sql = """
-        SELECT p."id", p."name", p."basePrice", p."description",
+        SELECT p."id", p."name", p."basePrice", p."description", p."imageUrl", p."brand",
                1 - (e."vector" <=> %s::vector) AS score
         FROM "Embedding" e
         JOIN "Product" p ON e."productId" = p."id"
+        WHERE 1=1
     """
     params = [vector_str]
-    where_clauses = []
 
-    if filters.get("budget_max") is not None:
-        where_clauses.append('p."basePrice" <= %s')
-        params.append(filters["budget_max"])
+    if filters.get("category_id"):
+        sql += ' AND p."categoryId" = %s'
+        params.append(filters["category_id"])
+
     if filters.get("brand") is not None:
-        where_clauses.append('LOWER(p."name") LIKE LOWER(%s)')
-        params.append(f'%{filters["brand"]}%')
+        sql += ' AND (p."brand" = %s OR p."name" ILIKE %s)'
+        params.append(filters["brand"])
+        params.append(f"%{filters['brand']}%")
 
-    if filters.get("category") is not None:
-        where_clauses.append('p."categoryId" IN (SELECT "id" FROM "Category" WHERE LOWER("name") = LOWER(%s))')
-        params.append(filters["category"])
+    if filters.get("max_price") is not None:
+        op = '<' if filters.get("strict_budget") else '<='
+        sql += f' AND p."basePrice" {op} %s'
+        params.append(filters["max_price"])
 
-    if where_clauses:
-        sql += " WHERE " + " AND ".join(where_clauses)
+    if filters.get("min_price") is not None:
+        sql += ' AND p."basePrice" >= %s'
+        params.append(filters["min_price"])
 
     sql += ' ORDER BY e."vector" <=> %s::vector LIMIT 5'
     params.append(vector_str)
@@ -165,10 +269,10 @@ def semantic_search(req: SemanticSearchRequest):
             "id": row[0],
             "name": row[1],
             "price": row[2],
-            "imageUrl": None,  # Bảng Product không có cột ảnh trong schema.prisma
             "description": row[3],
-            "brand": None,     # Bảng Product không có cột brand riêng
-            "score": float(row[4]),
+            "imageUrl": row[4],
+            "brand": row[5],
+            "score": float(row[6]),
         })
 
     cur.close()
@@ -202,24 +306,42 @@ class ChatRequest(BaseModel):
 def chat_message(req: ChatRequest):
     """
     Luồng RAG Chatbot:
-    1. Lưu tin nhắn của user vào ChatMessage (role: 'user').
-    2. Tạo embedding từ message, query pgvector lấy top 3 sản phẩm liên quan nhất.
-    3. Khởi tạo client OpenAI trỏ tới NVIDIA NIM (meta/llama-3.3-70b-instruct).
-    4. Gửi prompt cho LLM để tạo câu trả lời tư vấn bán hàng.
-    5. Lưu câu trả lời của assistant vào ChatMessage (role: 'assistant').
-    6. Trả về {answer, products, groundedness_score: 0.95}.
+    1. BƯỚC 1 & 2: Kiểm tra từ khóa chào hỏi hoặc tin nhắn quá ngắn -> Bỏ qua vector DB, trả lời chào hỏi lịch sự.
+    2. BƯỚC 3: Nếu khách hỏi mua hàng -> Query pgvector lấy top 3 sản phẩm phù hợp.
+    3. BƯỚC 4: Tạo prompt LLM tư vấn tự nhiên (tuyệt đối không dùng câu rập khuôn).
+    4. Lưu tin nhắn user và assistant vào ChatMessage.
+    5. Trả về {answer, products, groundedness_score: 0.95}.
     """
     user_msg_id = str(uuid.uuid4())
     products = []
+    filters: dict = {}
 
-    # Bước 1 & Bước 2: Lưu tin nhắn user và query top 3 sản phẩm từ DB
+    # BƯỚC 1: Danh sách các từ khóa chào hỏi
+    greeting_keywords = ["hi", "hello", "chào", "how are you", "bạn là ai", "cảm ơn"]
+    msg_clean = req.message.strip().lower()
+    msg_normalized = re.sub(r'^[^\w]+|[^\w]+$', '', msg_clean)
+
+    shopping_indicators = [
+        "mua", "tìm", "kiếm", "bán", "giá", "cần", "tư vấn", "sản phẩm",
+        "laptop", "điện thoại", "smartphone", "iphone", "samsung", "macbook",
+        "asus", "dell", "hp", "lenovo", "triệu", "tr", "củ"
+    ]
+    has_shopping_intent = any(w in msg_normalized for w in shopping_indicators)
+
+    # BƯỚC 2: Nếu câu message của user nằm trong danh sách chào hỏi (hoặc quá ngắn), bỏ qua vector DB
+    is_greeting = not has_shopping_intent and (
+        msg_normalized in greeting_keywords
+        or len(msg_normalized) <= 3
+        or any(k in msg_normalized for k in greeting_keywords)
+    )
+
     conn = None
     cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Bước 1: Lưu tin nhắn user vào bảng ChatMessage
+        # Lưu tin nhắn user vào bảng ChatMessage
         insert_user_sql = """
             INSERT INTO "ChatMessage" ("id", "sessionId", "role", "content", "retrievedProducts", "createdAt")
             VALUES (%s, %s, %s, %s, %s, NOW())
@@ -227,37 +349,79 @@ def chat_message(req: ChatRequest):
         cur.execute(insert_user_sql, (user_msg_id, req.sessionId, "user", req.message, None))
         conn.commit()
 
-        # Bước 2: Tạo vector từ message và query pgvector top 3 sản phẩm
-        embedding = model.encode(req.message)
-        vector_str = "[" + ",".join(str(float(x)) for x in embedding) + "]"
+        # BƯỚC 3: Nếu khách hỏi mua hàng, tìm sản phẩm bằng hard filter (SQL thuần)
+        if not is_greeting:
+            # Lấy lịch sử tin nhắn user trong session, sắp xếp theo thứ tự thời gian (cũ -> mới)
+            chat_history = []
+            try:
+                cur.execute(
+                    'SELECT "content" FROM "ChatMessage" WHERE "sessionId" = %s AND "role" = \'user\' AND "id" != %s ORDER BY "createdAt" DESC LIMIT 5',
+                    (req.sessionId, user_msg_id)
+                )
+                history_rows = cur.fetchall()
+                chat_history = [row[0] for row in reversed(history_rows) if row[0]]
+            except Exception as ctx_err:
+                print(f"[Chat RAG] Context retention error: {ctx_err}")
 
-        search_sql = """
-            SELECT p."id", p."name", p."basePrice", p."description", p."imageUrl", p."brand",
-                   1 - (e."vector" <=> %s::vector) AS score
-            FROM "Embedding" e
-            JOIN "Product" p ON e."productId" = p."id"
-            ORDER BY e."vector" <=> %s::vector
-            LIMIT 3
-        """
-        cur.execute(search_sql, (vector_str, vector_str))
-        rows = cur.fetchall()
+            # Truyền chat_history để parse_filters kế thừa danh mục từ ngữ cảnh
+            filters = parse_filters(req.message, chat_history)
 
-        for row in rows:
-            raw_score = row[6]
-            if raw_score is None or math.isnan(raw_score):
-                score_val = 0.0
-            else:
-                score_val = float(raw_score)
+            # Câu SQL thuần: tên bảng/cột camelCase phải bọc ngoặc kép đúng chuẩn PostgreSQL
+            sql = (
+                'SELECT p."id", p."name", p."basePrice", p."brand", p."imageUrl", p."categoryId" '
+                'FROM "Product" p WHERE 1=1'
+            )
+            params = []
 
-            products.append({
-                "id": row[0],
-                "name": row[1],
-                "price": row[2],
-                "description": row[3],
-                "imageUrl": row[4],
-                "brand": row[5],
-                "score": score_val,
-            })
+            if filters.get("category_id"):
+                sql += ' AND p."categoryId" = %s'
+                params.append(filters["category_id"])
+
+            if filters.get("brand"):
+                sql += ' AND (p."brand" = %s OR p."name" ILIKE %s)'
+                params.append(filters["brand"])
+                params.append(f"%{filters['brand']}%")
+
+            if filters.get("max_price") is not None:
+                sql += ' AND p."basePrice" <= %s'
+                params.append(filters["max_price"])
+
+            if filters.get("min_price") is not None:
+                sql += ' AND p."basePrice" >= %s'
+                params.append(filters["min_price"])
+
+            sql += ' ORDER BY p."basePrice" ASC LIMIT 3'
+
+            print(f"DEBUG SQL: {sql} | PARAMS: {params}")
+
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+
+            # ANTI-HALLUCINATION: không có sản phẩm nào khớp hard filter -> bỏ qua LLM, trả lời ngay
+            if len(rows) == 0:
+                print("[Chat RAG] No products matched hard filters -> bypassing LLM")
+                no_match_reply = "Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này."
+                try:
+                    cur.execute(
+                        insert_user_sql,
+                        (str(uuid.uuid4()), req.sessionId, "assistant", no_match_reply, None)
+                    )
+                    conn.commit()
+                except Exception as save_err:
+                    err_msg = str(save_err).encode("ascii", "replace").decode("ascii")
+                    print(f"[Chat RAG] Database error during early assistant message save: {err_msg}")
+                    conn.rollback()
+                return {"answer": no_match_reply}
+
+            for row in rows:
+                products.append({
+                    "id": row[0],
+                    "name": row[1],
+                    "price": row[2],
+                    "brand": row[3],
+                    "imageUrl": row[4],
+                    "categoryId": row[5],
+                })
 
     except Exception as db_err:
         err_msg = str(db_err).encode("ascii", "replace").decode("ascii")
@@ -279,32 +443,58 @@ def chat_message(req: ChatRequest):
             except Exception:
                 pass
 
-    # Bước 3: Khởi tạo client OpenAI trỏ tới NVIDIA NIM
+    # Khởi tạo client OpenAI trỏ tới NVIDIA NIM
     openai_client = OpenAI(
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=os.getenv("NVIDIA_API_KEY", "")
     )
 
-    # Bước 4: Tạo prompt gửi LLM
-    if products:
-        product_lines = []
-        for i, p in enumerate(products, 1):
-            price_val = f"{p['price']:,.0f} VND" if p.get("price") is not None else "Liên hệ"
-            brand_val = f", Thương hiệu: {p['brand']}" if p.get("brand") else ""
-            desc_val = f", Mô tả: {p['description']}" if p.get("description") else ""
-            product_lines.append(f"{i}. {p['name']} (Giá: {price_val}{brand_val}{desc_val})")
-        product_text = "\n".join(product_lines)
+    # BƯỚC 4: Tạo System Prompt gửi LLM
+    if is_greeting:
+        system_prompt = "Bạn là trợ lý AI của E-Amora. Hãy chào hỏi lịch sự và hỏi khách cần tìm sản phẩm gì."
     else:
-        product_text = "Hiện tại không có thông tin sản phẩm phù hợp trong hệ thống."
+        if products:
+            product_lines = []
+            for i, p in enumerate(products, 1):
+                price_val = f"{p['price']:,.0f} VND" if p.get("price") is not None else "Liên hệ"
+                brand_val = f", Thương hiệu: {p['brand']}" if p.get("brand") else ""
+                desc_val = f", Mô tả: {p['description']}" if p.get("description") else ""
+                product_lines.append(f"{i}. {p['name']} (Giá: {price_val}{brand_val}{desc_val})")
+            product_text = "\n".join(product_lines)
 
-    prompt = f"Bạn là trợ lý bán hàng E-Amora. Dựa vào sản phẩm sau:\n{product_text}\n\nhãy trả lời câu hỏi: {req.message}"
+            # Xây dựng thông tin khách hàng đang tìm (dùng để kiểm tra khớp/không khớp)
+            search_intent_parts = []
+            if filters.get("category"):
+                search_intent_parts.append(f"danh mục: {filters['category']}")
+            if filters.get("brand"):
+                search_intent_parts.append(f"thương hiệu: {filters['brand']}")
+            search_intent = ", ".join(search_intent_parts) if search_intent_parts else "không rõ"
+
+            system_prompt = (
+                f"Bạn là trợ lý bán hàng của sàn thương mại điện tử E-Amora. "
+                f"Khách hàng đang tìm: {search_intent}.\n\n"
+                f"Dưới đây là danh sách sản phẩm tìm được trong hệ thống:\n{product_text}\n\n"
+                "QUY TẮC QUAN TRỌNG:\n"
+                "1. Nếu danh sách sản phẩm trên KHÔNG khớp với từ khóa tìm kiếm của khách (ví dụ: khách tìm iPhone nhưng danh sách có Oppo, hoặc khách tìm Điện thoại nhưng danh sách có Laptop), hãy TỪ CHỐI tư vấn và trả lời chính xác: 'Xin lỗi, hiện tại E-Amora chưa có mẫu [tên sản phẩm khách tìm] nào phù hợp'.\n"
+                "2. BẠN CHỈ được phép tư vấn dựa trên các sản phẩm có trong danh sách trên. TUYỆT ĐỐI KHÔNG tự bịa thêm sản phẩm nào không có trong danh sách.\n"
+                "3. Hãy tư vấn nhiệt tình và tự nhiên cho khách hàng.\n"
+                "TUYỆT ĐỐI KHÔNG dùng các câu rập khuôn như 'Dựa trên yêu cầu của bạn...', 'Theo thông tin bạn cung cấp...'."
+            )
+        else:
+            system_prompt = (
+                "Bạn là trợ lý bán hàng của sàn thương mại điện tử E-Amora. "
+                "Hiện tại hệ thống không tìm thấy sản phẩm nào phù hợp với yêu cầu của khách hàng. "
+                "BẠN PHẢI trả lời CHÍNH XÁC câu sau: 'Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.' "
+                "Tuyệt đối KHÔNG tự bịa ra sản phẩm hoặc gợi ý các mặt hàng không liên quan (như tai nghe, phụ kiện) nếu người dùng đang tìm laptop/điện thoại."
+            )
 
     answer = ""
     try:
         completion = openai_client.chat.completions.create(
             model="meta/llama-3.3-70b-instruct",
             messages=[
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": req.message}
             ],
             temperature=0.7,
             max_tokens=1024,
@@ -313,11 +503,13 @@ def chat_message(req: ChatRequest):
     except Exception as llm_err:
         err_msg = str(llm_err).encode("ascii", "replace").decode("ascii")
         print(f"[Chat RAG] LLM error with meta/llama-3.3-70b-instruct: {err_msg}")
-        if products:
+        if is_greeting:
+            answer = "Xin chào! Tôi là trợ lý AI của E-Amora. Bạn đang cần tìm kiếm sản phẩm gì hôm nay?"
+        elif products:
             suggested = ", ".join([p["name"] for p in products])
-            answer = f"Dựa trên yêu cầu của bạn, E-Amora gợi ý các sản phẩm phù hợp sau: {suggested}. Vui lòng tham khảo danh sách sản phẩm chi tiết bên dưới!"
+            answer = f"E-Amora gợi ý bạn tham khảo các mẫu sau: {suggested}. Bạn có thể xem chi tiết ở danh sách sản phẩm nhé!"
         else:
-            answer = "Chào bạn! Hiện tại E-Amora chưa tìm thấy sản phẩm phù hợp với yêu cầu của bạn. Bạn vui lòng thử lại với câu hỏi khác nhé!"
+            answer = "Rất tiếc, hiện tại E-Amora chưa tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có muốn thử tìm kiếm với mức giá hoặc tiêu chí khác không?"
 
     # Bước 5: Lưu câu trả lời của LLM vào bảng ChatMessage (role: 'assistant')
     assistant_msg_id = str(uuid.uuid4())
