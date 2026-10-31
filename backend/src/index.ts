@@ -1348,6 +1348,31 @@ app.post('/api/agent/watch', requireAuth, requireRole(['buyer']), async (req: Au
   }
 });
 
+app.delete('/api/agent/watch/:id', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  const watchId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  try {
+    const watch = await prisma.watchlist.findUnique({
+      where: { id: watchId },
+      select: { id: true, userId: true },
+    });
+    if (!watch) {
+      return res.status(404).json({ success: false, message: 'Watchlist item not found' });
+    }
+    if (watch.userId !== req.user!.id) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this watchlist item' });
+    }
+
+    await prisma.watchlist.delete({
+      where: { id: watchId },
+    });
+
+    return res.json({ success: true, message: 'Đã xoá sản phẩm khỏi danh sách theo dõi.' });
+  } catch (error) {
+    return sendServerError(res, 'Unable to delete price watch', error);
+  }
+});
+
 app.get('/api/agent/rules', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
@@ -1660,6 +1685,7 @@ app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: A
             select: {
               id: true,
               name: true,
+              imageUrl: true,
               listings: {
                 select: {
                   id: true,
@@ -1810,8 +1836,11 @@ app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   return sendServerError(res, 'Unhandled request error', error);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Backend đang chạy tại http://localhost:${PORT}`);
   console.log(`📚 Swagger UI tại http://localhost:${PORT}/docs`);
+  await ensureMockBuyer().catch((error) => {
+    console.error('Failed to ensure mock buyer:', error);
+  });
   startAutoBuyWorker();
 });

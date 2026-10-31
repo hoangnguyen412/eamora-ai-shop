@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { BellRing, TrendingDown } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { formatDate, formatPrice } from "@/lib/helpers";
@@ -28,6 +29,7 @@ interface WatchedListing {
 interface WatchedProduct {
   id: string;
   name: string;
+  imageUrl?: string | null;
   listings: WatchedListing[];
 }
 
@@ -102,6 +104,27 @@ export default function WatchlistPage() {
       if (!signal.aborted) setIsLoading(false);
     }
   }, [token]);
+
+  const handleDelete = async (watchId: string) => {
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/agent/watch/${encodeURIComponent(watchId)}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await response.json() as { success?: boolean; message?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Không thể xoá sản phẩm khỏi danh sách theo dõi.");
+      }
+      setWatchlist((prev) => prev.filter((watch) => watch.id !== watchId));
+      setNotice("Đã xoá sản phẩm khỏi danh sách theo dõi.");
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Không thể xoá sản phẩm.");
+    }
+  };
 
   useEffect(() => {
     if (isAuthLoading || !token || user?.role !== "buyer") return;
@@ -266,7 +289,7 @@ export default function WatchlistPage() {
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-semibold">Sản phẩm đang theo dõi</h2>
-          <p className="text-sm text-muted-foreground">Các mốc giá hiển thị là dữ liệu đã được backend ghi nhận.</p>
+          <p className="text-sm text-muted-foreground">Danh sách sản phẩm bạn đang theo dõi giá.</p>
         </div>
         {watchlist.length === 0 ? (
           <Card>
@@ -279,43 +302,77 @@ export default function WatchlistPage() {
           </Card>
         ) : (
           watchlist.map((watch) => {
-            const recordedPrices = watch.product.listings.flatMap((listing) =>
-              listing.priceHistory.map((point) => ({ ...point, shopName: listing.shop.name })),
-            ).sort((left, right) => new Date(right.recordedAt).getTime() - new Date(left.recordedAt).getTime());
+            const pricesWithStock = watch.product.listings
+              .filter((listing) => listing.stock > 0)
+              .map((listing) => listing.price);
+            const allPrices = watch.product.listings.map((listing) => listing.price);
+            const currentPrice =
+              pricesWithStock.length > 0
+                ? Math.min(...pricesWithStock)
+                : allPrices.length > 0
+                  ? Math.min(...allPrices)
+                  : 0;
+            const isTargetReached = currentPrice > 0 && currentPrice <= watch.targetPrice;
 
             return (
-              <Card key={watch.id}>
-                <CardHeader className="flex-row items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <CardTitle>
-                      <Link href={`/products/${watch.product.id}`} className="hover:text-primary">
+              <Card key={watch.id} className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex-shrink-0">
+                  {watch.product.imageUrl ? (
+                    <Image
+                      src={watch.product.imageUrl}
+                      alt={watch.product.name}
+                      width={80}
+                      height={80}
+                      className="rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-xl bg-muted/50 flex items-center justify-center text-muted-foreground">
+                      <span className="text-xs">Không có ảnh</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Link href={`/products/${watch.product.id}`} className="text-lg font-semibold hover:text-primary">
                         {watch.product.name}
                       </Link>
-                    </CardTitle>
-                    <CardDescription>Theo dõi từ {formatDate(watch.createdAt)}</CardDescription>
-                  </div>
-                  <Badge variant={watch.status === "active" ? "default" : "secondary"}>{watch.status}</Badge>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm">
-                    Giá mục tiêu: <strong className="text-primary">{formatPrice(watch.targetPrice)}</strong>
-                  </p>
-                  {recordedPrices.length > 0 ? (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-medium">Lịch sử giá đã ghi nhận</h3>
-                      <ul className="divide-y rounded-lg border">
-                        {recordedPrices.slice(0, 10).map((point) => (
-                          <li key={point.id} className="flex flex-wrap justify-between gap-2 px-3 py-2 text-sm">
-                            <span>{point.shopName} · {formatDate(point.recordedAt)}</span>
-                            <strong>{formatPrice(point.price)}</strong>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-sm text-muted-foreground">
+                        Theo dõi từ {formatDate(watch.createdAt)} · {watch.product.listings.length} listing
+                      </p>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Chưa có mốc giá nào được ghi nhận cho listing của sản phẩm.</p>
-                  )}
-                </CardContent>
+                    <div className="text-right">
+                      {isTargetReached ? (
+                        <Badge variant="default" className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                          Đã chạm giá mục tiêu
+                        </Badge>
+                      ) : (
+                        <Badge variant={watch.status === "active" ? "default" : "secondary"}>
+                          {watch.status}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Giá hiện tại</p>
+                      <p className="text-sm font-medium">{currentPrice > 0 ? formatPrice(currentPrice) : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Giá mục tiêu</p>
+                      <p className="text-sm font-medium text-primary">{formatPrice(watch.targetPrice)}</p>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(watch.id)}
+                  className="shrink-0"
+                >
+                  Xóa
+                </Button>
               </Card>
             );
           })
