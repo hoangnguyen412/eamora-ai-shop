@@ -2,15 +2,16 @@
 # -*- coding: utf-8 -*-
 """
 convert_data.py
-Gộp mobile.csv và amazon_laptops.csv thành data.json cho hệ thống E-commerce.
+Gộp mobile.csv và laptop.csv thành data.json cho hệ thống E-commerce.
 
 Cách dùng:
     python convert_data.py
-    python convert_data.py --mobile mobile.csv --laptops amazon_laptops.csv --output data.json
+    python convert_data.py --mobile mobile.csv --laptops laptop.csv --output data.json
 """
 
 import argparse
 import json
+import random
 import re
 import sys
 
@@ -225,21 +226,41 @@ def process_mobile(path):
         # Use product name directly (truncated to 8 words), NO brand concatenation
         name = truncate_name(raw_name, max_words=8)
         price = round(parse_price(prices[i]) * INR_TO_VND)
-        # Fix giá sai (quá rẻ): < 2.000.000 VNĐ thì nhân thêm 10 lần
-        if 0 < price < MIN_MOBILE_PRICE_VND:
+        # Fix giá sai (quá rẻ): lặp nhân cho đến khi đạt ngưỡng tối thiểu
+        while 0 < price < MIN_MOBILE_PRICE_VND:
             price *= MOBILE_PRICE_FIX_FACTOR
         if price <= 0:
             continue
         image_url = clean_image(imgs[i])
+        description = fix_description_spacing(corpus[i])
+
+        # Generate realistic data for new UI fields
+        rating = round(random.uniform(3.8, 5.0), 1)
+        review_count = random.randint(10, 500)
+        original_price = round(price * random.uniform(1.1, 1.3) / 1000) * 1000
+        discount_percent = int((original_price - price) / original_price * 100)
+        tags = random.sample(
+            ["Bán chạy", "Giá tốt", "Chính hãng", "Mới về", "Top 3 tháng"],
+            random.randint(1, 2),
+        )
+        images = [image_url] * 3 if image_url != PLACEHOLDER_IMG else []
+        specs = extract_specs(description)
+
         items.append({
             "name": name,
             "brand": brand,
             "category": "Điện thoại",
             "price": price,
-            "description": fix_description_spacing(corpus[i]),
+            "description": description,
             "imageUrl": image_url,
             "thumbnailUrl": image_url,
-            "images": [image_url] if image_url != PLACEHOLDER_IMG else [],
+            "images": images,
+            "rating": rating,
+            "reviewCount": review_count,
+            "originalPrice": original_price,
+            "discountPercent": discount_percent,
+            "tags": tags,
+            "specs": specs,
         })
     return items
 
@@ -278,14 +299,19 @@ def extract_brand(text):
         "lenovo": "Lenovo", "ideapad": "Lenovo", "thinkpad": "Lenovo", "legion": "Lenovo",
         "acer": "Acer", "aspire": "Acer", "predator": "Acer",
         "msi": "MSI",
+        "gigabyte": "Gigabyte",
+        "honor": "Honor",
         "microsoft": "Microsoft", "surface": "Microsoft",
         "lg": "LG", "sony": "Sony", "xperia": "Sony",
         "google": "Google", "pixel": "Google"
     }
 
     # Ưu tiên check các từ khóa dài trước (ví dụ "find x" trước "x")
+    # Match theo ranh giới từ để tránh nhầm substring (VD: "vivo" trong "VivoBook"
+    # không được coi là hãng Vivo; "Asus VivoBook" phải ra "Asus").
     for keyword, brand_name in sorted(brand_keywords.items(), key=lambda x: len(x[0]), reverse=True):
-        if keyword in t:
+        kw = keyword.strip()
+        if re.search(rf"(?<![a-z]){re.escape(kw)}(?![a-z])", t):
             return brand_name
 
     return "Other"
@@ -299,44 +325,141 @@ def truncate_name(name, max_words=8):
     return name
 
 
+def extract_specs(description):
+    """
+    Trích xuất thông số kỹ thuật cơ bản từ mô tả bằng regex.
+    - RAM: tìm mẫu như "(\d+)\s*gb\s*ram"
+    - Storage: tìm mẫu như "(\d+)\s*gb" hoặc "(\d+)\s*tb"
+    Trả về dict: {"RAM": "8GB", "Storage": "128GB"}. Nếu không tìm thấy, trả về {}.
+    """
+    if not description:
+        return {}
+
+    text = description.lower()
+    specs = {}
+
+    # RAM: ví dụ "8gb ram", "8 gb ram"
+    ram_match = re.search(r"(\d+)\s*gb\s*ram", text)
+    if ram_match:
+        specs["RAM"] = f"{ram_match.group(1)}GB"
+
+    # Storage: ví dụ "128gb", "512 gb", "1tb", "1 tb"
+    storage_match = re.search(r"(\d+)\s*(?:gb|tb)", text)
+    if storage_match:
+        unit = storage_match.group(0)[-2:].upper()
+        specs["Storage"] = f"{storage_match.group(1)}{unit}"
+
+    return specs
+
+
+def get_laptop_brand(name, valid_brand_set):
+    """
+    Xác định brand laptop từ tên sản phẩm.
+    - Ưu tiên từ đầu tiên của tên (match không phân biệt hoa/thường với VALID_BRANDS),
+      tránh lỗi substring (VD: "Asus VivoBook" bị extract_brand gán nhầm thành "Vivo").
+    - Fallback sang extract_brand nếu từ đầu không khớp brand hợp lệ.
+    """
+    if not name:
+        return "Other"
+    first_word = name.split()[0]
+    if first_word.lower() in valid_brand_set:
+        return normalize_brand(first_word)
+    brand = extract_brand(name)
+    if brand.lower() in valid_brand_set:
+        return brand
+    return "Other"
+
+
 def process_laptops(path):
+    """
+    Xử lý file laptop.csv (dataset Amazon Laptops dạng mới).
+
+    Ánh xạ cột:
+      name        -> name (bỏ tiền tố "Laptop", truncate 8 từ)
+      (từ tên)    -> brand (extract_brand)
+      img         -> imageUrl (fallback PLACEHOLDER_IMG)
+      price       -> price (đã là VNĐ, không nhân hệ số quy đổi)
+      no_rates    -> reviewCount (default 0)
+      rating_100  -> rating (chia 20 về thang 5 sao, round 1 chữ số)
+      processor, storage, display, camera -> specs (lọc giá trị rỗng/NaN)
+      processor + storage + display       -> description
+    """
     df = read_csv_safe(path)
     if df.empty:
         return []
 
-    titles = get_series(df, "Title")
-    brands = get_series(df, "Brand")
-    prices = get_series(df, "Price")
-    imgs = get_series(df, "Image URL")
-    rams = get_series(df, "RAM")  # có thể không tồn tại -> toàn NaN
+    names = get_series(df, "name")
+    imgs = get_series(df, "img")
+    prices = get_series(df, "price")
+    no_rates = get_series(df, "no_rates")
+    ratings = get_series(df, "rating_100")
+    processors = get_series(df, "processor")
+    storages = get_series(df, "storage")
+    displays = get_series(df, "display")
+    cameras = get_series(df, "camera")
 
     items = []
-    valid_brand_set = {b.lower() for b in VALID_BRANDS}
     for i in df.index:
-        title = clean_text(titles[i])
-        if not title:
+        raw_name = clean_text(names[i])
+        if not raw_name:
             continue
-        price = round(parse_price(prices[i]) * USD_TO_VND)
+        # Bỏ tiền tố "Laptop" đầu tên (nếu có): "Laptop Asus ..." -> "Asus ..."
+        name = re.sub(r"^laptop\b\s*", "", raw_name, flags=re.IGNORECASE).strip()
+        if not name:
+            continue
+        name = truncate_name(name, max_words=8)
+
+        # Brand: trích xuất trực tiếp từ tên bằng extract_brand
+        brand = extract_brand(name)
+
+        # Giá trong CSV đã là VNĐ (không nhân hệ số quy đổi như mobile)
+        price = int(parse_price(prices[i]))
         if price <= 0:
             continue
-        # Extract brand directly from CSV's Brand column
-        raw_brand = clean_text(brands[i])
-        brand = normalize_brand(raw_brand) if raw_brand else "Other"
-        # Fallback to keyword extractor if brand is empty, "Others", or not in VALID_BRANDS
-        if not brand or brand.lower() == "others" or brand.lower() not in valid_brand_set:
-            brand = extract_brand(title)
-        # Final fallback: if still no valid brand, use first word of title if it matches known brand
-        if brand.lower() == "other":
-            first_word = title.split()[0] if title.split() else "Other"
-            if first_word.lower() in valid_brand_set:
-                brand = first_word[:1].upper() + first_word[1:].lower()
-        # Use product title directly (truncated to 8 words), NO brand concatenation
-        name = truncate_name(title, max_words=8)
-        ram = clean_text(rams[i])
-        description = fix_description_spacing(
-            f"{title} - Thương hiệu: {brand}. Cấu hình: {ram}"
-        )
+
+        # rating_100: thang 0-100 -> chia 20 ra thang 5 sao (VD: 84 -> 4.2)
+        raw_rating = ratings[i]
+        try:
+            rating = round(float(raw_rating) / 20, 1) if raw_rating is not None and not pd.isna(raw_rating) else 0.0
+        except (TypeError, ValueError):
+            rating = 0.0
+
+        # Số lượt đánh giá, default 0
+        raw_no_rates = no_rates[i]
+        try:
+            review_count = int(raw_no_rates) if raw_no_rates is not None and not pd.isna(raw_no_rates) else 0
+        except (TypeError, ValueError):
+            review_count = 0
+
         image_url = clean_image(imgs[i])
+
+        # Specs từ các cột chuyên dụng, lọc bỏ giá trị rỗng/NaN
+        specs = {}
+        for key, col in (("CPU", processors),
+                         ("RAM/Storage", storages),
+                         ("Display", displays),
+                         ("Camera", cameras)):
+            val = clean_text(col[i])
+            if val:
+                specs[key] = val
+
+        # Description từ processor + storage + display (ngữ liệu cho embedding search)
+        desc_parts = [
+            clean_text(processors[i]),
+            clean_text(storages[i]),
+            clean_text(displays[i]),
+        ]
+        description = " - ".join(p for p in desc_parts if p)
+
+        # Generate realistic data (cùng phương pháp với process_mobile)
+        original_price = round(price * random.uniform(1.1, 1.3) / 1000) * 1000
+        discount_percent = int((original_price - price) / original_price * 100)
+        tags = random.sample(
+            ["Bán chạy", "Giá tốt", "Chính hãng", "Mới về", "Top 3 tháng"],
+            random.randint(1, 2),
+        )
+        images = [image_url] * 3 if image_url != PLACEHOLDER_IMG else []
+
         items.append({
             "name": name,
             "brand": brand,
@@ -345,7 +468,13 @@ def process_laptops(path):
             "description": description,
             "imageUrl": image_url,
             "thumbnailUrl": image_url,
-            "images": [image_url] if image_url != PLACEHOLDER_IMG else [],
+            "images": images,
+            "rating": rating,
+            "reviewCount": review_count,
+            "originalPrice": original_price,
+            "discountPercent": discount_percent,
+            "tags": tags,
+            "specs": specs,
         })
     return items
 
@@ -356,7 +485,7 @@ def process_laptops(path):
 def main():
     parser = argparse.ArgumentParser(description="Gộp CSV thành data.json")
     parser.add_argument("--mobile", default="mobile.csv")
-    parser.add_argument("--laptops", default="amazon_laptops.csv")
+    parser.add_argument("--laptops", default="laptop.csv")
     parser.add_argument("--output", default="data.json")
     args = parser.parse_args()
 
@@ -377,12 +506,18 @@ def main():
             "imageUrl": item["imageUrl"],
             "thumbnailUrl": item.get("thumbnailUrl", item["imageUrl"]),
             "images": item.get("images", []),
+            "rating": item.get("rating", 0),
+            "reviewCount": item.get("reviewCount", 0),
+            "originalPrice": item.get("originalPrice", 0),
+            "discountPercent": item.get("discountPercent", 0),
+            "tags": item.get("tags", []),
+            "specs": item.get("specs", {}),
         })
 
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
-    print(f"Điện thoại: {len(mobiles)} | Laptop: {len(laptops)} | "
+    print(f"Điện thoại ({args.mobile}): {len(mobiles)} | Laptop ({args.laptops}): {len(laptops)} | "
           f"Tổng: {len(result)} -> {args.output}")
 
 

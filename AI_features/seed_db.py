@@ -84,7 +84,8 @@ def main():
         psycopg2.extras.execute_values(
             cur,
             'INSERT INTO "Category" ("id", "name", "slug") VALUES %s ON CONFLICT ("id") DO NOTHING',
-            category_data
+            category_data,
+            page_size=100,
         )
 
         # Lấy (hoặc tạo) một Shop để gắn Listing. Shop không bị TRUNCATE ở trên.
@@ -124,7 +125,14 @@ def main():
                 product.get("description", ""),
                 product["price"],
                 image_url,
-                product.get("brand", "")
+                product.get("brand", ""),
+                product.get("rating", 0.0),
+                product.get("reviewCount", 0),
+                product.get("originalPrice", product["price"]),
+                product.get("discountPercent", 0),
+                product.get("tags", []),
+                product.get("images", [image_url]),
+                psycopg2.extras.Json(product.get("specs", {})),
             ))
 
             # Mỗi sản phẩm có 1 Listing với stock ngẫu nhiên 20..100
@@ -147,8 +155,10 @@ def main():
         print("Đang thực hiện bulk insert vào bảng Product...")
         psycopg2.extras.execute_values(
             cur,
-            'INSERT INTO "Product" ("id", "categoryId", "name", "description", "basePrice", "imageUrl", "brand") VALUES %s',
-            products_data
+            'INSERT INTO "Product" ("id", "categoryId", "name", "description", "basePrice", "imageUrl", "brand", "rating", "reviewCount", "originalPrice", "discountPercent", "tags", "images", "specs") VALUES %s',
+            products_data,
+            page_size=500,
+            template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::text[], %s::text[], %s::jsonb)",
         )
 
         # Bulk Insert Listing (stock ngẫu nhiên 20..100) để sản phẩm không bị "hết hàng"
@@ -156,7 +166,8 @@ def main():
         psycopg2.extras.execute_values(
             cur,
             'INSERT INTO "Listing" ("id", "productId", "shopId", "price", "stock") VALUES %s',
-            listings_data
+            listings_data,
+            page_size=500,
         )
 
         # Bulk Insert Embedding với template ép kiểu ::vector
@@ -165,7 +176,8 @@ def main():
             cur,
             'INSERT INTO "Embedding" ("id", "productId", "vector") VALUES %s',
             embeddings_data,
-            template="(%s, %s, %s::vector)"
+            template="(%s, %s, %s::vector)",
+            page_size=200,
         )
 
         # 4. Quản lý Transaction: Chỉ commit một lần ở cuối

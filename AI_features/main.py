@@ -12,6 +12,8 @@ from psycopg2.extras import Json
 from dotenv import load_dotenv
 from openai import OpenAI
 
+load_dotenv()
+
 app = FastAPI(title="E-Amora AI Service", version="1.0.0")
 
 app.add_middleware(
@@ -26,8 +28,6 @@ app.add_middleware(
 print("Loading model keepitreal/vietnamese-sbert...")
 model = SentenceTransformer('keepitreal/vietnamese-sbert')
 print("Model loaded successfully!")
-
-load_dotenv()
 
 # Cấu hình kết nối PostgreSQL (pgvector)
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -443,15 +443,20 @@ def chat_message(req: ChatRequest):
             except Exception:
                 pass
 
-    # Khởi tạo client OpenAI trỏ tới NVIDIA NIM
+    # Khởi tạo client OpenAI trỏ tới groq
     openai_client = OpenAI(
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=os.getenv("NVIDIA_API_KEY", "")
+        base_url="https://api.groq.com/openai/v1",
+        api_key=os.environ.get("GROQ_API_KEY")
     )
 
     # BƯỚC 4: Tạo System Prompt gửi LLM
     if is_greeting:
-        system_prompt = "Bạn là trợ lý AI của E-Amora. Hãy chào hỏi lịch sự và hỏi khách cần tìm sản phẩm gì."
+        system_prompt = (
+            "Bạn là trợ lý AI tư vấn bán hàng của E-Amora. "
+            "E-Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
+            "Tuyệt đối KHÔNG tư vấn, gợi ý hoặc nhắc đến các ngành hàng khác như: làm đẹp, sức khỏe, gia dụng, thời trang, thực phẩm... "
+            "Khi chào hỏi, hãy giới thiệu bạn là trợ lý công nghệ của E-Amora và hỏi khách hàng đang tìm Điện thoại, Laptop hay Phụ kiện gì. "
+        )
     else:
         if products:
             product_lines = []
@@ -471,27 +476,32 @@ def chat_message(req: ChatRequest):
             search_intent = ", ".join(search_intent_parts) if search_intent_parts else "không rõ"
 
             system_prompt = (
-                f"Bạn là trợ lý bán hàng của sàn thương mại điện tử E-Amora. "
+                "Bạn là trợ lý AI tư vấn bán hàng của E-Amora. "
+                "E-Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
+                "Tuyệt đối KHÔNG tư vấn, gợi ý hoặc nhắc đến các ngành hàng khác như: làm đẹp, sức khỏe, gia dụng, thời trang, thực phẩm... "
                 f"Khách hàng đang tìm: {search_intent}.\n\n"
                 f"Dưới đây là danh sách sản phẩm tìm được trong hệ thống:\n{product_text}\n\n"
                 "QUY TẮC QUAN TRỌNG:\n"
-                "1. Nếu danh sách sản phẩm trên KHÔNG khớp với từ khóa tìm kiếm của khách (ví dụ: khách tìm iPhone nhưng danh sách có Oppo, hoặc khách tìm Điện thoại nhưng danh sách có Laptop), hãy TỪ CHỐI tư vấn và trả lời chính xác: 'Xin lỗi, hiện tại E-Amora chưa có mẫu [tên sản phẩm khách tìm] nào phù hợp'.\n"
-                "2. BẠN CHỈ được phép tư vấn dựa trên các sản phẩm có trong danh sách trên. TUYỆT ĐỐI KHÔNG tự bịa thêm sản phẩm nào không có trong danh sách.\n"
-                "3. Hãy tư vấn nhiệt tình và tự nhiên cho khách hàng.\n"
+                "1. Khi trả lời câu hỏi về sản phẩm, CHỈ sử dụng thông tin trong phần Context trên. Không tự bịa ra sản phẩm.\n"
+                "2. TUYỆT ĐỐI KHÔNG tự bịa thêm sản phẩm nào không có trong danh sách trên.\n"
+                "3. Nếu không tìm thấy sản phẩm phù hợp, hãy trả lời: 'Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.'\n"
+                "4. Hãy tư vấn nhiệt tình và tự nhiên cho khách hàng.\n"
                 "TUYỆT ĐỐI KHÔNG dùng các câu rập khuôn như 'Dựa trên yêu cầu của bạn...', 'Theo thông tin bạn cung cấp...'."
             )
         else:
             system_prompt = (
-                "Bạn là trợ lý bán hàng của sàn thương mại điện tử E-Amora. "
+                "Bạn là trợ lý AI tư vấn bán hàng của E-Amora. "
+                "E-Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
+                "Tuyệt đối KHÔNG tư vấn, gợi ý hoặc nhắc đến các ngành hàng khác như: làm đẹp, sức khỏe, gia dụng, thời trang, thực phẩm... "
                 "Hiện tại hệ thống không tìm thấy sản phẩm nào phù hợp với yêu cầu của khách hàng. "
                 "BẠN PHẢI trả lời CHÍNH XÁC câu sau: 'Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.' "
-                "Tuyệt đối KHÔNG tự bịa ra sản phẩm hoặc gợi ý các mặt hàng không liên quan (như tai nghe, phụ kiện) nếu người dùng đang tìm laptop/điện thoại."
+                "Tuyệt đối KHÔNG tự bịa ra sản phẩm hoặc gợi ý các mặt hàng không liên quan."
             )
 
     answer = ""
     try:
         completion = openai_client.chat.completions.create(
-            model="meta/llama-3.3-70b-instruct",
+            model="qwen/qwen3.8-27b",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": req.message}
@@ -502,14 +512,8 @@ def chat_message(req: ChatRequest):
         answer = completion.choices[0].message.content
     except Exception as llm_err:
         err_msg = str(llm_err).encode("ascii", "replace").decode("ascii")
-        print(f"[Chat RAG] LLM error with meta/llama-3.3-70b-instruct: {err_msg}")
-        if is_greeting:
-            answer = "Xin chào! Tôi là trợ lý AI của E-Amora. Bạn đang cần tìm kiếm sản phẩm gì hôm nay?"
-        elif products:
-            suggested = ", ".join([p["name"] for p in products])
-            answer = f"E-Amora gợi ý bạn tham khảo các mẫu sau: {suggested}. Bạn có thể xem chi tiết ở danh sách sản phẩm nhé!"
-        else:
-            answer = "Rất tiếc, hiện tại E-Amora chưa tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có muốn thử tìm kiếm với mức giá hoặc tiêu chí khác không?"
+        print(f"[Chat RAG] LLM error with qwen/qwen3.8-27b: {err_msg}")
+        answer = "Dạ hệ thống đang bận, bạn vui lòng thử lại sau ít phút."
 
     # Bước 5: Lưu câu trả lời của LLM vào bảng ChatMessage (role: 'assistant')
     assistant_msg_id = str(uuid.uuid4())

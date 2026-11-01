@@ -109,6 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Phản hồi xác thực không hợp lệ.");
     }
     window.localStorage.setItem(AUTH_TOKEN_KEY, auth.token);
+    // Set cookies so server-side middleware can read token and role
+    document.cookie = `eamora.auth.token=${auth.token}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `eamora.auth.role=${auth.user.role}; path=/; max-age=604800; SameSite=Lax`;
     setToken(auth.token);
     setUser(auth.user);
   }, []);
@@ -125,6 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    document.cookie = 'eamora.auth.token=; path=/; max-age=0';
+    document.cookie = 'eamora.auth.role=; path=/; max-age=0';
     setToken(null);
     setUser(null);
   }, []);

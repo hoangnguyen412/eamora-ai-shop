@@ -40,19 +40,25 @@ model Category {
 }
 
 model Product {
-  id          String      @id @default(uuid())
-  categoryId  String
-  name        String
-  description String?
-  specs       Json?
-  basePrice   Float
-  imageUrl    String?
-  brand       String?
-  category    Category    @relation(fields: [categoryId], references: [id])
-  listings    Listing[]
-  reviews     Review[]
-  embeddings  Embedding[]
-  watchlist   Watchlist[]
+  id           String      @id @default(uuid())
+  categoryId   String
+  name         String
+  description  String?
+  specs        Json?
+  basePrice    Float
+  rating       Float       @default(0)
+  reviewCount  Int         @default(0)
+  originalPrice Float      @default(0)
+  discountPercent Int     @default(0)
+  tags         String[]    @default([])
+  images       String[]    @default([])
+  imageUrl     String?
+  brand        String?
+  category     Category    @relation(fields: [categoryId], references: [id])
+  listings     Listing[]
+  reviews      Review[]
+  embeddings   Embedding[]
+  watchlist    Watchlist[]
 
   @@index([categoryId])
 }

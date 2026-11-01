@@ -1144,15 +1144,73 @@ app.get('/api/products', async (req: Request, res: Response) => {
 
 app.get('/api/products/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const products = await getProductData();
-    const product = products.find((item) => item.id === id || item.slug === id);
+    const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        category: true,
+        reviews: { select: { rating: true } },
+        listings: {
+          select: {
+            id: true,
+            shopId: true,
+            price: true,
+            stock: true,
+            shop: { select: { name: true } },
+          },
+        },
+      },
+    });
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    return res.json({ success: true, data: product });
+    const listingPrices = product.listings.map((listing) => listing.price);
+    const offers = product.listings
+      .filter((listing) => listing.stock > 0)
+      .map((listing) => ({
+        listingId: listing.id,
+        shopId: listing.shopId,
+        shopName: listing.shop.name,
+        price: listing.price,
+        stock: listing.stock,
+      }))
+      .sort((left, right) => left.price - right.price);
+    const averageRating = product.reviews.length > 0
+      ? product.reviews.reduce((total, review) => total + review.rating, 0) / product.reviews.length
+      : 0;
+    const stockTotal = product.listings.reduce((total, listing) => total + listing.stock, 0);
+    const price = offers[0]?.price ?? (listingPrices.length > 0 ? Math.min(...listingPrices) : Number(product.basePrice ?? 0));
+    const imgUrl = product.imageUrl ?? '';
+    const images = product.images.length > 0 ? product.images : (imgUrl ? [imgUrl] : []);
+
+    return res.json({
+      success: true,
+      data: {
+        id: product.id,
+        name: product.name,
+        slug: product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        brand: product.brand ?? product.name.split(' ')[0] ?? 'Brand',
+        category: product.category?.name ?? 'General',
+        price,
+        originalPrice: product.originalPrice || price,
+        discountPercent: product.discountPercent || 0,
+        stock: stockTotal,
+        rating: product.rating || averageRating,
+        reviewCount: product.reviewCount || product.reviews.length,
+        tags: product.tags,
+        thumbnailUrl: imgUrl,
+        images,
+        isFeatured: false,
+        specs: (product.specs as Record<string, unknown> | null) ?? {},
+        recommendationBadge: null,
+        createdAt: new Date().toISOString(),
+        description: product.description ?? '',
+        offers,
+      },
+    });
   } catch (error) {
     return sendServerError(res, 'Unable to fetch product detail', error);
   }

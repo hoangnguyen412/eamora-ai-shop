@@ -78,7 +78,7 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
               <TrendingDown className="mr-1 h-4 w-4" aria-hidden="true" />
               Price Agent
             </Link>
-            <Link href="/seller" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+            <Link href="/seller/login" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
               <LayoutDashboard className="mr-1 h-4 w-4" aria-hidden="true" />
               Seller
             </Link>

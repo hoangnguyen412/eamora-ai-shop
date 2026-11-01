@@ -8,17 +8,26 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
-
-import mockData from "@/mocks/db.json";
-
-const sellerProducts = mockData.sellerProducts;
+import { useAuth } from "@/context/AuthProvider";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
 export default function SellerPage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [sellerProducts, setSellerProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Role check (fallback if middleware is bypassed): only sellers can access
+  useEffect(() => {
+    if (!isAuthLoading && user?.role !== "seller") {
+      router.push("/?error=unauthorized");
+    }
+  }, [user, isAuthLoading, router]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -76,6 +85,54 @@ export default function SellerPage() {
     };
   }, []);
 
+  // Fetch seller products from API
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const fetchSellerProducts = async () => {
+      setIsProductsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/seller/listings`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Không thể tải danh sách sản phẩm.");
+        }
+        const result = await response.json() as { success?: boolean; data?: any[]; message?: string };
+        if (!result.success) {
+          throw new Error(result.message || "Không thể tải danh sách sản phẩm.");
+        }
+
+        if (!cancelled) {
+          setSellerProducts(
+            (result.data ?? []).map((l: any) => ({
+              id: l.product?.id ?? l.id,
+              name: l.product?.name ?? "Sản phẩm",
+              price: l.price ?? 0,
+              stock: l.stock ?? 0,
+              totalSold: l.totalSold ?? 0,
+              status: l.status ?? (l.stock > 0 ? "active" : "out_of_stock"),
+            }))
+          );
+        }
+      } catch (err) {
+        if (!cancelled && err instanceof Error && err.name !== "AbortError") {
+          console.error("Failed to fetch seller products", err);
+        }
+      } finally {
+        if (!cancelled) setIsProductsLoading(false);
+      }
+    };
+
+    fetchSellerProducts();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
+
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
   const totalOrders = orders.length;
 
@@ -85,6 +142,31 @@ export default function SellerPage() {
     { label: "Sản phẩm", value: sellerProducts.length.toString(), icon: Package, color: "from-violet-500 to-indigo-500" },
     { label: "Tăng trưởng", value: "+12.5%", icon: TrendingUp, color: "from-amber-500 to-orange-500" },
   ];
+
+  // Auth loading state
+  if (isAuthLoading) {
+    return (
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Đang kiểm tra quyền truy cập...</p>
+      </div>
+    );
+  }
+
+  // Not a seller -> redirect handled in useEffect, but show fallback if router hasn't redirected yet
+  if (user?.role !== "seller") {
+    return (
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 text-center py-20">
+        <h1 className="text-2xl font-bold text-destructive">403 Forbidden</h1>
+        <p className="text-muted-foreground">Bạn không có quyền truy cập trang này.</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -206,6 +288,9 @@ export default function SellerPage() {
               <CardTitle className="text-base">Danh sách sản phẩm</CardTitle>
             </CardHeader>
             <CardContent>
+              {isProductsLoading ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Đang tải sản phẩm...</p>
+              ) : (
                 <Table containerLabel="Bảng sản phẩm đăng bán, có thể cuộn ngang">
                   <TableHeader>
                     <TableRow>
@@ -218,20 +303,29 @@ export default function SellerPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sellerProducts.map((sp) => (
-                      <TableRow key={sp.id}>
-                        <TableCell className="font-mono text-xs">{sp.id}</TableCell>
-                        <TableCell className="font-medium text-sm">{sp.name}</TableCell>
-                        <TableCell>{formatPrice(sp.price)}</TableCell>
-                        <TableCell>{sp.stock}</TableCell>
-                        <TableCell>{sp.totalSold}</TableCell>
-                        <TableCell>
-                          <Badge className={`text-[10px] ${getStatusColor(sp.status)}`}>{getStatusLabel(sp.status)}</Badge>
+                    {sellerProducts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                          Chưa có sản phẩm nào.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      sellerProducts.map((sp) => (
+                        <TableRow key={sp.id}>
+                          <TableCell className="font-mono text-xs">{sp.id}</TableCell>
+                          <TableCell className="font-medium text-sm">{sp.name}</TableCell>
+                          <TableCell>{formatPrice(sp.price)}</TableCell>
+                          <TableCell>{sp.stock}</TableCell>
+                          <TableCell>{sp.totalSold}</TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${getStatusColor(sp.status)}`}>{getStatusLabel(sp.status)}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
