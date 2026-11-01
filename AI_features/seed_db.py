@@ -98,7 +98,7 @@ def main():
             cur.execute(
                 'INSERT INTO "Shop" ("id", "sellerId", "name", "description", "reputationScore") '
                 'VALUES (%s, %s, %s, %s, %s)',
-                (shop_id, "system-seed", "E-Amora Official", "Shop mặc định do seed tạo", 4.8),
+                (shop_id, "system-seed", "Amora Official", "Shop mặc định do seed tạo", 4.8),
             )
 
         total = len(products)

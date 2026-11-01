@@ -92,7 +92,11 @@ export default function CartPage() {
                     <p className="text-base font-bold text-primary">
                       {formatPrice(item.selectedPrice)}
                     </p>
-                    {item.product.offers && item.product.offers.length > 0 ? (
+                    {item.product.offers && item.product.offers.length === 1 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Bán bởi: <span className="font-medium text-foreground">{item.product.offers[0].shopName}</span>
+                      </p>
+                    ) : item.product.offers && item.product.offers.length > 1 ? (
                       <div className="max-w-sm space-y-1">
                         <label htmlFor={`seller-${item.productId}`} className="text-xs font-medium">
                           Chọn nhà bán
@@ -105,7 +109,12 @@ export default function CartPage() {
                           }}
                         >
                           <SelectTrigger id={`seller-${item.productId}`} className="w-full">
-                            <SelectValue placeholder="Chọn nhà bán và giá" />
+                            <SelectValue placeholder="Chọn nhà bán và giá">
+                              {(() => {
+                                const selected = item.product.offers?.find((o) => o.listingId === item.listingId);
+                                return selected ? `${selected.shopName} · ${formatPrice(selected.price)}` : null;
+                              })()}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             {item.product.offers.map((offer) => (

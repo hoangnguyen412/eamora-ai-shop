@@ -13,7 +13,7 @@ export default function Footer() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand">
                 <Cpu className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold text-gradient">TechAI Shop</span>
+              <span className="text-lg font-bold text-gradient">Amora</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Nền tảng E-Commerce đồ công nghệ tích hợp AI thông minh. 
@@ -47,8 +47,8 @@ export default function Footer() {
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">Liên hệ</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>📧 support@techai.shop</li>
-              <li>📞 1900-TECH-AI</li>
+              <li>📧 support@amora.vn</li>
+              <li>📞 1900-AMORA</li>
               <li>📍 TP. Hồ Chí Minh, Việt Nam</li>
             </ul>
           </div>
@@ -57,7 +57,7 @@ export default function Footer() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>© 2026 TechAI Shop. Dự án IT in EC — Mock-Driven Development.</p>
+          <p>© 2026 Amora. Dự án IT in EC — Mock-Driven Development.</p>
           <p>Phiên bản 1.0 • Next.js + Tailwind CSS + shadcn/ui</p>
         </div>
       </div>

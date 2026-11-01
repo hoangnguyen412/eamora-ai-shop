@@ -25,7 +25,7 @@ const initialMessages: ChatMessage[] = [
   {
     id: "init-welcome",
     role: "assistant",
-    content: "Xin chào! Mình là trợ lý AI mua sắm e-Amora. Mình có thể giúp gì cho bạn hôm nay?",
+    content: "Xin chào! Mình là trợ lý AI mua sắm Amora. Mình có thể giúp gì cho bạn hôm nay?",
     timestamp: new Date().toISOString(),
   },
 ];
@@ -129,7 +129,7 @@ export default function ChatWidget() {
                   <span className="text-xs font-bold">AI Assistant</span>
                   <Badge className="bg-gradient-brand text-white border-0 text-[9px] px-1.5 py-0 h-4">RAG</Badge>
                 </div>
-                <span className="text-[10px] text-muted-foreground">Tư vấn mua sắm e-Amora</span>
+                <span className="text-[10px] text-muted-foreground">Tư vấn mua sắm Amora</span>
               </div>
             </div>
             <Button

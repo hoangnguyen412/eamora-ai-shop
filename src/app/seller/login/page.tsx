@@ -17,10 +17,10 @@ function SellerLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const requestedDestination = searchParams.get("next") ?? "/seller/dashboard";
+  const requestedDestination = searchParams.get("next") ?? "/seller";
   const destination = requestedDestination.startsWith("/") && !requestedDestination.startsWith("//")
     ? requestedDestination
-    : "/seller/dashboard";
+    : "/seller";
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -56,7 +56,7 @@ function SellerLoginForm() {
           <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-lg shadow-primary/20">
             <Cpu className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold text-primary">TechAI Shop</p>
+          <p className="text-sm font-semibold text-primary">Amora</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight">Kênh Người Bán</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             Đăng nhập để quản lý shop, sản phẩm và đơn hàng của bạn.

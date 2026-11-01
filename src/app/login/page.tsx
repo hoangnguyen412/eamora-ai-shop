@@ -59,7 +59,7 @@ function LoginForm() {
           <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-lg shadow-primary/20">
             <Cpu className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold text-primary">TechAI Shop</p>
+          <p className="text-sm font-semibold text-primary">Amora</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight">Mua sắm công nghệ theo cách của bạn.</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             Đăng nhập để quản lý đơn hàng, lưu sản phẩm yêu thích và theo dõi giá.
@@ -73,7 +73,7 @@ function LoginForm() {
           <CardTitle>{mode === "login" ? "Đăng nhập" : "Tạo tài khoản buyer"}</CardTitle>
           <CardDescription>
             {mode === "login"
-              ? "Đăng nhập bằng tài khoản TechAI Shop để tiếp tục."
+              ? "Đăng nhập bằng tài khoản Amora để tiếp tục."
               : "Tạo tài khoản buyer để đặt hàng và quản lý đơn mua."}
           </CardDescription>
         </CardHeader>

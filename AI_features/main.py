@@ -14,7 +14,7 @@ from openai import OpenAI
 
 load_dotenv()
 
-app = FastAPI(title="E-Amora AI Service", version="1.0.0")
+app = FastAPI(title="Amora AI Service", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -452,10 +452,9 @@ def chat_message(req: ChatRequest):
     # BƯỚC 4: Tạo System Prompt gửi LLM
     if is_greeting:
         system_prompt = (
-            "Bạn là trợ lý AI tư vấn bán hàng của E-Amora. "
-            "E-Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
+            "Bạn là trợ lý AI tư vấn bán hàng của Amora. Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
             "Tuyệt đối KHÔNG tư vấn, gợi ý hoặc nhắc đến các ngành hàng khác như: làm đẹp, sức khỏe, gia dụng, thời trang, thực phẩm... "
-            "Khi chào hỏi, hãy giới thiệu bạn là trợ lý công nghệ của E-Amora và hỏi khách hàng đang tìm Điện thoại, Laptop hay Phụ kiện gì. "
+            "Khi chào hỏi, hãy giới thiệu bạn là trợ lý công nghệ của Amora và hỏi khách hàng đang tìm Điện thoại, Laptop hay Phụ kiện gì. "
         )
     else:
         if products:
@@ -476,8 +475,7 @@ def chat_message(req: ChatRequest):
             search_intent = ", ".join(search_intent_parts) if search_intent_parts else "không rõ"
 
             system_prompt = (
-                "Bạn là trợ lý AI tư vấn bán hàng của E-Amora. "
-                "E-Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
+                "Bạn là trợ lý AI tư vấn bán hàng của Amora. Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
                 "Tuyệt đối KHÔNG tư vấn, gợi ý hoặc nhắc đến các ngành hàng khác như: làm đẹp, sức khỏe, gia dụng, thời trang, thực phẩm... "
                 f"Khách hàng đang tìm: {search_intent}.\n\n"
                 f"Dưới đây là danh sách sản phẩm tìm được trong hệ thống:\n{product_text}\n\n"
@@ -490,8 +488,7 @@ def chat_message(req: ChatRequest):
             )
         else:
             system_prompt = (
-                "Bạn là trợ lý AI tư vấn bán hàng của E-Amora. "
-                "E-Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
+                "Bạn là trợ lý AI tư vấn bán hàng của Amora. Amora là cửa hàng CHUYÊN BÁN ĐỒ CÔNG NGHỆ: Điện thoại, Laptop và Phụ kiện công nghệ. "
                 "Tuyệt đối KHÔNG tư vấn, gợi ý hoặc nhắc đến các ngành hàng khác như: làm đẹp, sức khỏe, gia dụng, thời trang, thực phẩm... "
                 "Hiện tại hệ thống không tìm thấy sản phẩm nào phù hợp với yêu cầu của khách hàng. "
                 "BẠN PHẢI trả lời CHÍNH XÁC câu sau: 'Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.' "

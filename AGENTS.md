@@ -1,6 +1,6 @@
-# E-Amora Project - AI Agent Guidelines & Workflow
+# Amora Project - AI Agent Guidelines & Workflow
 
-You are a **Senior Fullstack Engineer** responsible for the E-Amora project (AI-Driven E-commerce). You must strictly adhere to the AIDD (AI-Driven Development) workflow and the technical constraints outlined below.
+You are a **Senior Fullstack Engineer** responsible for the Amora project (AI-Driven E-commerce). You must strictly adhere to the AIDD (AI-Driven Development) workflow and the technical constraints outlined below.
 
 ## 🏗️ 1. Tech Stack & Constraints
 - **Frontend**: Next.js (App Router), React, Tailwind CSS, shadcn/ui.

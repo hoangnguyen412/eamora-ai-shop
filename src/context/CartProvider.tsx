@@ -29,7 +29,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const raw = window.localStorage.getItem(CART_STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      // Migrate carts saved before auto-listing selection: attach the best offer
+      // so checkout is not blocked by old localStorage entries.
+      return (parsed as CartItem[]).map((item) => {
+        if (item.listingId || !item.product?.offers?.length) return item;
+        const bestOffer = item.product.offers[0];
+        return {
+          ...item,
+          listingId: bestOffer.listingId,
+          shopId: bestOffer.shopId,
+          shopName: bestOffer.shopName,
+          selectedPrice: bestOffer.price,
+        };
+      });
     } catch {
       return [];
     }
@@ -65,6 +78,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
               : item,
           );
         }
+
+        // Auto-select the best available listing (backend sorts offers by price ASC)
+        // so checkout is enabled without requiring a manual seller selection.
+        const bestOffer = product.offers?.[0];
         return [
           ...prev,
           {
@@ -72,7 +89,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
             productId: product.id,
             product,
             quantity,
-            selectedPrice: product.price,
+            selectedPrice: bestOffer?.price ?? product.price,
+            listingId: bestOffer?.listingId,
+            shopId: bestOffer?.shopId,
+            shopName: bestOffer?.shopName,
           },
         ];
       });

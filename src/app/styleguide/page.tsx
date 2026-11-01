@@ -30,7 +30,7 @@ export default function StyleguidePage() {
     <div className="mx-auto max-w-7xl space-y-12 px-4 py-10 sm:px-6 lg:px-8">
       <header className="border-b border-border pb-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          TechAI Shop / Design System
+          Amora / Design System
         </p>
         <h1 className="mt-3 text-3xl font-bold">Styleguide</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">

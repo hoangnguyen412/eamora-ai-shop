@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Product } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, TrendingDown, Sparkles, Eye, Users } from "lucide-react";
 import ProductPrice from "@/components/shared/ProductPrice";
@@ -12,6 +11,7 @@ import { useCart } from "@/context/CartProvider";
 
 interface ProductCardProps {
   product: Product;
+  className?: string;
 }
 
 function BadgeIcon({ type }: { type: string }) {
@@ -26,21 +26,6 @@ function BadgeIcon({ type }: { type: string }) {
       return <Users className="h-3 w-3" />;
     default:
       return null;
-  }
-}
-
-function getBadgeStyle(type: string): string {
-  switch (type) {
-    case "ai_pick":
-      return "bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-0 shadow-md";
-    case "price_drop":
-      return "bg-gradient-to-r from-rose-500 to-orange-500 text-white border-0 shadow-md";
-    case "frequently_viewed":
-      return "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0 shadow-md";
-    case "similar_user":
-      return "bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-md";
-    default:
-      return "";
   }
 }
 
@@ -66,34 +51,34 @@ function getValidImageUrl(product: Product): string | null {
   return `https://${trimmed}`;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, className = "" }: ProductCardProps) {
   const { addItem } = useCart();
   const imageUrl = getValidImageUrl(product);
 
   return (
-    <Card className="group relative overflow-hidden border-border/70 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5">
-      {/* Recommendation Badge */}
+    <Card className={`group relative flex flex-col overflow-hidden border border-zinc-200 rounded-2xl bg-white transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${className}`}>
+      {/* Recommendation Badge (Clean Pill) */}
       {product.recommendationBadge && (
-        <div className="absolute top-3 left-3 z-10">
-          <Badge className={`gap-1 text-[10px] font-medium px-2 py-0.5 ${getBadgeStyle(product.recommendationBadge.type)}`}>
+        <div className="absolute top-4 left-4 z-10">
+          <span className="flex items-center gap-1.5 bg-zinc-900 text-white text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
             <BadgeIcon type={product.recommendationBadge.type} />
             {product.recommendationBadge.label}
-          </Badge>
+          </span>
         </div>
       )}
 
-      {/* Discount badge */}
+      {/* Discount badge (Elegant Ribbon) */}
       {product.discountPercent > 0 && (
-        <div className="absolute top-3 right-3 z-10">
-          <Badge variant="destructive" className="text-[10px] font-bold px-1.5 py-0.5">
+        <div className="absolute top-4 right-4 z-10">
+          <span className="flex items-center justify-center bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
             -{product.discountPercent}%
-          </Badge>
+          </span>
         </div>
       )}
 
-      {/* Image */}
-      <Link href={`/products/${product.id}`}>
-        <div className="aspect-square overflow-hidden bg-muted/50">
+      {/* Image Area */}
+      <Link href={`/products/${product.id}`} className="flex-shrink-0">
+        <div className="aspect-square overflow-hidden bg-zinc-100">
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -106,16 +91,16 @@ export default function ProductCard({ product }: ProductCardProps) {
               }}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground">
+            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400">
               No Image
             </div>
           )}
         </div>
       </Link>
 
-      <CardContent className="flex h-[210px] flex-col gap-2 p-4">
+      <CardContent className="flex flex-1 flex-col gap-2 p-5 relative">
         {/* Category & Brand */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium tracking-wide uppercase">
           <span className="truncate">{product.brand}</span>
           <span aria-hidden="true">·</span>
           <span className="truncate">{product.category}</span>
@@ -123,26 +108,32 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Name */}
         <Link href={`/products/${product.id}`}>
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug transition-colors hover:text-primary">
+          <h3 className="line-clamp-2 text-base font-bold leading-tight transition-colors hover:text-primary">
             {product.name}
           </h3>
         </Link>
 
         <ProductRating rating={product.rating} reviewCount={product.reviewCount} />
 
-        <div className="mt-auto">
+        {/* Price (Extra padding bottom to avoid overlap with hover button) */}
+        <div className="mt-auto pt-2 pb-9 text-primary">
           <ProductPrice price={product.price} originalPrice={product.originalPrice} />
         </div>
 
-        {/* Add to cart */}
-        <Button
-          onClick={() => addItem(product)}
-          className="w-full gap-2 bg-gradient-brand text-white transition-opacity hover:opacity-90"
-          size="sm"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          Thêm vào giỏ
-        </Button>
+        {/* Add to cart - Hidden by default, slides up on hover */}
+        <div className="absolute bottom-5 left-5 right-5 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 z-20">
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              addItem(product);
+            }}
+            className="w-full gap-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl shadow-md transition-colors"
+            size="sm"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            Thêm vào giỏ
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

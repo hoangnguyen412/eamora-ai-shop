@@ -61,7 +61,7 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
               <Cpu className="h-5 w-5 text-white" />
             </div>
             <span className="text-sm font-bold text-gradient sm:text-xl">
-              TechAI Shop
+              Amora
             </span>
           </Link>
 

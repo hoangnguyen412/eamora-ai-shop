@@ -14,13 +14,14 @@ import { useRouter } from "next/navigation";
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
 export default function SellerPage() {
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, token, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [sellerProducts, setSellerProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProductsLoading, setIsProductsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sellerStats, setSellerStats] = useState<any>(null);
 
   // Role check (fallback if middleware is bypassed): only sellers can access
   useEffect(() => {
@@ -37,10 +38,19 @@ export default function SellerPage() {
       setIsLoading(true);
       setError("");
       try {
-        const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        const response = await fetch(`${API_BASE_URL}/api/seller/orders`, {
+          headers,
           signal: controller.signal,
         });
         if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            router.push("/login?error=unauthorized");
+            return;
+          }
           throw new Error("Không thể tải danh sách đơn hàng.");
         }
         const result = await response.json() as { success?: boolean; data?: any[]; message?: string };
@@ -52,13 +62,13 @@ export default function SellerPage() {
           id: o.id,
           userId: o.buyerId ?? o.userId ?? "",
           items: (o.items ?? []).map((item: any) => ({
-            productId: item.listing?.product?.id ?? item.listingId ?? "",
-            productName: item.listing?.product?.name ?? item.productName ?? "Sản phẩm",
-            productImage: item.listing?.product?.thumbnailUrl ?? item.productImage ?? "",
+            productId: item.productId ?? item.listingId ?? "",
+            productName: item.productName ?? "Sản phẩm",
+            productImage: item.productImage ?? "",
             price: item.price ?? 0,
             quantity: item.quantity ?? 0,
           })),
-          totalAmount: o.totalAmount ?? 0,
+          totalAmount: o.sellerAmount ?? o.totalAmount ?? 0,
           status: o.status as Order["status"],
           paymentMethod: o.paymentMethod as Order["paymentMethod"],
           shippingAddress: o.shippingInfo ?? {},
@@ -83,7 +93,7 @@ export default function SellerPage() {
       cancelled = true;
       controller.abort();
     };
-  }, []);
+  }, [token, user, router]);
 
   // Fetch seller products from API
   useEffect(() => {
@@ -93,7 +103,12 @@ export default function SellerPage() {
     const fetchSellerProducts = async () => {
       setIsProductsLoading(true);
       try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
         const response = await fetch(`${API_BASE_URL}/api/seller/listings`, {
+          headers,
           signal: controller.signal,
         });
         if (!response.ok) {
@@ -131,15 +146,60 @@ export default function SellerPage() {
       cancelled = true;
       controller.abort();
     };
-  }, []);
+  }, [token]);
 
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const totalOrders = orders.length;
+  // Fetch seller stats from API
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    const fetchSellerStats = async () => {
+      try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        const response = await fetch(`${API_BASE_URL}/api/seller/stats`, {
+          headers,
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            router.push("/login?error=unauthorized");
+            return;
+          }
+          throw new Error("Không thể tải thống kê người bán.");
+        }
+        const result = await response.json() as { success?: boolean; data?: any; message?: string };
+        if (!result.success) {
+          throw new Error(result.message || "Không thể tải thống kê người bán.");
+        }
+
+        if (!cancelled) {
+          setSellerStats(result.data ?? null);
+        }
+      } catch (err) {
+        if (!cancelled && err instanceof Error && err.name !== "AbortError") {
+          console.error("Failed to fetch seller stats", err);
+        }
+      }
+    };
+
+    fetchSellerStats();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [token, router]);
+
+  const totalRevenue = sellerStats?.totalRevenue ?? orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalOrders = sellerStats?.orderCount ?? orders.length;
 
   const stats = [
     { label: "Doanh thu", value: formatPrice(totalRevenue), icon: DollarSign, color: "from-emerald-500 to-teal-500" },
     { label: "Đơn hàng", value: totalOrders.toString(), icon: ShoppingCart, color: "from-blue-500 to-cyan-500" },
-    { label: "Sản phẩm", value: sellerProducts.length.toString(), icon: Package, color: "from-violet-500 to-indigo-500" },
+    { label: "Sản phẩm", value: sellerStats?.listingCount?.toString() ?? sellerProducts.length.toString(), icon: Package, color: "from-violet-500 to-indigo-500" },
     { label: "Tăng trưởng", value: "+12.5%", icon: TrendingUp, color: "from-amber-500 to-orange-500" },
   ];
 

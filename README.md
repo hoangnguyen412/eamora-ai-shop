@@ -1,8 +1,8 @@
-# E-Amora - AI-Powered E-commerce Platform
+# Amora - AI-Powered Tech Store
 
 ## Project Title & Description
 
-**E-Amora** is a modern, AI-driven e-commerce platform that integrates intelligent search, a RAG (Retrieval-Augmented Generation) chatbot with price and category context, a full checkout flow, and a real-time seller dashboard. Built with a fullstack TypeScript/Node.js frontend, a Python AI service, and a PostgreSQL database with vector search capabilities.
+**Amora** is a modern, AI-driven e-commerce platform that integrates intelligent search, a RAG (Retrieval-Augmented Generation) chatbot with price and category context, a full checkout flow, and a real-time seller dashboard. Built with a fullstack TypeScript/Node.js frontend, a Python AI service, and a PostgreSQL database with vector search capabilities.
 
 ---
 

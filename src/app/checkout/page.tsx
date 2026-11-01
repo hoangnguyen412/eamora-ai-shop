@@ -49,7 +49,7 @@ export default function CheckoutPage() {
           Mã đơn hàng: <strong>{orderId}</strong>
         </p>
         <p className="text-sm text-muted-foreground">
-          Cảm ơn bạn đã mua sắm tại TechAI Shop. Đơn hàng sẽ được xử lý trong
+          Cảm ơn bạn đã mua sắm tại Amora. Đơn hàng sẽ được xử lý trong
           24 giờ.
         </p>
         <Link href="/" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>

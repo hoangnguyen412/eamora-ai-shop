@@ -49,7 +49,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand">
               <Cpu className="h-4 w-4 text-white" />
             </div>
-            <span className="text-gradient font-bold">TechAI Shop</span>
+            <span className="text-gradient font-bold">Amora</span>
           </SheetTitle>
         </SheetHeader>
 
