@@ -9,6 +9,7 @@ import PriceChart from "@/components/shared/PriceChart";
 import ProductPrice from "@/components/shared/ProductPrice";
 import ProductRating from "@/components/shared/ProductRating";
 import InventoryStatus from "@/components/shared/InventoryStatus";
+import RelatedProducts from "@/components/shared/RelatedProducts";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -347,6 +348,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <RelatedProducts productId={product.id} />
     </div>
   );
 }

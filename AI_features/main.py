@@ -562,3 +562,103 @@ class ScoreDealRequest(BaseModel):
 @app.post("/agent/score-deal")
 def score_deal(req: ScoreDealRequest):
     return {"dqs": 85, "is_deal": True}
+
+
+# --- Related Products Endpoint ---
+class RelatedProduct(BaseModel):
+    id: str
+    name: str
+    basePrice: float | None
+    imageUrl: str | None
+    images: list[str] | None
+    brand: str | None
+    categoryId: str | None
+    categoryName: str | None
+    rating: float | None
+    reviewCount: int | None
+    originalPrice: float | None
+    discountPercent: int | None
+    stock: int | None
+
+
+@app.get("/products/{product_id}/related", response_model=List[RelatedProduct])
+def get_related_products(product_id: str):
+    """Lấy top 4 sản phẩm tương tự dựa trên cosine similarity của embedding."""
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Kiểm tra embedding của sản phẩm gốc tồn tại
+        cur.execute(
+            'SELECT "vector" FROM "Embedding" WHERE "productId" = %s',
+            (product_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=404, detail="Sản phẩm không có embedding")
+
+        # Query top 4 sản phẩm gần nhất theo cosine distance, loại trừ chính nó
+        sql = """
+            SELECT p."id", p."name", p."basePrice", p."imageUrl", p."images",
+                   p."brand", p."categoryId", c."name" AS "categoryName",
+                   p."rating", p."reviewCount", p."originalPrice",
+                   p."discountPercent", COALESCE(l.total_stock, 0) AS total_stock
+            FROM "Product" p
+            JOIN "Embedding" e ON p."id" = e."productId"
+            JOIN "Category" c ON p."categoryId" = c."id"
+            LEFT JOIN (
+                SELECT "productId", COALESCE(SUM("stock"), 0) AS total_stock
+                FROM "Listing" GROUP BY "productId"
+            ) l ON l."productId" = p."id"
+            WHERE p."id" <> %s
+              AND p."name" <> (SELECT "name" FROM "Product" WHERE "id" = %s)
+            ORDER BY e."vector" <=> (SELECT "vector" FROM "Embedding" WHERE "productId" = %s)
+            LIMIT 4
+        """
+        cur.execute(sql, (product_id, product_id, product_id))
+        rows = cur.fetchall()
+
+        results = []
+        for r in rows:
+            results.append(
+                RelatedProduct(
+                    id=str(r[0]),
+                    name=r[1],
+                    basePrice=float(r[2]) if r[2] is not None else None,
+                    imageUrl=r[3],
+                    images=r[4] if isinstance(r[4], list) else None,
+                    brand=r[5],
+                    categoryId=str(r[6]) if r[6] is not None else None,
+                    categoryName=r[7],
+                    rating=float(r[8]) if r[8] is not None else None,
+                    reviewCount=int(r[9]) if r[9] is not None else None,
+                    originalPrice=float(r[10]) if r[10] is not None else None,
+                    discountPercent=int(r[11]) if r[11] is not None else None,
+                    stock=int(r[12]) if r[12] is not None else None,
+                )
+            )
+
+        return results
+    except HTTPException:
+        raise
+    except Exception as db_err:
+        err_msg = str(db_err).encode("ascii", "replace").decode("ascii")
+        print(f"[Related Products] Database error: {err_msg}")
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail="Lỗi khi truy vấn sản phẩm tương tự")
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
