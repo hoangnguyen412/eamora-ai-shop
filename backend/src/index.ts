@@ -21,6 +21,10 @@ const prisma = new PrismaClient({ adapter });
 
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
 const PORT = process.env.PORT || 4000;
+const AI_URL = (process.env.AI_URL ?? "http://localhost:8000").replace(/\/$/, "");
+const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 2000;
+const RECOMMENDATIONS_DEFAULT_LIMIT = 12;
+const RECOMMENDATIONS_MAX_LIMIT = 50;
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'];
 const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '')
@@ -34,6 +38,22 @@ const AUTO_BUY_WORKER_INTERVAL_MS = Number(process.env.AUTO_BUY_WORKER_INTERVAL_
 const AUTO_BUY_WORKER_BATCH_SIZE = Number(process.env.AUTO_BUY_WORKER_BATCH_SIZE ?? 10);
 const ALLOWED_ROLES = ['buyer', 'seller'] as const;
 type Role = (typeof ALLOWED_ROLES)[number];
+
+// Node 24 exposes a global fetch, but @types/node here does not type it and tsconfig
+// has no DOM lib. Declare a minimal structural signature (no `any`) so we can call the AI service.
+declare function fetch(
+  input: string | URL,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: { aborted: boolean };
+  },
+): Promise<{
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+}>;
 
 if (!Number.isInteger(AUTO_BUY_WORKER_INTERVAL_MS) || AUTO_BUY_WORKER_INTERVAL_MS < 1000) {
   throw new Error('AUTO_BUY_WORKER_INTERVAL_MS must be an integer of at least 1000');
@@ -1825,6 +1845,141 @@ app.post('/api/interactions', optionalAuth, async (req: AuthenticatedRequest, re
   } catch (error) {
     return sendServerError(res, 'Unable to log interaction', error);
   }
+});
+
+// Kiểu dữ liệu trả về từ AI service /recommendations (không dùng `any`)
+interface RecommendProductRow {
+  id: string;
+  name: string;
+  basePrice: number | null;
+  imageUrl: string | null;
+  brand: string | null;
+  categoryName: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  total_stock: number | null;
+}
+
+interface RecommendProduct {
+  id: string;
+  name: string;
+  basePrice: number | null;
+  imageUrl: string | null;
+  brand: string | null;
+  categoryName: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  stock: number | null;
+  explanation: string;
+  score: number | null;
+}
+
+// Query top 12 sản phẩm phổ biến (rating, reviewCount cao nhất) dùng làm fallback khi
+// user chưa đủ interaction hoặc AI service lỗi.
+async function fetchPopularProducts(limit = RECOMMENDATIONS_DEFAULT_LIMIT): Promise<RecommendProduct[]> {
+  const rows = await prisma.$queryRawUnsafe<RecommendProductRow[]>(`
+    SELECT p."id", p."name", p."basePrice", p."imageUrl", p."brand",
+           c."name" AS "categoryName",
+           p."rating", p."reviewCount", p."originalPrice", p."discountPercent",
+           COALESCE(l.total_stock, 0) AS total_stock
+    FROM "Product" p
+    JOIN "Category" c ON p."categoryId" = c."id"
+    LEFT JOIN (
+      SELECT "productId", COALESCE(SUM("stock"), 0) AS total_stock
+      FROM "Listing" GROUP BY "productId"
+    ) l ON l."productId" = p."id"
+    ORDER BY p."rating" DESC, p."reviewCount" DESC
+    LIMIT $1
+  `, limit);
+  return rows.map((r) => {
+    const stockVal = r.total_stock;
+    return {
+      id: r.id,
+      name: r.name,
+      basePrice: r.basePrice ?? null,
+      imageUrl: r.imageUrl ?? null,
+      brand: r.brand ?? null,
+      categoryName: r.categoryName ?? null,
+      rating: r.rating ?? null,
+      reviewCount: r.reviewCount ?? null,
+      originalPrice: r.originalPrice ?? null,
+      discountPercent: r.discountPercent ?? null,
+      stock: stockVal == null ? null : Number(stockVal),
+      explanation: 'Sản phẩm phổ biến',
+      score: null,
+    };
+  });
+}
+
+app.get('/api/recommendations', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const parsedLimit = Math.floor(Number(req.query.limit));
+  const limit =
+    Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, RECOMMENDATIONS_MAX_LIMIT)
+      : RECOMMENDATIONS_DEFAULT_LIMIT;
+
+  // 1. Lấy 50 interaction gần nhất của user
+  const interactions = await prisma.interaction.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: { productId: true, action: true },
+  });
+
+  // 2. Nếu chưa đủ interaction → trả về popular fallback
+  if (interactions.length < 3) {
+    const data = await fetchPopularProducts(limit);
+    return res.json({
+      success: true,
+      data,
+      source: 'popular',
+      reason: 'not_enough_interactions',
+      count: data.length,
+    });
+  }
+
+  // 3. Gọi AI service POST /recommendations (timeout AI_TIMEOUT_MS; fail-safe -> popular)
+  let aiProducts: RecommendProduct[] | null = null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+    const resp = await fetch(`${AI_URL}/recommendations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        interactions: interactions.map((i) => ({ productId: i.productId, action: i.action })),
+        limit,
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!resp.ok) {
+      throw new Error(`AI service responded ${resp.status}`);
+    }
+    const body = (await resp.json()) as { products?: RecommendProduct[] };
+    aiProducts = body.products ?? null;
+  } catch (error) {
+    console.error('[Recommendations] AI service unavailable, fallback popular:', error);
+  }
+
+  if (!aiProducts || aiProducts.length === 0) {
+    const data = await fetchPopularProducts(limit);
+    return res.json({
+      success: true,
+      data,
+      source: 'popular',
+      reason: 'ai_unavailable_or_empty',
+      count: data.length,
+    });
+  }
+
+  return res.json({ success: true, data: aiProducts, source: 'ai', count: aiProducts.length });
 });
 
 app.post('/api/search/sessions', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {

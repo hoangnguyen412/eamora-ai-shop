@@ -8,6 +8,7 @@ import re
 import os
 import uuid
 import psycopg2
+import numpy as np
 from psycopg2.extras import Json
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -87,6 +88,72 @@ CATEGORY_LABELS = {
     "cat-laptop": "Laptop",
     "cat-phone": "Điện thoại",
 }
+
+# Trọng số cho mỗi loại hành động khi tính vector người dùng (Stage 1 Personalized Feed)
+INTERACTION_WEIGHTS = {
+    "view": 1,
+    "click": 2,
+    "add_to_cart": 5,
+    "purchase": 10,
+}
+
+
+def _vector_to_str(vec) -> str:
+    """Chuyển vector numpy/sang chuỗi pgvector: '[0.1,0.2,...]'."""
+    return "[" + ",".join(str(float(x)) for x in vec) + "]"
+
+
+def _parse_vector(v) -> np.ndarray:
+    """pgvector voi psycopg2 tra ve vector chuoi '[x,y,...]'; phan tien thanh numpy array."""
+    if isinstance(v, str):
+        v = v.strip().strip("[]")
+        if not v:
+            return np.zeros(0, dtype=float)
+        return np.array([float(x) for x in v.split(",")], dtype=float)
+    return np.array(v, dtype=float)
+
+
+def _explain_rule(brand, category_name, top_brand, top_category_name, price, avg_view_price):
+    """Sinh explanation rule-based, KHÔNG gọi LLM."""
+    if top_brand and brand and brand == top_brand:
+        return f"Vì bạn quan tâm {top_brand}"
+    if top_category_name and category_name and category_name == top_category_name:
+        return f"Cùng danh mục {category_name}"
+    if avg_view_price is not None and price is not None and price <= 1.2 * avg_view_price:
+        return "Hợp ngân sách của bạn"
+    return "Phù hợp với sở thích"
+
+
+class InteractionItem(BaseModel):
+    productId: str
+    action: str
+
+
+class RecommendRequest(BaseModel):
+    userId: str
+    interactions: List[InteractionItem]
+    limit: int = 12
+
+
+class RecommendProduct(BaseModel):
+    id: str
+    name: str
+    basePrice: float | None
+    imageUrl: str | None
+    brand: str | None
+    categoryName: str | None
+    rating: float | None
+    reviewCount: int | None
+    originalPrice: float | None
+    discountPercent: int | None
+    stock: int | None
+    explanation: str
+    score: float
+
+
+class RecommendResponse(BaseModel):
+    products: List[RecommendProduct]
+    count: int
 
 
 def _parse_price_to_vnd(val_str: Optional[str], unit: Optional[str]) -> Optional[int]:
@@ -651,6 +718,162 @@ def get_related_products(product_id: str):
         from fastapi import HTTPException
 
         raise HTTPException(status_code=500, detail="Lỗi khi truy vấn sản phẩm tương tự")
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+# --- Personalized Feed (Stage 1) ---
+
+
+@app.post("/recommendations", response_model=RecommendResponse)
+def recommendations(req: RecommendRequest):
+    """Gợi ý sản phẩm cá nhân hóa dựa trên weighted average embedding của các interaction."""
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        if not req.interactions:
+            return RecommendResponse(products=[], count=0)
+
+        # 1. Lấy embedding của các sản phẩm đã tương tác
+        interacted_ids = [it.productId for it in req.interactions]
+        cur.execute(
+            'SELECT "productId", "vector" FROM "Embedding" WHERE "productId" = ANY(%s)',
+            (interacted_ids,),
+        )
+        embed_rows = cur.fetchall()
+        embed_map = {r[0]: _parse_vector(r[1]) for r in embed_rows}
+
+        # 2. Tính user vector = weighted average của các embedding sản phẩm
+        vec_sum = None
+        total_weight = 0.0
+        weight_by_product: dict[str, float] = {}
+        for it in req.interactions:
+            vec = embed_map.get(it.productId)
+            if vec is None:
+                continue
+            w = INTERACTION_WEIGHTS.get(it.action, 1)
+            weight_by_product[it.productId] = weight_by_product.get(it.productId, 0.0) + w
+            vec_sum = vec * w if vec_sum is None else vec_sum + vec * w
+            total_weight += w
+
+        if vec_sum is None or total_weight == 0:
+            return RecommendResponse(products=[], count=0)
+
+        user_vector = (vec_sum / total_weight).astype(float)
+        user_vector_str = _vector_to_str(user_vector)
+
+        # Sản phẩm user tương tác nhiều nhất (theo tổng trọng số)
+        top_product_id = max(weight_by_product, key=weight_by_product.get)  # type: ignore[arg-type]
+
+        # Brand của tất cả sản phẩm đã tương tác → aggregate weight theo brand.
+        # (Tránh tie-break không ổn định khi nhiều product cùng weight cao nhất.)
+        interacted_product_ids = list(weight_by_product.keys())
+        cur.execute(
+            'SELECT "id", "brand", "categoryId" FROM "Product" WHERE "id" = ANY(%s)',
+            (interacted_product_ids,),
+        )
+        brand_of: dict[str, str | None] = {}
+        category_of: dict[str, str | None] = {}
+        for pid, brand, category_id in cur.fetchall():
+            brand_of[pid] = brand
+            category_of[pid] = category_id
+
+        weight_by_brand: dict[str, float] = {}
+        for pid, w in weight_by_product.items():
+            b = brand_of.get(pid)
+            if b:
+                weight_by_brand[b] = weight_by_brand.get(b, 0.0) + w
+        top_brand: str | None = max(weight_by_brand, key=weight_by_brand.get) if weight_by_brand else None
+
+        # Category của top product (giữ nguyên logic cũ)
+        top_category_id = category_of.get(top_product_id)
+
+        top_category_name: str | None = None
+        if top_category_id:
+            cur.execute('SELECT "name" FROM "Category" WHERE "id" = %s', (top_category_id,))
+            cat_row = cur.fetchone()
+            top_category_name = cat_row[0] if cat_row else None
+
+        # Giá trung bình các sản phẩm user đã view
+        view_ids = [it.productId for it in req.interactions if it.action == "view"]
+        avg_view_price: float | None = None
+        if view_ids:
+            cur.execute(
+                'SELECT p."basePrice" FROM "Product" p WHERE p."id" = ANY(%s)',
+                (view_ids,),
+            )
+            view_prices = [float(r[0]) for r in cur.fetchall() if r[0] is not None]
+            if view_prices:
+                avg_view_price = sum(view_prices) / len(view_prices)
+
+        # 3. Query top limit sản phẩm cosine gần user vector nhất, loại trừ đã tương tác
+        sql = """
+            SELECT p."id", p."name", p."basePrice", p."imageUrl", p."brand", p."categoryId",
+                   c."name" AS "categoryName",
+                   p."rating", p."reviewCount", p."originalPrice", p."discountPercent",
+                   COALESCE(l.total_stock, 0) AS total_stock,
+                   1 - (e."vector" <=> %s::vector) AS score
+            FROM "Product" p
+            JOIN "Embedding" e ON p."id" = e."productId"
+            JOIN "Category" c ON p."categoryId" = c."id"
+            LEFT JOIN (
+                SELECT "productId", COALESCE(SUM("stock"), 0) AS total_stock
+                FROM "Listing" GROUP BY "productId"
+            ) l ON l."productId" = p."id"
+            WHERE p."id" <> ALL(%s)
+            ORDER BY e."vector" <=> %s::vector
+            LIMIT %s
+        """
+        cur.execute(sql, (user_vector_str, interacted_ids, user_vector_str, req.limit))
+        rows = cur.fetchall()
+
+        results = []
+        for r in rows:
+            price = float(r[2]) if r[2] is not None else None
+            results.append(
+                RecommendProduct(
+                    id=str(r[0]),
+                    name=r[1],
+                    basePrice=price,
+                    imageUrl=r[3],
+                    brand=r[4],
+                    categoryName=r[6],
+                    rating=float(r[7]) if r[7] is not None else None,
+                    reviewCount=int(r[8]) if r[8] is not None else None,
+                    originalPrice=float(r[9]) if r[9] is not None else None,
+                    discountPercent=int(r[10]) if r[10] is not None else None,
+                    stock=int(r[11]) if r[11] is not None else None,
+                    explanation=_explain_rule(
+                        r[4],  # brand
+                        r[6],  # categoryName
+                        top_brand,
+                        top_category_name,
+                        price,
+                        avg_view_price,
+                    ),
+                    score=float(r[12]),
+                )
+            )
+
+        return RecommendResponse(products=results, count=len(results))
+    except Exception as db_err:
+        err_msg = str(db_err).encode("ascii", "replace").decode("ascii")
+        print(f"[Recommendations] Database error: {err_msg}")
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail="Lỗi khi gợi ý sản phẩm")
     finally:
         if cur:
             try:
