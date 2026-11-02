@@ -1,34 +1,167 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import ProductCard from "@/components/shared/ProductCard";
-import mockData from "@/mocks/db.json";
-import { Product, Recommendation } from "@/types";
+import { Product } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, TrendingUp, Zap, ShieldCheck } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { formatPrice } from "@/lib/helpers";
+import { useAuth } from "@/context/AuthProvider";
 
-const products = mockData.products as unknown as Product[];
-const recommendations = mockData.recommendations as unknown as Recommendation[];
-const featuredProducts = products.filter((p) => p.isFeatured);
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
+
+// Shape của payload trả về từ GET /api/recommendations (data[].products)
+interface RecommendationItem {
+  id: string;
+  name: string;
+  basePrice: number | null;
+  imageUrl: string | null;
+  brand: string | null;
+  categoryName: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  stock: number | null;
+  explanation: string;
+  score: number | null;
+}
+
+function toProduct(rec: RecommendationItem): Product {
+  const price = rec.basePrice ?? 0;
+  const imageUrl = rec.imageUrl ?? "";
+  return {
+    id: rec.id,
+    name: rec.name,
+    slug: rec.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    brand: rec.brand ?? "Brand",
+    category: rec.categoryName ?? "General",
+    price,
+    originalPrice: rec.originalPrice ?? price,
+    discountPercent: rec.discountPercent ?? 0,
+    stock: rec.stock ?? 0,
+    rating: rec.rating ?? 0,
+    reviewCount: rec.reviewCount ?? 0,
+    images: imageUrl ? [imageUrl] : [],
+    thumbnailUrl: imageUrl,
+    isFeatured: false,
+    specs: {},
+    recommendationBadge: undefined,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function fetchJson(path: string, init?: RequestInit): Promise<unknown> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function SkeletonCard() {
+  return (
+    <Card className="h-full overflow-hidden">
+      <div className="aspect-square bg-zinc-200 animate-pulse" />
+      <div className="p-4 space-y-2">
+        <div className="h-4 bg-zinc-200 animate-pulse rounded w-3/4" />
+        <div className="h-4 bg-zinc-200 animate-pulse rounded w-1/2" />
+        <div className="h-8 bg-zinc-200 animate-pulse rounded mt-auto" />
+      </div>
+    </Card>
+  );
+}
 
 export default function HomePage() {
+  const { token, isLoading: authLoading } = useAuth();
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [recommendations, setRecommendations] = useState<Product[]>([]);
+  const [loading, setLoading] = useState({ products: true, recommendations: true });
+  const [errorProducts, setErrorProducts] = useState(false);
+  const [errorRecommendations, setErrorRecommendations] = useState(false);
+
+  const loadProducts = useCallback(async () => {
+    setLoading((prev) => ({ ...prev, products: true }));
+    setErrorProducts(false);
+    try {
+      const result = (await fetchJson("/api/products?limit=20")) as {
+        success?: boolean;
+        data?: Product[];
+      };
+      setProducts(result.success && result.data ? result.data : []);
+    } catch {
+      setProducts([]);
+      setErrorProducts(true);
+    } finally {
+      setLoading((prev) => ({ ...prev, products: false }));
+    }
+  }, []);
+
+  const loadRecommendations = useCallback(async () => {
+    setLoading((prev) => ({ ...prev, recommendations: true }));
+    setErrorRecommendations(false);
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      // Có token → personalized từ AI service; chưa login → popular products công khai.
+      const path = token ? "/api/recommendations?limit=12" : "/api/products?limit=12";
+      const result = (await fetchJson(path, { headers })) as {
+        success?: boolean;
+        data?: unknown[];
+      };
+      const items = result.success && result.data ? result.data : [];
+      if (token) {
+        setRecommendations((items as RecommendationItem[]).map(toProduct));
+      } else {
+        setRecommendations((items as Product[]).map((p) => p as Product));
+      }
+    } catch {
+      setRecommendations([]);
+      setErrorRecommendations(true);
+    } finally {
+      setLoading((prev) => ({ ...prev, recommendations: false }));
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadProducts();
+    // Chờ auth restore xong (token đã có giá trị) mới gọi recommendations,
+    // tránh gọi sai endpoint popular rồi mới gọi personalized.
+    if (!authLoading) {
+      loadRecommendations();
+    }
+  }, [loadProducts, loadRecommendations, authLoading]);
+
+  const featuredProducts = products.slice(0, 4);
+
   return (
     <div className="mx-auto max-w-7xl space-y-16 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <h1 className="sr-only">Cửa hàng Eamora — khám phá sản phẩm công nghệ</h1>
 
-      {/* Featured Products - Uniform 4-Column Grid */}
+      {/* Sản phẩm nổi bật */}
       <section>
         <div className="mb-6">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Sản phẩm nổi bật</h2>
           <p className="text-sm text-muted-foreground mt-1">Các thiết bị công nghệ hàng đầu được chọn lọc</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-          {featuredProducts.slice(0, 4).map((product) => (
-            <ProductCard key={product.id} product={product} className="h-full" />
-          ))}
-        </div>
+        {loading.products ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : errorProducts ? (
+          <div className="text-center py-12 text-muted-foreground">Không tải được sản phẩm</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} className="h-full" />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Feature highlights */}
@@ -53,7 +186,7 @@ export default function HomePage() {
         ))}
       </section>
 
-      {/* AI Recommendations */}
+      {/* Gợi ý cá nhân hóa */}
       <section className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900">
@@ -65,35 +198,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 sm:gap-6">
-          {recommendations.slice(0, 4).map((rec) => (
-            <Link key={rec.id} href={`/products/${rec.id}`} className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 block h-full">
-              <Card className="group h-full overflow-hidden border border-zinc-200 rounded-2xl transition-all hover:-translate-y-1 hover:shadow-lg bg-white">
-                <div className="aspect-square overflow-hidden bg-zinc-100 relative">
-                  <span className="absolute top-3 left-3 z-10 flex items-center gap-1 bg-white/90 backdrop-blur-sm text-zinc-900 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
-                    <Sparkles className="h-3 w-3" />
-                    {rec.recommendationBadge.label}
-                  </span>
-                  <Image
-                    src={rec.thumbnailUrl}
-                    alt={rec.name}
-                    width={300}
-                    height={300}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    unoptimized
-                  />
-                </div>
-                <CardContent className="space-y-1.5 p-4">
-                  <h3 className="text-sm font-bold line-clamp-2 leading-tight">{rec.name}</h3>
-                  <p className="text-sm font-bold text-primary sm:text-base">{formatPrice(rec.price)}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        {loading.recommendations ? (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 sm:gap-6">
+            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : errorRecommendations ? (
+          <div className="text-center py-12 text-muted-foreground">Không tải được sản phẩm</div>
+        ) : recommendations.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">Không có gợi ý phù hợp</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 sm:gap-6">
+            {recommendations.map((product) => (
+              <ProductCard key={product.id} product={product} className="h-full" />
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* All Products */}
+      {/* Khám phá sản phẩm (All Products) */}
       <section className="space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -104,11 +226,19 @@ export default function HomePage() {
             Xem tất cả
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} className="h-full" />
-          ))}
-        </div>
+        {loading.products ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : errorProducts ? (
+          <div className="text-center py-12 text-muted-foreground">Không tải được sản phẩm</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} className="h-full" />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
