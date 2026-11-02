@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BellRing, TrendingDown, Eye, Clock, Package } from "lucide-react";
+import { BellOff, BellRing, ListX, TrendingDown, Clock, Package } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { formatDate, formatPrice } from "@/lib/helpers";
 import { Badge } from "@/components/ui/badge";
@@ -271,9 +271,9 @@ export default function WatchlistPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="space-y-2 rounded-2xl border bg-gradient-to-br from-emerald-500/5 via-background to-primary/5 p-5 sm:p-6">
+      <header className="space-y-2 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-slate-50 p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white">
             <TrendingDown className="h-5 w-5" />
           </div>
           <div>
@@ -290,15 +290,19 @@ export default function WatchlistPage() {
         <div>
           <h2 id="price-alerts-heading" className="text-xl font-semibold">Thông báo giá</h2>
           <p className="text-sm text-muted-foreground">
-            Cảnh báo được tính từ giá listing hiện tại và watchlist trả về từ API; tải lại trang để kiểm tra giá mới nhất.
+            Cập nhật biến động giá thực tế của các sản phẩm bạn quan tâm.
           </p>
         </div>
         {priceNotifications.length === 0 ? (
-          <Card>
-            <CardContent className="py-6 text-sm text-muted-foreground">
-              Chưa có sản phẩm đang theo dõi nào chạm giá mục tiêu.
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center rounded-xl border bg-muted/50">
+            <BellOff className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <h3 className="font-semibold">Chưa có cảnh báo giá nào</h3>
+              <p className="text-sm text-muted-foreground">
+                Bạn sẽ nhận được thông báo khi sản phẩm trong watchlist giảm giá.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="space-y-3">
             {priceNotifications.map(({ watch, listing }) => (
@@ -322,37 +326,45 @@ export default function WatchlistPage() {
         )}
       </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BellRing className="h-4 w-4" />
-            Quy tắc mua tự động
-          </CardTitle>
-          <CardDescription>
-            Cấu hình được lưu vào tài khoản. Worker chỉ mô phỏng quyết định trong sandbox, không đặt đơn hoặc thanh toán.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSaveRule} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <label htmlFor="auto-buy" className="flex items-start gap-3 text-sm">
-              <input
-                id="auto-buy"
-                type="checkbox"
-                checked={autoBuy}
-                onChange={(event) => setAutoBuy(event.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-primary"
-              />
-              <span>
-                <span className="block font-medium">Cho phép Auto-buy</span>
-                <span className="text-muted-foreground">Cho phép xử lý sandbox; chưa thực hiện mua hàng thật.</span>
-              </span>
-            </label>
-            <Button type="submit" disabled={isSavingRule}>
-              {isSavingRule ? "Đang lưu..." : "Lưu cấu hình"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <BellRing className="h-5 w-5 text-indigo-600" />
+          <h2 className="text-xl font-semibold">Quy tắc mua tự động</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-6">
+          Tự động tạo đơn hàng thử nghiệm khi giá sản phẩm chạm ngưỡng mong muốn.
+        </p>
+        <form onSubmit={handleSaveRule} className="flex items-center gap-4">
+          <label className="relative inline-flex items-center cursor-pointer gap-3">
+            <input
+              id="auto-buy"
+              type="checkbox"
+              role="switch"
+              aria-checked={autoBuy}
+              checked={autoBuy}
+              onChange={(event) => setAutoBuy(event.target.checked)}
+              className="sr-only peer"
+            />
+            <div
+              className={`
+                w-11 h-6 bg-gray-200 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300
+                peer peer-checked:bg-indigo-600
+                after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border
+                after:rounded-full after:h-5 after:w-5 after:transition-all
+                peer-checked:after:translate-x-full peer-checked:after:border-white
+              `}
+              aria-hidden="true"
+            />
+            <span className="ml-3 text-sm font-medium text-gray-900">Bật mua tự động</span>
+            <span className="text-xs text-muted-foreground">
+              Tự động tạo đơn hàng thử nghiệm khi giá sản phẩm chạm ngưỡng mong muốn.
+            </span>
+          </label>
+          <Button type="submit" disabled={isSavingRule}>
+            {isSavingRule ? "Đang lưu..." : "Lưu cấu hình"}
+          </Button>
+        </form>
+      </div>
 
       <section className="space-y-4">
         <div>
@@ -360,18 +372,14 @@ export default function WatchlistPage() {
           <p className="text-sm text-muted-foreground">Danh sách sản phẩm bạn đang theo dõi giá.</p>
         </div>
         {watchlist.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-              <Eye className="h-12 w-12 text-muted-foreground" />
-              <div>
-                <h3 className="font-semibold">Chưa theo dõi sản phẩm nào</h3>
-                <p className="text-sm text-muted-foreground">Thêm sản phẩm vào danh sách theo dõi để Price Agent cảnh báo giá.</p>
-              </div>
-              <Link href="/search" className={buttonVariants({ variant: "outline" })}>
-                Khám phá sản phẩm
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-center rounded-xl border bg-muted/50">
+            <ListX className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <h3 className="font-semibold">Danh sách theo dõi của bạn đang trống</h3>
+              <p className="text-sm text-muted-foreground">Thêm sản phẩm để Price Agent theo dõi và cảnh báo giá.</p>
+            </div>
+            <Link href="/search" className={buttonVariants({ variant: "default" })}>Thêm sản phẩm ngay</Link>
+          </div>
         ) : (
           watchlist.map((watch) => {
             const pricesWithStock = watch.product.listings

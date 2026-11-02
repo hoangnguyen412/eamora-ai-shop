@@ -8,14 +8,11 @@ import { formatPrice } from "@/lib/helpers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Send,
   Bot,
   User,
-  Sparkles,
-  ShieldCheck,
   ExternalLink,
   MessageCircle,
   X,
@@ -57,7 +54,8 @@ export default function ChatWidget() {
     setIsTyping(true);
 
     try {
-      const res = await fetch("http://localhost:8000/chat/message", {
+      const aiBaseUrl = (process.env.NEXT_PUBLIC_AI_URL ?? "http://localhost:8000").replace(/\/$/, "");
+    const res = await fetch(`${aiBaseUrl}/chat/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -125,10 +123,7 @@ export default function ChatWidget() {
                 <Bot className="h-4 w-4 text-white" />
               </div>
               <div className="leading-tight">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold">AI Assistant</span>
-                  <Badge className="bg-gradient-brand text-white border-0 text-[9px] px-1.5 py-0 h-4">RAG</Badge>
-                </div>
+                <span className="text-xs font-bold">Trợ lý Amora</span>
                 <span className="text-[10px] text-muted-foreground">Tư vấn mua sắm Amora</span>
               </div>
             </div>
@@ -169,7 +164,7 @@ export default function ChatWidget() {
                     <div
                       className={`rounded-2xl p-3 text-xs leading-relaxed ${
                         msg.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-tr-md"
+                          ? "bg-primary text-primary-foreground rounded-tr-xs"
                           : "bg-muted rounded-tl-md text-foreground"
                       }`}
                     >
@@ -212,13 +207,7 @@ export default function ChatWidget() {
                         ))}
                       </div>
                     )}
-                    {msg.groundednessScore && (
-                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                        <ShieldCheck className="h-2.5 w-2.5" />
-                        Độ tin cậy: {Math.round(msg.groundednessScore * 100)}%
-                      </div>
-                    )}
-                  </div>
+                    </div>
                 </div>
               ))}
               {isTyping && (
@@ -263,9 +252,6 @@ export default function ChatWidget() {
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             </div>
-            <p className="mt-1.5 text-[9px] text-muted-foreground text-center flex items-center justify-center gap-1">
-              <Sparkles className="h-2.5 w-2.5" /> RAG AI Assistant
-            </p>
           </CardContent>
         </div>
       )}

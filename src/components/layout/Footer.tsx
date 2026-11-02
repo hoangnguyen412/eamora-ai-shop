@@ -57,8 +57,7 @@ export default function Footer() {
         <Separator className="my-8" />
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>© 2026 Amora. Dự án IT in EC — Mock-Driven Development.</p>
-          <p>Phiên bản 1.0 • Next.js + Tailwind CSS + shadcn/ui</p>
+          <p>© 2026 Amora Inc. All rights reserved.</p>
         </div>
       </div>
     </footer>

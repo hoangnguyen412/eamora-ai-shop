@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/context/CartProvider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -32,7 +33,14 @@ interface HeaderProps {
 export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
   const { itemCount } = useCart();
   const { user, isLoading, signOut } = useAuth();
+  const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
+
+  const navLinkClass = (active: boolean) =>
+    buttonVariants({
+      variant: "ghost",
+      className: active ? "text-sm font-semibold text-indigo-600" : "text-sm font-medium",
+    });
 
   useEffect(() => {
     setIsMounted(true);
@@ -67,18 +75,18 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
 
           {/* Desktop navigation */}
           <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
-            <Link href="/" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+            <Link href="/" className={navLinkClass(pathname === "/")}>
               Trang chủ
             </Link>
-            <Link href="/search" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+            <Link href="/search" className={navLinkClass(pathname.startsWith("/search"))}>
               <Search className="mr-1 h-4 w-4" aria-hidden="true" />
               Tìm kiếm
             </Link>
-            <Link href="/watchlist" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
-              <TrendingDown className="mr-1 h-4 w-4" aria-hidden="true" />
+            <Link href="/watchlist" className={navLinkClass(pathname.startsWith("/watchlist"))}>
+              <TrendingDown className={`mr-1 h-4 w-4 ${pathname.startsWith("/watchlist") ? "text-indigo-600" : ""}`} aria-hidden="true" />
               Price Agent
             </Link>
-            <Link href="/seller/login" className={buttonVariants({ variant: "ghost", className: "text-sm font-medium" })}>
+            <Link href="/seller/login" className={navLinkClass(pathname.startsWith("/seller"))}>
               <LayoutDashboard className="mr-1 h-4 w-4" aria-hidden="true" />
               Seller
             </Link>
@@ -93,15 +101,15 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
               aria-label={`Giỏ hàng${isMounted && itemCount > 0 ? `, ${itemCount} sản phẩm` : ""}`}
             >
               <ShoppingCart className="h-5 w-5" aria-hidden="true" />
-              {isMounted && itemCount > 0 && (
-                <Badge aria-hidden="true" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px] bg-gradient-brand text-white border-0">
+              {isMounted && (
+                <Badge aria-hidden="true" className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full p-0 flex items-center justify-center text-[10px] bg-gradient-brand text-white border-0">
                   {itemCount}
                 </Badge>
               )}
             </Link>
 
             {!user ? (
-              <Link href="/login" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              <Link href="/login" className={buttonVariants({ variant: "default", size: "sm", className: "px-3" })}>
                 {isLoading ? "Đang tải..." : "Đăng nhập"}
               </Link>
             ) : (

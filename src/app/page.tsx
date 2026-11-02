@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, TrendingUp, Zap, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
+import HeroBanner from "@/components/layout/HeroBanner";
+import FeatureBadges from "@/components/layout/FeatureBadges";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
@@ -154,11 +156,19 @@ export default function HomePage() {
     <div className="mx-auto max-w-7xl space-y-16 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <h1 className="sr-only">Cửa hàng Eamora — khám phá sản phẩm công nghệ</h1>
 
+      <HeroBanner />
+      <FeatureBadges />
+
       {/* Sản phẩm nổi bật */}
-      <section>
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Sản phẩm nổi bật</h2>
-          <p className="text-sm text-muted-foreground mt-1">Các thiết bị công nghệ hàng đầu được chọn lọc</p>
+      <section id="products" aria-labelledby="products-heading">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 id="products-heading" className="text-2xl font-bold tracking-tight sm:text-3xl">Sản phẩm nổi bật</h2>
+            <p className="text-sm text-muted-foreground mt-1">Các thiết bị công nghệ hàng đầu được chọn lọc</p>
+          </div>
+          <Link href="/search?sort=featured" className="text-sm font-medium text-primary hover:underline underline-offset-4">
+            Xem tất cả ›
+          </Link>
         </div>
         {loading.products ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">

@@ -212,8 +212,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
         {/* Images */}
         <div className="space-y-4">
-          <div className="aspect-square overflow-hidden rounded-2xl border bg-muted/50">
-            <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="h-full w-full object-cover" loading="eager" unoptimized />
+          <div className="aspect-square w-full max-h-[500px] flex items-center justify-center bg-slate-50 rounded-2xl p-4">
+            <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="h-full w-full object-contain" loading="eager" unoptimized />
           </div>
           {product.images.length > 1 && (
             <div className="flex flex-wrap gap-3">
