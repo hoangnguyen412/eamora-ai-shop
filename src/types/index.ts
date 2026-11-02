@@ -47,6 +47,7 @@ export interface Product {
   isFeatured: boolean;
   specs: ProductSpecs;
   recommendationBadge?: RecommendationBadge;
+  explanation?: string;
   createdAt: string;
   offers?: ProductOffer[];
 }

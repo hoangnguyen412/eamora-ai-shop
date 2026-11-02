@@ -13,6 +13,7 @@ import { logInteraction } from "@/lib/logInteraction";
 interface ProductCardProps {
   product: Product;
   className?: string;
+  explanation?: string;
 }
 
 function BadgeIcon({ type }: { type: string }) {
@@ -52,7 +53,7 @@ function getValidImageUrl(product: Product): string | null {
   return `https://${trimmed}`;
 }
 
-export default function ProductCard({ product, className = "" }: ProductCardProps) {
+export default function ProductCard({ product, className = "", explanation }: ProductCardProps) {
   const { addItem } = useCart();
   const imageUrl = getValidImageUrl(product);
 
@@ -64,6 +65,19 @@ export default function ProductCard({ product, className = "" }: ProductCardProp
           <span className="flex items-center gap-1.5 bg-zinc-900 text-white text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
             <BadgeIcon type={product.recommendationBadge.type} />
             {product.recommendationBadge.label}
+          </span>
+        </div>
+      )}
+
+      {/* Recommendation explanation badge (top-left pill) */}
+      {explanation && (
+        <div className="absolute top-4 left-4 z-10">
+          <span
+            className="flex items-center gap-1.5 bg-zinc-100 text-zinc-900 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm border border-zinc-200"
+            title={explanation}
+          >
+            <Sparkles className="h-3 w-3" />
+            {explanation.length > 30 ? `${explanation.slice(0, 30)}…` : explanation}
           </span>
         </div>
       )}

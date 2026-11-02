@@ -47,6 +47,7 @@ function toProduct(rec: RecommendationItem): Product {
     isFeatured: false,
     specs: {},
     recommendationBadge: undefined,
+    explanation: rec.explanation,
     createdAt: new Date().toISOString(),
   };
 }
@@ -84,6 +85,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState({ products: true, recommendations: true });
   const [errorProducts, setErrorProducts] = useState(false);
   const [errorRecommendations, setErrorRecommendations] = useState(false);
+  const [recSource, setRecSource] = useState<'ai' | 'popular' | null>(null);
 
   const loadProducts = useCallback(async () => {
     setLoading((prev) => ({ ...prev, products: true }));
@@ -113,12 +115,17 @@ export default function HomePage() {
       const result = (await fetchJson(path, { headers })) as {
         success?: boolean;
         data?: unknown[];
+        source?: string;
       };
       const items = result.success && result.data ? result.data : [];
       if (token) {
+        // Có token → personalized từ AI service (source = "ai") hoặc popular fallback (source = "popular").
+        setRecSource((result.source === 'popular' ? 'popular' : 'ai') as 'ai' | 'popular');
         setRecommendations((items as RecommendationItem[]).map(toProduct));
       } else {
-        setRecommendations((items as Product[]).map((p) => p as Product));
+        // Chưa login → popular products công khai. Gán explanation để badge hiển thị.
+        setRecSource('popular');
+        setRecommendations((items as Product[]).map((p) => ({ ...p, explanation: 'Sản phẩm phổ biến' })));
       }
     } catch {
       setRecommendations([]);
@@ -137,7 +144,9 @@ export default function HomePage() {
     }
   }, [loadProducts, loadRecommendations, authLoading]);
 
-  const featuredProducts = products.slice(0, 4);
+  const featuredProducts = [...products]
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    .slice(0, 4);
 
   return (
     <div className="mx-auto max-w-7xl space-y-16 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
@@ -186,15 +195,26 @@ export default function HomePage() {
         ))}
       </section>
 
-      {/* Gợi ý cá nhân hóa */}
+      {/* Gợi ý cá nhân hóa / Sản phẩm phổ biến */}
       <section className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Gợi ý cá nhân hóa</h2>
-            <p className="text-sm text-muted-foreground mt-1">Dành riêng cho phong cách của bạn</p>
+            {recSource === 'ai' ? (
+              <>
+                <h2 className="text-2xl font-bold tracking-tight">Gợi ý cá nhân hóa</h2>
+                <p className="text-sm text-muted-foreground mt-1">Dành riêng cho phong cách của bạn</p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold tracking-tight">Sản phẩm phổ biến</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Hiện khi dịch vụ gợi ý AI chưa sẵn sàng hoặc bạn chưa đăng nhập
+                </p>
+              </>
+            )}
           </div>
         </div>
 
@@ -209,7 +229,12 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 sm:gap-6">
             {recommendations.map((product) => (
-              <ProductCard key={product.id} product={product} className="h-full" />
+              <ProductCard
+                key={product.id}
+                product={product}
+                explanation={product.explanation}
+                className="h-full"
+              />
             ))}
           </div>
         )}

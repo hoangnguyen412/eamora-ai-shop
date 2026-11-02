@@ -336,8 +336,11 @@ const getProductData = async (
         basePrice: true,
         imageUrl: true,
         brand: true,
+        rating: true,
+        reviewCount: true,
+        originalPrice: true,
+        discountPercent: true,
         category: { select: { name: true } },
-        reviews: { select: { rating: true } },
         listings: {
           select: {
             id: true,
@@ -363,9 +366,6 @@ const getProductData = async (
             stock: listing.stock,
           }))
           .sort((left, right) => left.price - right.price);
-        const averageRating = product.reviews.length > 0
-          ? product.reviews.reduce((total, item) => total + item.rating, 0) / product.reviews.length
-          : 0;
         const stockTotal = product.listings.reduce((total, listing) => total + listing.stock, 0);
         const price = offers[0]?.price ?? (listingPrices.length > 0 ? Math.min(...listingPrices) : Number(product.basePrice ?? 0));
         const imgUrl = product.imageUrl ?? '';
@@ -377,11 +377,11 @@ const getProductData = async (
           brand: product.brand ?? product.name.split(' ')[0] ?? 'Brand',
           category: product.category?.name ?? 'General',
           price,
-          originalPrice: price,
-          discountPercent: 0,
+          originalPrice: product.originalPrice,
+          discountPercent: product.discountPercent,
           stock: stockTotal,
-          rating: averageRating,
-          reviewCount: product.reviews.length,
+          rating: product.rating,
+          reviewCount: product.reviewCount,
           thumbnailUrl: imgUrl,
           images: imgUrl ? [imgUrl] : [],
           isFeatured: false,
