@@ -7,6 +7,7 @@ import time
 import re
 import os
 import uuid
+from datetime import datetime, timedelta
 import psycopg2
 import numpy as np
 from psycopg2.extras import Json
@@ -623,12 +624,122 @@ def chat_message(req: ChatRequest):
     }
 
 class ScoreDealRequest(BaseModel):
-    productId: int
+    productId: str
     currentPrice: float
+
+
+def _scale_linear(value: float, v_min: float, v_max: float, out_min: float, out_max: float) -> float:
+    """Scale value tu [v_min, v_max] sang [out_min, out_max] tuyen tinh, clamp ngoai khoang."""
+    if v_max == v_min:
+        return out_max if value >= v_max else out_min
+    if value <= v_min:
+        return out_min
+    if value >= v_max:
+        return out_max
+    return out_min + (value - v_min) / (v_max - v_min) * (out_max - out_min)
+
 
 @app.post("/agent/score-deal")
 def score_deal(req: ScoreDealRequest):
-    return {"dqs": 85, "is_deal": True}
+    """Tinh Deal Quality Score (DQS) 0-100 thong qua 3 thanh phan:
+    - Discount Score (40 diem): % giam so voi originalPrice.
+    - History Score (40 diem): vi tri cua currentPrice trong khoang [minPrice, maxPrice] 30 ngay qua.
+    - Rating Score (20 diem): rating cua product.
+    """
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # 1. Lay thong tin product: originalPrice, discountPercent, rating
+        cur.execute(
+            '''
+            SELECT "originalPrice", "discountPercent", "rating"
+            FROM "Product"
+            WHERE "id" = %s
+            ''',
+            (req.productId,),
+        )
+        product_row = cur.fetchone()
+        if product_row is None:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        original_price = float(product_row[0] or 0)
+        discount_percent = float(product_row[1] or 0)
+        rating = float(product_row[2] or 0)
+
+        # --- Discount Score (40 diem) ---
+        # Tinh % giam thuc su tu originalPrice (neu co) hoac discountPercent luu san
+        if original_price > 0:
+            actual_discount = max(0.0, (original_price - req.currentPrice) / original_price * 100.0)
+        else:
+            actual_discount = discount_percent
+
+        # Discount >= 20% -> 40; Discount <= 5% -> 0; trung gian scale tuyen tinh
+        discount_score = _scale_linear(actual_discount, 5.0, 20.0, 0.0, 40.0)
+
+        # --- History Score (40 diem) ---
+        # Query min/max PriceHistory cua product trong 30 ngay qua (qua Listing)
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        cur.execute(
+            '''
+            SELECT MIN(ph."price"), MAX(ph."price")
+            FROM "PriceHistory" ph
+            JOIN "Listing" l ON l."id" = ph."listingId"
+            WHERE l."productId" = %s
+              AND ph."recordedAt" >= %s
+            ''',
+            (req.productId, thirty_days_ago),
+        )
+        hist_row = cur.fetchone()
+        min_price = float(hist_row[0]) if hist_row and hist_row[0] is not None else None
+        max_price = float(hist_row[1]) if hist_row and hist_row[1] is not None else None
+
+        if min_price is not None and max_price is not None and max_price > min_price:
+            # currentPrice <= minPrice*1.05 -> 40; currentPrice >= maxPrice -> 0; trung gian scale
+            threshold_low = min_price * 1.05
+            history_score = _scale_linear(req.currentPrice, threshold_low, max_price, 40.0, 0.0)
+            history_score = max(0.0, min(40.0, history_score))
+        else:
+            # Khong co lich su gia -> trung binh 20 diem
+            history_score = 20.0
+
+        # --- Rating Score (20 diem) ---
+        # Rating >= 4.5 -> 20; Rating <= 3.0 -> 0; trung gian scale tuyen tinh
+        rating_score = _scale_linear(rating, 3.0, 4.5, 0.0, 20.0)
+
+        dqs = round(discount_score + history_score + rating_score)
+        dqs = max(0, min(100, int(dqs)))
+        is_deal = dqs >= 70
+
+        return {
+            "dqs": dqs,
+            "is_deal": is_deal,
+            "breakdown": {
+                "discount_score": round(discount_score),
+                "history_score": round(history_score),
+                "rating_score": round(rating_score),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Loi tinh DQS: {e}")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="Khong the tinh DQS")
+    finally:
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 # --- Related Products Endpoint ---
