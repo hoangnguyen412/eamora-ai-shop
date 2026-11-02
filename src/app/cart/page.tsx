@@ -7,7 +7,7 @@ import { formatPrice } from "@/lib/helpers";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingCart, ArrowRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,10 +28,10 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-          <ShoppingBag className="h-9 w-9 text-primary" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <ShoppingCart className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="mt-5 text-2xl font-bold">Giỏ hàng đang chờ bạn</h1>
+        <h1 className="mt-5 text-2xl font-bold">Giỏ hàng đang trống</h1>
         <p className="text-muted-foreground">
           Hãy thêm sản phẩm vào giỏ hàng để tiến hành thanh toán
         </p>
@@ -39,7 +39,7 @@ export default function CartPage() {
           href="/search"
           className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}
         >
-          Khám phá sản phẩm
+          Tiếp tục mua sắm
         </Link>
       </div>
     );

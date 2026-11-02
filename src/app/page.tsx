@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/shared/ProductCard";
+import { Button } from "@/components/ui/button";
 import { Product } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Sparkles, TrendingUp, Zap, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 
@@ -163,7 +165,13 @@ export default function HomePage() {
             {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
           </div>
         ) : errorProducts ? (
-          <div className="text-center py-12 text-muted-foreground">Không tải được sản phẩm</div>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Alert variant="destructive" className="max-w-md w-full">
+              <AlertTitle>Không tải được sản phẩm</AlertTitle>
+              <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
+            </Alert>
+            <Button variant="outline" onClick={loadProducts}>Thử lại</Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {featuredProducts.map((product) => (
@@ -223,7 +231,13 @@ export default function HomePage() {
             {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
           </div>
         ) : errorRecommendations ? (
-          <div className="text-center py-12 text-muted-foreground">Không tải được sản phẩm</div>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Alert variant="destructive" className="max-w-md w-full">
+              <AlertTitle>Không tải được gợi ý</AlertTitle>
+              <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
+            </Alert>
+            <Button variant="outline" onClick={loadRecommendations}>Thử lại</Button>
+          </div>
         ) : recommendations.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">Không có gợi ý phù hợp</div>
         ) : (
@@ -256,7 +270,13 @@ export default function HomePage() {
             {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
           </div>
         ) : errorProducts ? (
-          <div className="text-center py-12 text-muted-foreground">Không tải được sản phẩm</div>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Alert variant="destructive" className="max-w-md w-full">
+              <AlertTitle>Không tải được sản phẩm</AlertTitle>
+              <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
+            </Alert>
+            <Button variant="outline" onClick={loadProducts}>Thử lại</Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {products.map((product) => (

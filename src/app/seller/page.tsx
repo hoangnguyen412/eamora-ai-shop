@@ -312,8 +312,12 @@ export default function SellerPage() {
                 <TableBody>
                   {orders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                        Chưa có đơn hàng nào.
+                      <TableCell colSpan={6} className="text-center py-12">
+                        <div className="flex flex-col items-center gap-3">
+                          <ShoppingCart className="h-10 w-10 text-muted-foreground" />
+                          <p className="text-sm font-medium">Chưa có đơn hàng nào.</p>
+                          <p className="text-xs text-muted-foreground">Đơn hàng của khách hàng sẽ hiển thị ở đây.</p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -365,8 +369,12 @@ export default function SellerPage() {
                   <TableBody>
                     {sellerProducts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                          Chưa có sản phẩm nào.
+                        <TableCell colSpan={6} className="text-center py-12">
+                          <div className="flex flex-col items-center gap-3">
+                            <Package className="h-10 w-10 text-muted-foreground" />
+                            <p className="text-sm font-medium">Chưa có sản phẩm nào.</p>
+                            <p className="text-xs text-muted-foreground">Đăng sản phẩm đầu tiên để bắt đầu bán hàng.</p>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : (

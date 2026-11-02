@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BellRing, TrendingDown } from "lucide-react";
+import { BellRing, TrendingDown, Eye, Clock, Package } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { formatDate, formatPrice } from "@/lib/helpers";
 import { Badge } from "@/components/ui/badge";
@@ -361,10 +361,14 @@ export default function WatchlistPage() {
         </div>
         {watchlist.length === 0 ? (
           <Card>
-            <CardContent className="space-y-3 py-8 text-center">
-              <p className="text-sm text-muted-foreground">Bạn chưa theo dõi sản phẩm nào.</p>
+            <CardContent className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+              <Eye className="h-12 w-12 text-muted-foreground" />
+              <div>
+                <h3 className="font-semibold">Chưa theo dõi sản phẩm nào</h3>
+                <p className="text-sm text-muted-foreground">Thêm sản phẩm vào danh sách theo dõi để Price Agent cảnh báo giá.</p>
+              </div>
               <Link href="/search" className={buttonVariants({ variant: "outline" })}>
-                Tìm sản phẩm
+                Khám phá sản phẩm
               </Link>
             </CardContent>
           </Card>
@@ -456,8 +460,12 @@ export default function WatchlistPage() {
         </div>
         {queue.length === 0 ? (
           <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">Chưa có sản phẩm nào trong hàng đợi.</p>
+            <CardContent className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+              <Clock className="h-12 w-12 text-muted-foreground" />
+              <div>
+                <h3 className="font-semibold">Chưa có sản phẩm nào trong hàng đợi</h3>
+                <p className="text-sm text-muted-foreground">Bật Auto-buy và thêm sản phẩm vào hàng đợi để tự động mua (sandbox).</p>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -529,7 +537,18 @@ export default function WatchlistPage() {
           <p className="text-sm text-muted-foreground">Đơn hàng gần đây của tài khoản buyer.</p>
         </div>
         {orders.length === 0 ? (
-          <Card><CardContent className="py-6 text-sm text-muted-foreground">Chưa có đơn hàng.</CardContent></Card>
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+              <Package className="h-12 w-12 text-muted-foreground" />
+              <div>
+                <h3 className="font-semibold">Chưa có đơn hàng</h3>
+                <p className="text-sm text-muted-foreground">Đơn hàng của bạn sẽ hiển thị ở đây sau khi đặt hàng.</p>
+              </div>
+              <Link href="/search" className={buttonVariants({ variant: "outline" })}>
+                Khám phá sản phẩm
+              </Link>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-3">
             {orders.map((order) => (

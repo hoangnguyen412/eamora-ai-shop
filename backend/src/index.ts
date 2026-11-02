@@ -397,6 +397,12 @@ const getProductData = async (
     console.warn('Prisma product query failed, falling back to mock product data:', error);
   }
 
+  // Khi có bộ lọc (where) mà truy vấn thành công nhưng không khớp bản ghi nào,
+  // trả mảng rỗng thay vì rò rỉ dữ liệu mock vào kết quả tìm kiếm/lọc.
+  if (where !== undefined) {
+    return [];
+  }
+
   const mockData = readMockProductDatabase();
   return (mockData.products ?? []).map((product) => normalizeProductRecord(product));
 };

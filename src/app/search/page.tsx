@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import { Suspense } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -52,6 +53,7 @@ function SearchContent() {
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,7 +96,7 @@ function SearchContent() {
     return () => {
       controller.abort();
     };
-  }, [debouncedSearch, selectedCategory, selectedBrand, minPrice, maxPrice, page]);
+  }, [debouncedSearch, selectedCategory, selectedBrand, minPrice, maxPrice, page, retryKey]);
 
   const clearFilters = () => {
     setSearch("");
@@ -324,8 +326,14 @@ function SearchContent() {
           </div>
 
           {error ? (
-            <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-              {error}
+            <div className="flex flex-col items-center justify-center gap-3 py-4">
+              <Alert variant="destructive" className="max-w-md w-full">
+                <AlertTitle>Không tải được sản phẩm</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+              <Button variant="outline" onClick={() => setRetryKey((k) => k + 1)}>
+                Thử lại
+              </Button>
             </div>
           ) : isLoading ? (
             <div role="status" aria-label="Đang tải sản phẩm" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import mockData from "@/mocks/db.json";
 import { Product, PriceHistory } from "@/types";
 import { useCart } from "@/context/CartProvider";
 import PriceChart from "@/components/shared/PriceChart";
@@ -16,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ShoppingCart, Truck, ShieldCheck, RotateCcw,
   ChevronLeft, Sparkles, BellRing,
@@ -24,10 +25,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/AuthProvider";
 import { logInteraction } from "@/lib/logInteraction";
 
-const products = mockData.products as unknown as Product[];
-
 export default function ProductDetailClient({ id }: { id: string }) {
-  const [product, setProduct] = useState<Product | null>(() => products.find((item) => item.id === id) ?? null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [productLoading, setProductLoading] = useState(true);
+  const [productError, setProductError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
   const [priceHistoryState, setPriceHistoryState] = useState<{
     productId: string;
     data?: PriceHistory;
@@ -37,10 +39,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const { token, user, isLoading: isAuthLoading } = useAuth();
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [targetPrice, setTargetPrice] = useState(() => {
-    const initialProduct = products.find((item) => item.id === id);
-    return initialProduct ? String(initialProduct.price) : "";
-  });
+  const [targetPrice, setTargetPrice] = useState("");
   const [watchMessage, setWatchMessage] = useState("");
   const [isSavingWatch, setIsSavingWatch] = useState(false);
   const [cartToast, setCartToast] = useState<{ open: boolean; message: string }>({
@@ -51,23 +50,40 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    setProductLoading(true);
+    setProductError("");
     fetch(`${apiBaseUrl}/api/products/${encodeURIComponent(id)}`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (response.status === 404) {
+            setProduct(null);
+            setProductError("Sản phẩm không tồn tại.");
+          } else {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return;
+        }
         const result = await response.json() as { success?: boolean; data?: Product };
         if (result.success && result.data) {
           setProduct(result.data);
           setTargetPrice(String(result.data.price));
+        } else {
+          setProduct(null);
+          setProductError("Sản phẩm không tồn tại.");
         }
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name !== "AbortError") {
           console.error("Unable to load product details from API:", error);
+          setProductError("Không thể tải chi tiết sản phẩm. Vui lòng thử lại.");
         }
+      })
+      .finally(() => {
+        setProductLoading(false);
       });
 
     return () => controller.abort();
-  }, [apiBaseUrl, id]);
+  }, [apiBaseUrl, id, retryKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -98,11 +114,35 @@ export default function ProductDetailClient({ id }: { id: string }) {
     logInteraction(loadedProductId, "view");
   }, [loadedProductId]);
 
+  if (productLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-20">
+        <div className="flex flex-col gap-6 max-w-2xl">
+          <Skeleton className="h-48 w-full rounded-2xl" />
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-8 w-1/3 mt-auto" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!product) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold">Không tìm thấy sản phẩm</h1>
-        <Link href="/" className={buttonVariants({ className: "mt-4" })}>Về trang chủ</Link>
+      <div className="mx-auto max-w-7xl px-4 py-20">
+        <div className="flex flex-col items-center justify-center gap-3 text-center">
+          <Alert variant="destructive" className="max-w-md w-full">
+            <AlertTitle>{productError || "Không tìm thấy sản phẩm"}</AlertTitle>
+            <AlertDescription>Vui lòng kiểm tra lại mã sản phẩm hoặc quay sau.</AlertDescription>
+          </Alert>
+          <div className="flex items-center justify-center gap-2">
+            <Button variant="outline" onClick={() => setRetryKey((k) => k + 1)}>
+              Thử lại
+            </Button>
+            <Link href="/" className={buttonVariants({ className: "mt-4" })}>Về trang chủ</Link>
+          </div>
+        </div>
       </div>
     );
   }
