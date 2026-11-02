@@ -16,7 +16,7 @@
 - The frontend auth provider persists the backend JWT in `localStorage` under `eamora.auth.token`, restores the user through `GET /api/auth/me`, and shares the bearer token across authenticated API calls. The browser-side token is accessible to JavaScript; production deployments should consider HttpOnly cookie-based storage with corresponding CSRF protections.
 
 ## 2. Core Marketplace
-- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page` 1–1,000,000, `limit` 1–100; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid/repeated filters, pagination or price ranges return 400)
+- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page` 1–1,000,000, `limit` 1–100; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid/repeated filters, pagination or price ranges return 400). Mỗi sản phẩm trả về đầy đủ: `id`, `name`, `slug`, `brand`, `category`, `price`, `originalPrice`, `discountPercent`, `stock`, `rating`, `reviewCount`, `thumbnailUrl`, `images`, `isFeatured`, `specs`, `offers`.
 - `GET /api/products/:id` (includes in-stock seller `offers`: `listingId`, `shopId`, `shopName`, `price`, and `stock`)
 - `GET /api/products/:id/price-history` (Public; optional `limit` 1–100 per listing, default 100; returns the most recent recorded `PriceHistory` snapshots in chronological order plus current listing price and historical low/high/trend; does not create snapshots)
 - `GET /api/products/:id/reviews` (Public; returns reviews without reviewer email)
@@ -25,7 +25,8 @@
 - `GET /api/orders/me` (Buyer; order history)
 - `GET /api/orders/:id` (Buyer who placed the order or the seller who owns all its listings)
 - `PATCH /api/orders/:id/status` (Seller who owns all order listings; status transitions: `pending -> processing -> shipped -> delivered`, or cancellation before shipping)
-- `POST /api/interactions` (Buyer; body: `productId`, `action` in `view | click | cart | buy`)
+- `POST /api/interactions` (Buyer; body: `productId`, `action` in `view | click | add_to_cart | purchase`; anonymous traffic falls back to shared mock buyer so `userId` FK is always satisfiable)
+- `GET /api/recommendations` (Buyer; Bearer token required; optional query `limit` 1–50, default 12. Lấy 50 interaction gần nhất của user; nếu < 3 interaction → trả về sản phẩm phổ biến (`source: "popular"`); nếu ≥ 3 → gọi AI service `POST /recommendations` với timeout `AI_TIMEOUT_MS` (mặc định 2000ms), fail-safe về popular khi AI lỗi. Response: `{ success, data: [{ id, name, basePrice, imageUrl, brand, categoryName, rating, reviewCount, originalPrice, discountPercent, stock, explanation, score }], source: "ai" | "popular", reason?, count }`)
 - `POST /api/search/sessions` (Optional bearer auth; body: `queryText`, optional `filters` JSON object)
 - `POST /api/search/sessions/:id/clicks` (Optional bearer auth; body: `productId`; authenticated sessions can only be updated by their owner)
 - `GET /api/seller/listings` (Seller only; listing data includes `totalSold` excluding cancelled orders and `status` as `active` or `out_of_stock`)

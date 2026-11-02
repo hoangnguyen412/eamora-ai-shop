@@ -4,11 +4,11 @@
 - **User**: id, email, password_hash, role (buyer/seller), auto_buy_enabled (Price Agent configuration; does not execute purchases), created_at
 - **Shop**: id, seller_id, name, description, reputation_score
 - **Category**: id, name, slug
-- **Product**: id, category_id, name, description, specs (JSONB), base_price
+- **Product**: id, category_id, name, description, specs (JSONB), base_price, rating, review_count, original_price, discount_percent, tags, image_url, images, brand
 - **Listing**: id, product_id, shop_id, price, stock, condition, created_at
 - **Order / OrderItem**: id, buyer_id, total_amount, status, shipping_info (JSONB), payment_method, created_at; order items snapshot listing price and quantity
 - **Review**: id, product_id, user_id, rating, comment, is_fake (boolean)
-- **Interaction**: id, user_id, product_id, action (view/click/cart/buy), created_at
+- **Interaction**: id, user_id, product_id, action (view | click | add_to_cart | purchase), created_at
 
 ## 2. AI & Agent Entities
 - **SearchSession / SearchClick**: session query/filter JSONB and ordered product click events, with optional user ownership

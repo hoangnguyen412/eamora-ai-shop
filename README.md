@@ -17,6 +17,7 @@
 - **Express** (TypeScript) running on Node.js
 - **Prisma ORM** for type-safe database operations
 - **PostgreSQL** (hosted on Neon Cloud) with `pgvector` extension for vector similarity search
+- Environment variables: `AI_URL` (AI service URL, default `http://localhost:8000`), `AI_TIMEOUT_MS` (AI request timeout in ms, default `2000`)
 
 ### AI Service
 - **Python FastAPI** serving as the AI backend
@@ -26,6 +27,21 @@
 ### Database
 - **PostgreSQL** on Neon Cloud
 - `pgvector` extension for vector indexing and similarity queries
+
+---
+
+## Recommendation Flow
+
+```mermaid
+graph TD
+    A[Client: Next.js / React] -->|GET /api/recommendations?limit=12 + Bearer token| B[Backend: Express (Port 4000)]
+    B -->|Fetch latest 50 interactions| C[(PostgreSQL + pgvector)]
+    B -->|POST /recommendations { userId, interactions, limit }| D[AI Service: FastAPI (Port 8000)]
+    D -->|Weighted average embedding + cosine nearest| C
+    D -->|Return products with explanation & score| B
+    B -->|{ success, data[], source, count }| A
+    B -->|Fail-safe: popular fallback if AI down| A
+```
 
 ---
 
@@ -54,6 +70,19 @@
 - Product catalog monitoring
 - Sales performance tracking
 
+### 🎯 Personalized Recommendations
+- AI-driven product suggestions based on user interaction history (`view`, `click`, `add_to_cart`, `purchase`)
+- Weighted-average embedding + cosine nearest, excludes already-interacted products
+- Rule-based explanations (no LLM): brand match, category match, price fit, or generic preference
+
+### 🔗 Related Products
+- Similar product suggestions on product detail pages via cosine similarity of embeddings
+- Top 4 results, excludes the current product and duplicate names
+
+### 📝 Interaction Logging
+- Client logs user actions (`view`, `click`, `add_to_cart`, `purchase`) to backend
+- Token-gated: logged-in users log under their own ID; anonymous traffic falls back to shared mock buyer
+
 ---
 
 ## Prerequisites
@@ -72,17 +101,22 @@
 Create a `.env` file at the root level with:
 
 ```
-DATABASE_URL="postgresql://neondb_owner:npg_ZQcVL4wXTBi7@ep-snowy-cherry-a1a6shf3-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+DATABASE_URL="postgresql://<user>:<password>@<host>/<db>?sslmode=require&channel_binding=require"
 NEXT_PUBLIC_API_URL="http://localhost:4000"
-NVIDIA_API_KEY="your_nvidia_api_key_here"
+NVIDIA_API_KEY="<your_nvidia_key>"
+AI_URL="http://localhost:8000"
+AI_TIMEOUT_MS="2000"
 ```
 
 Create a `.env` file inside `AI_features/` for the Python service:
 
 ```
-DATABASE_URL="postgresql://neondb_owner:npg_ZQcVL4wXTBi7@ep-snowy-cherry-a1a6shf3-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-NVIDIA_API_KEY="your_nvidia_api_key_here"
+DATABASE_URL="postgresql://<user>:<password>@<host>/<db>?sslmode=require&channel_binding=require"
+GROQ_API_KEY="<your_groq_key>"
+NVIDIA_API_KEY="<your_nvidia_key>"
 ```
+
+> ⚠️ **SECURITY WARNING**: Never commit real `.env` files or real secrets to this repository. Use `.env.example` as a template and keep actual credentials out of version control.
 
 ### 2. Install Frontend Dependencies
 
@@ -221,3 +255,13 @@ e-Amora/
 - **FastAPI**: https://fastapi.tiangolo.com/
 - **shadcn/ui**: https://ui.shadcn.com/
 - **pgvector**: https://github.com/pgvector/pgvector
+
+---
+
+## Documentation
+
+- [CHANGELOG.md](./CHANGELOG.md) — changelog of added features and bug fixes
+- [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) — known issues and technical debt
+- [docs/API_CONTRACT.md](./docs/API_CONTRACT.md) — Node.js backend API contract
+- [docs/AI_SERVICE_CONTRACT.md](./docs/AI_SERVICE_CONTRACT.md) — FastAPI AI service contract
+- [docs/DB_SCHEMA.md](./docs/DB_SCHEMA.md) — database schema contract
