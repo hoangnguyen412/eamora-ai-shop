@@ -51,3 +51,6 @@ __pycache__/
 embeddings_cache.json
 AI_features/data.json
 AI_features/data_with_embeddings.json
+# Log files
+*.out
+*.log
