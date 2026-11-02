@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
 import type { Product, ProductOffer, CartItem } from "@/types";
+import { logInteraction } from "@/lib/logInteraction";
 
 interface CartContextType {
   items: CartItem[];
@@ -96,6 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           },
         ];
       });
+      logInteraction(product.id, "add_to_cart");
     },
     [setItemsWithPersist],
   );

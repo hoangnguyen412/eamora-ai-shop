@@ -1784,15 +1784,15 @@ app.get('/api/agent/history', requireAuth, requireRole(['buyer']), async (req: A
   }
 });
 
-app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/interactions', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
   const productId = typeof req.body?.productId === 'string' ? req.body.productId.trim() : '';
   const action = typeof req.body?.action === 'string' ? req.body.action : '';
-  const allowedActions = ['view', 'click', 'cart', 'buy'];
+  const allowedActions = ['view', 'click', 'add_to_cart', 'purchase'];
 
   if (!productId || !allowedActions.includes(action)) {
     return res.status(400).json({
       success: false,
-      message: 'productId and an action of view, click, cart or buy are required',
+      message: 'productId and an action of view, click, add_to_cart or purchase are required',
     });
   }
 
@@ -1806,9 +1806,16 @@ app.post('/api/interactions', requireAuth, requireRole(['buyer']), async (req: A
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    // Authenticated users log as themselves; anonymous traffic falls back to the
+    // shared mock buyer so the userId FK is always satisfiable (same pattern as orders).
+    const userId = req.user?.id ?? MOCK_BUYER_ID;
+    if (!req.user) {
+      await ensureMockBuyer();
+    }
+
     const interaction = await prisma.interaction.create({
       data: {
-        userId: req.user!.id,
+        userId,
         productId: product.id,
         action,
       },

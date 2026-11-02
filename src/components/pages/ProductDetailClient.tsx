@@ -20,8 +20,9 @@ import {
   ShoppingCart, Truck, ShieldCheck, RotateCcw,
   ChevronLeft, Sparkles, BellRing,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/AuthProvider";
+import { logInteraction } from "@/lib/logInteraction";
 
 const products = mockData.products as unknown as Product[];
 
@@ -86,6 +87,16 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
     return () => controller.abort();
   }, [apiBaseUrl, id]);
+
+  const lastViewRef = useRef<string | null>(null);
+  const loadedProductId = product?.id;
+  useEffect(() => {
+    if (!loadedProductId) return;
+    // Guard against React StrictMode double-invocation and re-renders.
+    if (lastViewRef.current === loadedProductId) return;
+    lastViewRef.current = loadedProductId;
+    logInteraction(loadedProductId, "view");
+  }, [loadedProductId]);
 
   if (!product) {
     return (

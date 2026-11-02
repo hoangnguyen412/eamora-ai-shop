@@ -8,6 +8,7 @@ import { ShoppingCart, TrendingDown, Sparkles, Eye, Users } from "lucide-react";
 import ProductPrice from "@/components/shared/ProductPrice";
 import ProductRating from "@/components/shared/ProductRating";
 import { useCart } from "@/context/CartProvider";
+import { logInteraction } from "@/lib/logInteraction";
 
 interface ProductCardProps {
   product: Product;
@@ -77,7 +78,11 @@ export default function ProductCard({ product, className = "" }: ProductCardProp
       )}
 
       {/* Image Area */}
-      <Link href={`/products/${product.id}`} className="flex-shrink-0">
+      <Link
+        href={`/products/${product.id}`}
+        onClick={() => logInteraction(product.id, "click")}
+        className="flex-shrink-0"
+      >
         <div className="aspect-square overflow-hidden bg-zinc-100">
           {imageUrl ? (
             <img
@@ -107,7 +112,10 @@ export default function ProductCard({ product, className = "" }: ProductCardProp
         </div>
 
         {/* Name */}
-        <Link href={`/products/${product.id}`}>
+        <Link
+          href={`/products/${product.id}`}
+          onClick={() => logInteraction(product.id, "click")}
+        >
           <h3 className="line-clamp-2 text-base font-bold leading-tight transition-colors hover:text-primary">
             {product.name}
           </h3>
