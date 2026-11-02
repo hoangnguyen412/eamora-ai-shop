@@ -1580,9 +1580,31 @@ app.get('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: Aut
   }
 });
 
+async function getDealScore(productId: string, currentPrice: number): Promise<{ dqs: number; is_deal: boolean } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const resp = await fetch(`${AI_URL}/agent/score-deal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, currentPrice }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as { dqs?: number; is_deal?: boolean };
+    if (typeof data.dqs === 'number') {
+      return { dqs: data.dqs, is_deal: data.is_deal ?? false };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const executeAutoBuySandboxJob = async (userId: string, queueItemId: string) => {
-  return prisma.$transaction(async (transaction) => {
-    const includeExecutionDetails = {
+    return prisma.$transaction(async (transaction) => {
+        const includeExecutionDetails = {
       watchlist: {
         select: {
           id: true,
@@ -1648,21 +1670,111 @@ const executeAutoBuySandboxJob = async (userId: string, queueItemId: string) => 
 
     const listing = queueItem.watchlist.product.listings[0];
     const targetPrice = queueItem.watchlist.targetPrice;
-    const result = {
-      sandbox: true,
-      would_buy: Boolean(listing && listing.price <= targetPrice),
-      reason: !listing
-        ? 'no_available_listing'
-        : listing.price <= targetPrice
-          ? 'target_price_met'
-          : 'price_above_target',
-      evaluated_price: listing?.price ?? null,
-      listing_id: listing?.id ?? null,
-      target_price: targetPrice,
-    };
+    const currentPrice = listing?.price ?? null;
+
+    // --- DQS check (gọi AI service) ---
+    let dealScore: { dqs: number; is_deal: boolean } | null = null;
+    if (listing && typeof queueItem.watchlist.product.id === 'string' && typeof currentPrice === 'number') {
+      dealScore = await getDealScore(queueItem.watchlist.product.id, currentPrice);
+    }
+    const dqs = dealScore?.dqs ?? null;
+
+    // Reject: DQS quá thấp
+    if (dqs !== null && dqs < 70) {
+      const rejectedItem = await transaction.autoBuyQueueItem.update({
+        where: { id: queueItem.id },
+        data: {
+          status: 'rejected',
+          result: {
+            sandbox: true,
+            would_buy: false,
+            reason: 'dqs_too_low',
+            dqs,
+            evaluated_price: currentPrice,
+            listing_id: listing?.id ?? null,
+            target_price: targetPrice,
+          },
+        },
+        include: includeExecutionDetails,
+      });
+      return { statusCode: 200, body: { success: true, data: rejectedItem } };
+    }
+
+    // Reject: vượt budget (targetPrice)
+    if (currentPrice !== null && currentPrice > targetPrice) {
+      const rejectedItem = await transaction.autoBuyQueueItem.update({
+        where: { id: queueItem.id },
+        data: {
+          status: 'rejected',
+          result: {
+            sandbox: true,
+            would_buy: false,
+            reason: 'over_budget',
+            dqs,
+            evaluated_price: currentPrice,
+            listing_id: listing?.id ?? null,
+            target_price: targetPrice,
+          },
+        },
+        include: includeExecutionDetails,
+      });
+      return { statusCode: 200, body: { success: true, data: rejectedItem } };
+    }
+
+    // Không có listing khả dụng
+    if (!listing) {
+      const rejectedItem = await transaction.autoBuyQueueItem.update({
+        where: { id: queueItem.id },
+        data: {
+          status: 'rejected',
+          result: {
+            sandbox: true,
+            would_buy: false,
+            reason: 'no_available_listing',
+            dqs,
+            evaluated_price: null,
+            listing_id: null,
+            target_price: targetPrice,
+          },
+        },
+        include: includeExecutionDetails,
+      });
+      return { statusCode: 200, body: { success: true, data: rejectedItem } };
+    }
+
+    // Happy path: tạo Order sandbox + đánh dấu completed
+    const order = await transaction.order.create({
+      data: {
+        buyerId: userId,
+        totalAmount: currentPrice,
+        status: 'sandbox',
+        paymentMethod: 'cod',
+        shippingInfo: { autoBuy: true, watchlistId: queueItem.watchlist.id },
+      },
+    });
+    await transaction.orderItem.create({
+      data: {
+        orderId: order.id,
+        listingId: listing.id,
+        quantity: 1,
+        price: currentPrice,
+      },
+    });
     const completedItem = await transaction.autoBuyQueueItem.update({
       where: { id: queueItem.id },
-      data: { status: 'completed', result },
+      data: {
+        status: 'completed',
+        result: {
+          sandbox: true,
+          would_buy: true,
+          reason: 'target_price_met',
+          dqs,
+          evaluated_price: currentPrice,
+          listing_id: listing.id,
+          target_price: targetPrice,
+          order_id: order.id,
+        },
+      },
       include: includeExecutionDetails,
     });
 

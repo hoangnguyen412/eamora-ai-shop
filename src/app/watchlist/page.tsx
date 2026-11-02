@@ -8,7 +8,21 @@ import { useAuth } from "@/context/AuthProvider";
 import { formatDate, formatPrice } from "@/lib/helpers";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
@@ -49,6 +63,26 @@ interface OrderEntry {
   createdAt: string;
 }
 
+interface QueueEntry {
+  id: string;
+  status: string;
+  result?: {
+    dqs?: number;
+    reason?: string;
+    evaluated_price?: number | null;
+    target_price?: number;
+    order_id?: string;
+    would_buy?: boolean;
+    sandbox?: boolean;
+  } | null;
+  watchlist: {
+    id: string;
+    targetPrice: number;
+    product: { id: string; name: string };
+  };
+  createdAt: string;
+}
+
 interface AgentHistoryResponse {
   success: boolean;
   data: {
@@ -68,9 +102,11 @@ export default function WatchlistPage() {
   const { token, user, isLoading: isAuthLoading } = useAuth();
   const [watchlist, setWatchlist] = useState<WatchEntry[]>([]);
   const [orders, setOrders] = useState<OrderEntry[]>([]);
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [autoBuy, setAutoBuy] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingRule, setIsSavingRule] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -78,13 +114,15 @@ export default function WatchlistPage() {
     setError("");
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [historyResponse, ruleResponse] = await Promise.all([
+      const [historyResponse, ruleResponse, queueResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/agent/history`, { headers, signal }),
         fetch(`${API_BASE_URL}/api/agent/rules`, { headers, signal }),
+        fetch(`${API_BASE_URL}/api/agent/queue`, { headers, signal }),
       ]);
-      const [history, rules] = await Promise.all([
+      const [history, rules, queueData] = await Promise.all([
         historyResponse.json() as Promise<AgentHistoryResponse>,
         ruleResponse.json() as Promise<RuleResponse>,
+        queueResponse.json() as Promise<{ success: boolean; data: QueueEntry[]; message?: string }>,
       ]);
 
       if (!historyResponse.ok || !history.success) {
@@ -93,10 +131,14 @@ export default function WatchlistPage() {
       if (!ruleResponse.ok || !rules.success) {
         throw new Error(rules.message || "Không thể tải cấu hình Price Agent.");
       }
+      if (!queueResponse.ok || !queueData.success) {
+        throw new Error(queueData.message || "Không thể tải hàng đợi tự động mua.");
+      }
 
       setWatchlist(history.data.watchlist);
       setOrders(history.data.orders);
       setAutoBuy(rules.data.auto_buy);
+      setQueue(queueData.data);
     } catch (loadError) {
       if (loadError instanceof Error && loadError.name === "AbortError") return;
       setError(loadError instanceof Error ? loadError.message : "Không thể tải dữ liệu Price Agent.");
@@ -160,6 +202,32 @@ export default function WatchlistPage() {
       setError(saveError instanceof Error ? saveError.message : "Không thể lưu cấu hình.");
     } finally {
       setIsSavingRule(false);
+    }
+  };
+
+  const handleExecute = async (queueId: string) => {
+    if (!token) return;
+    setIsExecuting(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/agent/queue/${encodeURIComponent(queueId)}/execute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await response.json() as { success?: boolean; data?: QueueEntry; message?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Không thể thực thi hàng đợi.");
+      }
+      setNotice("Đã thực thi hàng đợi tự động mua.");
+      await loadAgentData(new AbortController().signal);
+    } catch (execError) {
+      setError(execError instanceof Error ? execError.message : "Không thể thực thi hàng đợi.");
+    } finally {
+      setIsExecuting(false);
     }
   };
 
@@ -376,6 +444,82 @@ export default function WatchlistPage() {
               </Card>
             );
           })
+        )}
+      </section>
+
+      <section className="space-y-4" aria-labelledby="auto-buy-queue-heading">
+        <div>
+          <h2 id="auto-buy-queue-heading" className="text-xl font-semibold">Hàng đợi tự động mua</h2>
+          <p className="text-sm text-muted-foreground">
+            Danh sách sản phẩm chờ xử lý mua tự động (sandbox). Chỉ hiển thị khi bật Auto-buy.
+          </p>
+        </div>
+        {queue.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">Chưa có sản phẩm nào trong hàng đợi.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Sản phẩm</TableHead>
+                <TableHead className="text-center">DQS</TableHead>
+                <TableHead className="text-right">Giá deal</TableHead>
+                <TableHead className="text-center">Trạng thái</TableHead>
+                <TableHead className="text-center">Hành động</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {queue.map((item) => {
+                const dqs = item.result?.dqs ?? "-";
+                const dealPrice = item.result?.evaluated_price ?? null;
+                const targetPrice = item.watchlist.targetPrice;
+                const status = item.status;
+                const isPending = status === "pending";
+                const badgeVariant =
+                  status === "completed" || status === "executed" ? "default" : status === "rejected" ? "destructive" : "secondary";
+                const statusLabel =
+                  status === "completed" ? "executed" : status === "pending" ? "pending" : status === "rejected" ? "rejected" : status;
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div className="font-medium">{item.watchlist.product.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Mục tiêu {formatPrice(targetPrice)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {typeof dqs === "number" ? dqs : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {dealPrice !== null ? formatPrice(dealPrice) : "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={badgeVariant as any} className="text-xs capitalize">
+                        {statusLabel}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {isPending ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleExecute(item.id)}
+                          disabled={isExecuting}
+                          className="text-xs"
+                        >
+                          Mua ngay
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </section>
 

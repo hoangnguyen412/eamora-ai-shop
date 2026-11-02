@@ -1,48 +1,224 @@
-# API CONTRACT (Node.js Backend)
+# API CONTRACT (Node.js Backend — Express)
 
-## Security Configuration
-- `JWT_SECRET` is required in production and must contain at least 32 bytes; development retains the local fallback.
-- `CORS_ORIGINS` is a comma-separated allowlist of exact `http(s)://host[:port]` origins. It is unrestricted in development only when unset; production denies browser origins unless explicitly listed.
-- `TRUST_PROXY_HOPS` defaults to `0`; configure it only to the exact number of trusted reverse-proxy hops so client IP headers cannot be spoofed.
-- JSON request bodies are limited to 100 KB. Authentication checks the current user against the database on every protected request and fails closed if the database is unavailable.
-- Internal exception details are logged by the backend and are not returned in HTTP 500 responses.
-- Rate limits are per source IP and use an in-memory store: 300 requests per 15 minutes across `/api`, with a shared 10-request per 15-minute limit for register/login. Rejected requests return 429 with `Retry-After` and standard rate-limit headers. Multiple backend instances need a shared rate-limit store for cluster-wide enforcement.
-- Auth requires a valid email address (maximum 254 characters); passwords must contain at least 8 characters and at most 72 UTF-8 bytes. Product pagination accepts `page` 1–1,000,000 and `limit` 1–100; malformed/repeated filters and out-of-range values return 400 instead of silently falling back.
-- Orders accept 1–50 line items with positive safe-integer quantities; shipping fields have per-field length limits. Price-history, agent queue and agent-history limits accept only integers from 1–100 (defaults: 100, 50 and 50).
+Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), trích xuất từ `backend/src/index.ts`. Dùng cho viết Chương 3 (API Design) của báo cáo.
+
+---
+
+## Cấu hình bảo mật và giới hạn (từ code)
+
+- `JWT_SECRET`: bắt buộc trong production, ít nhất 32 bytes; development fallback `'dev-secret-change-me'`.
+- `CORS_ORIGINS`: danh sách origins `http(s)://host[:port]`, cách nhau bởi dấu phẩy. Development cho phép tất cả khi chưa cấu hình.
+- `TRUST_PROXY_HOPS`: mặc định `0`.
+- JSON request body giới hạn 100 KB (`express.json({ limit: '100kb' })`).
+- Rate limit: 300 request / 15 phút trên tất cả `/api`; 10 request / 15 phút cho register/login (`authRateLimiter`). Trả về 429 kèm `Retry-After`.
+- Auth: kiểm tra user hiện tại qua database trên mỗi request protected; fails closed (503) nếu database không sẵn sàng. Chi tiết lỗi nội bộ không được trả về HTTP 500.
+- Email tối đa 254 ký tự; mật khẩu 8–72 UTF-8 bytes.
+- Pagination: `page` 1–1.000.000, `limit` 1–100.
+- Price-history / agent queue / agent-history `limit`: chỉ nhận integer 1–100.
+- `MOCK_BUYER_ID = 'mock-user-123'`: dùng cho anonymous interaction và order khi chưa đăng nhập.
+
+---
+
+## Middleware bảo vệ
+
+| Middleware | Mô tả |
+|------------|-------|
+| `requireAuth` (dòng 404) | Xác thực JWT HS256, tra cứu user trong DB, gán `req.user`. Trả về 401 nếu thiếu token / token hết hạn / user không tồn tại. |
+| `optionalAuth` (dòng 447) | Chỉ xác thực nếu có header `Authorization`; nếu không thì cho tiếp (dùng cho interaction, search session). |
+| `requireRole([...])` (dòng 454) | Kiểm tra `req.user.role` nằm trong danh sách roles được phép (`buyer`, `seller`). Trả về 403 nếu không khớp. |
+
+---
 
 ## 1. Auth & User
-- `POST /api/auth/register` (body: email, password, role)
-- `POST /api/auth/login` (body: email, password) -> { token, user }
-- The frontend auth provider persists the backend JWT in `localStorage` under `eamora.auth.token`, restores the user through `GET /api/auth/me`, and shares the bearer token across authenticated API calls. The browser-side token is accessible to JavaScript; production deployments should consider HttpOnly cookie-based storage with corresponding CSRF protections.
+
+### `POST /api/auth/register`
+- Body: `{ email: string, password: string, role: 'buyer' | 'seller' }`
+- Validation: email hợp lệ (tối đa 254 ký tự), password 8–72 bytes, role là `buyer` hoặc `seller`.
+- Trả về `201`: `{ token: string, user: { id, email, role, createdAt } }`
+- Lỗi: `400` (thiếu trường / email không hợp lệ / password sai độ dài / role không đúng), `409` (email đã tồn tại).
+
+### `POST /api/auth/login`
+- Body: `{ email: string, password: string }`
+- Trả về `200`: `{ token: string, user: { id, email, role, createdAt } }`
+- Lỗi: `401` (sai email/mật khẩu), `400` (email/password sai định dạng).
+
+### `GET /api/auth/me` (requireAuth)
+- Trả về `200`: `{ user: { id, email, role, createdAt } }`
+- Lỗi: `401` (chưa xác thực / user không tồn tại), `503` (database không sẵn sàng).
+
+---
 
 ## 2. Core Marketplace
-- `GET /api/products` (optional query: `q` searches product name/brand/category, `category`, `brand`, `minPrice`, `maxPrice`, `page` 1–1,000,000, `limit` 1–100; returns `filterOptions`, pagination, and in-stock seller `offers` for each product; invalid/repeated filters, pagination or price ranges return 400). Mỗi sản phẩm trả về đầy đủ: `id`, `name`, `slug`, `brand`, `category`, `price`, `originalPrice`, `discountPercent`, `stock`, `rating`, `reviewCount`, `thumbnailUrl`, `images`, `isFeatured`, `specs`, `offers`.
-- `GET /api/products/:id` (includes in-stock seller `offers`: `listingId`, `shopId`, `shopName`, `price`, and `stock`)
-- `GET /api/products/:id/price-history` (Public; optional `limit` 1–100 per listing, default 100; returns the most recent recorded `PriceHistory` snapshots in chronological order plus current listing price and historical low/high/trend; does not create snapshots)
-- `GET /api/products/:id/reviews` (Public; returns reviews without reviewer email)
-- `POST /api/products/:id/reviews` (Buyer; body: integer `rating` from 1 to 5, optional `comment` up to 2000 characters)
-- `POST /api/orders` (Buyer; body: `items: [{ listingId, quantity }]`, `shipping_info: { fullName, phone, address, city }`, optional `payment_method`; price and shipping fee are calculated by the server)
-- `GET /api/orders/me` (Buyer; order history)
-- `GET /api/orders/:id` (Buyer who placed the order or the seller who owns all its listings)
-- `PATCH /api/orders/:id/status` (Seller who owns all order listings; status transitions: `pending -> processing -> shipped -> delivered`, or cancellation before shipping)
-- `POST /api/interactions` (Buyer; body: `productId`, `action` in `view | click | add_to_cart | purchase`; anonymous traffic falls back to shared mock buyer so `userId` FK is always satisfiable)
-- `GET /api/recommendations` (Buyer; Bearer token required; optional query `limit` 1–50, default 12. Lấy 50 interaction gần nhất của user; nếu < 3 interaction → trả về sản phẩm phổ biến (`source: "popular"`); nếu ≥ 3 → gọi AI service `POST /recommendations` với timeout `AI_TIMEOUT_MS` (mặc định 2000ms), fail-safe về popular khi AI lỗi. Response: `{ success, data: [{ id, name, basePrice, imageUrl, brand, categoryName, rating, reviewCount, originalPrice, discountPercent, stock, explanation, score }], source: "ai" | "popular", reason?, count }`)
-- `POST /api/search/sessions` (Optional bearer auth; body: `queryText`, optional `filters` JSON object)
-- `POST /api/search/sessions/:id/clicks` (Optional bearer auth; body: `productId`; authenticated sessions can only be updated by their owner)
-- `GET /api/seller/listings` (Seller only; listing data includes `totalSold` excluding cancelled orders and `status` as `active` or `out_of_stock`)
-- `GET /api/seller/orders` (Seller only; returns orders containing the seller's listings, with product names and seller line-item subtotal)
-- `GET /api/seller/stats` (Seller only; returns `listingCount`, `activeListingCount`, `orderCount`, `totalRevenue`, `unitsSold`, and `ordersByStatus`; revenue and units sold exclude cancelled orders and shipping fees)
 
-## 3. Price Agent
-- Price Agent routes below are implemented by the Express backend. Semantic search and RAG chat are not exposed as Express endpoints yet.
-- `POST /api/agent/watch` (Buyer; body: `product_id`, positive numeric `target_price`; saves a price watch)
-- `GET /api/agent/rules` (Buyer; returns the persisted `{ auto_buy }` setting)
-- `PUT /api/agent/rules` (Buyer; body: `{ auto_buy: boolean }`; persists the setting only and does not execute purchases)
-- `POST /api/agent/queue` (Buyer; body: `{ watch_id }`; requires Auto-buy enabled and an active watch owned by the buyer; creates one pending item per watch)
-- `GET /api/agent/queue` (Buyer; optional `limit` 1–100, default 50; returns the buyer's queue in FIFO order)
-- `POST /api/agent/queue/:id/execute` (Buyer; sandbox-only evaluation of the cheapest in-stock listing against the watch target; stores result and completes the queue item without creating an order or charging payment; repeated execution returns the saved result)
-- `GET /api/agent/history` (Buyer; optional `limit` 1–100, default 50; returns the buyer's watchlist with current listing prices, stock and recorded price history, plus their orders. Price points appear only when recorded in `PriceHistory`; this API does not create price snapshots or run auto-buy.)
+### `GET /api/products`
+- Query: `q` (tìm theo tên/thương hiệu/danh mục), `search` (ngôn ngữ tự nhiên Việt, ưu tiên hơn `q`), `category`, `brand`, `minPrice`, `maxPrice`, `page` (1–1.000.000), `limit` (1–100).
+- Hỗ trợ tìm kiếm ngôn ngữ tự nhiên qua `parseNaturalLanguageSearch()` (bóc tách "dưới/trên X triệu", danh mục laptop/điện thoại, từ khoá còn lại).
+- Trả về `200`:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "string",
+      "name": "string",
+      "slug": "string",
+      "brand": "string",
+      "category": "string",
+      "price": number,
+      "originalPrice": number,
+      "discountPercent": number,
+      "stock": number,
+      "rating": number,
+      "reviewCount": number,
+      "thumbnailUrl": "string",
+      "images": ["string"],
+      "isFeatured": boolean,
+      "specs": {},
+      "offers": [
+        { "listingId": "string", "shopId": "string", "shopName": "string", "price": number, "stock": number }
+      ]
+    }
+  ],
+  "filterOptions": { "categories": ["string"], "brands": ["string"] },
+  "pagination": { "currentPage": number, "totalPages": number, "totalItems": number, "limit": number }
+}
+```
+- Lỗi: `400` (filter/pagination/price range không hợp lệ).
 
-Queue items are persisted and de-duplicated while pending. The optional backend worker (disabled unless `AUTO_BUY_WORKER_ENABLED=true`) processes eligible queue items in FIFO batches, only for buyers with Auto-buy enabled and active watches. Both the worker and execute endpoint only simulate the purchase decision and never create orders or charge payments.
+### `GET /api/products/:id`
+- Trả về chi tiết sản phẩm kèm `offers` (danh sách listing có sẵn), `reviews` (chỉ trường `rating` để tính average rating).
+- Trường trả về: `id`, `name`, `slug`, `brand`, `category`, `price`, `originalPrice`, `discountPercent`, `stock`, `rating`, `reviewCount`, `thumbnailUrl`, `images`, `specs`, `offers`.
 
-The Watchlist UI derives non-persistent price alerts from current in-stock listing prices returned by `GET /api/agent/history`. Alerts are recalculated when the page loads and have no read/unread state or push delivery.
+### `GET /api/products/:id/price-history` (Public)
+- Query: `limit` (1–100, mặc định 100).
+- Lấy `PriceHistory` mới nhất của từng listing của sản phẩm, sắp xếp theo thời gian tăng dần.
+- Trả về: `productId`, `currentPrice` (giá thấp nhất listing có stock > 0), `lowestPrice`, `highestPrice`, `priceTrend` (`stable`/`down`/`up`), `history: [{ id, listingId, shopName, price, date }]`, `recordedPoints`.
+
+### `GET /api/products/:id/reviews` (Public)
+- Trả về danh sách review (không có email người đánh giá).
+
+### `POST /api/products/:id/reviews` (requireAuth, requireRole(['buyer']))
+- Body: `{ rating: integer (1–5), comment?: string (tối đa 2000 ký tự) }`
+- Trả về `201`: review đã tạo.
+
+### `POST /api/orders` (Buyer)
+- Body: `{ items: [{ listingId, quantity }], shipping_info: { fullName, phone, address, city }, payment_method?: 'cod' | 'vnpay' | 'credit_card' }`
+- Validation: 1–50 line items, quantity là safe integer dương, shipping info đầy đủ và trong giới hạn độ dài (fullName 120, phone 32, address 500, city 120), tất cả listing phải thuộc cùng một shop.
+- Tính `totalAmount` = tổng `price * quantity` + phí ship 30.000.
+- Tạo `Order` với `buyerId = MOCK_BUYER_ID` (nếu anonymous) hoặc `req.user.id`, giảm stock từng listing.
+- Trả về `201`: `{ success: true, data: order }`
+
+### `GET /api/orders/me` (requireAuth, requireRole(['buyer']))
+- Lịch sử đơn hàng của buyer, kèm `items`.
+
+### `GET /api/orders/:id` (requireAuth)
+- Buyer chỉ xem đơn của mình; seller xem đơn nếu sở hữu tất cả listing trong đơn.
+
+### `PATCH /api/orders/:id/status` (requireAuth, requireRole(['seller']))
+- Body: `{ status: string }`
+- Các chuyển trạng thái cho phép: `pending → processing | cancelled`, `processing → shipped | cancelled`, `shipped → delivered`. Hủy đơn sẽ hoàn lại stock.
+
+### `GET /api/orders` (không yêu cầu auth, lấy tất cả đơn)
+- Trả về danh sách tất cả đơn hàng (dùng cho admin/xem tổng quan).
+
+---
+
+## 3. Price Agent (tất cả requireAuth + requireRole(['buyer']))
+
+### `POST /api/agent/watch`
+- Body: `{ product_id: string, target_price: number (duyên > 0) }`
+- Kiểm tra sản phẩm tồn tại.
+- Tạo `Watchlist` (userId, productId, targetPrice, status='active').
+- Trả về `201`: `{ success: true, data: watch }`
+
+### `DELETE /api/agent/watch/:id`
+- Xóa watchlist item nếu thuộc về user hiện tại.
+- Trả về `200`: `{ success: true, message: 'Đã xoá sản phẩm khỏi danh sách theo dõi.' }`
+
+### `GET /api/agent/rules`
+- Trả về `200`: `{ success: true, data: { auto_buy: boolean } }`
+
+### `PUT /api/agent/rules`
+- Body: `{ auto_buy: boolean }`
+- Cập nhật `User.autoBuyEnabled`.
+- Trả về `200`: `{ success: true, data: { auto_buy: boolean } }`
+
+### `POST /api/agent/queue`
+- Body: `{ watch_id: string }`
+- Yêu cầu `autoBuyEnabled = true` và watch đang `active` thuộc về user.
+- Tạo `AutoBuyQueueItem` (status='pending'), de-duplicated nếu đã có item pending cho cùng watch.
+- Trả về `201`: `{ success: true, data: queueItem }` hoặc `200` nếu deduplicated.
+
+### `GET /api/agent/queue`
+- Query: `limit` (1–100, mặc định 50).
+- Trả về danh sách queue của buyer, sắp xếp FIFO (`createdAt asc`), kèm `watchlist` (targetPrice, product).
+- Mỗi item có trường `result` (JSON) chứa `dqs`, `reason`, `evaluated_price`, `target_price`, `order_id`, `would_buy`, `sandbox`.
+
+### `POST /api/agent/queue/:id/execute`
+- Gọi `executeAutoBuySandboxJob(userId, queueItemId)` trong transaction Prisma:
+  1. Kiểm tra queue item tồn tại, status `pending`, user `autoBuyEnabled = true`, watch `status = 'active'`.
+  2. Đánh dấu `processing`.
+  3. Lấy listing giá thấp nhất (stock > 0) → `currentPrice`.
+  4. Gọi `getDealScore(productId, currentPrice)` → `POST http://localhost:8000/agent/score-deal` (timeout 3000ms).
+  5. Nếu `dqs < 70` → `status='rejected'`, `result.reason='dqs_too_low'`.
+  6. Nếu `currentPrice > targetPrice` → `status='rejected'`, `result.reason='over_budget'`.
+  7. Nếu không có listing → `status='rejected'`, `result.reason='no_available_listing'`.
+  8. Happy path: tạo `Order` (`status='sandbox'`, `paymentMethod='cod'`, `shippingInfo={autoBuy:true, watchlistId}`), tạo `OrderItem`, cập nhật queue item `status='completed'`, `result.order_id=order.id`.
+- Trả về `200` kèm dữ liệu queue item đã xử lý. Lỗi `404` (không tìm thấy), `409` (không phải pending / auto-buy tắt / watch không active).
+
+### `GET /api/agent/history`
+- Query: `limit` (1–100, mặc định 50).
+- Trả về `{ success: true, data: { watchlist: [...], orders: [...] } }`.
+- Watchlist kèm `listings[].priceHistory` (giới hạn `limit` điểm, sắp xếp `recordedAt desc`).
+- Orders kèm `items[]`.
+
+---
+
+## 4. Search & Interaction
+
+### `POST /api/interactions` (optionalAuth)
+- Body: `{ productId: string, action: 'view' | 'click' | 'add_to_cart' | 'purchase' }`
+- Nếu không đăng nhập → dùng `MOCK_BUYER_ID` ('mock-user-123').
+- Trả về `201`: `{ success: true, data: interaction }`
+
+### `POST /api/search/sessions` (optionalAuth)
+- Body: `{ queryText: string (tối đa 500 ký tự), filters?: JSON object }`
+- Tạo `SearchSession`.
+
+### `POST /api/search/sessions/:id/clicks` (optionalAuth)
+- Body: `{ productId: string }`
+- Tạo `SearchClick` cho session.
+
+---
+
+## 5. Seller
+
+### `GET /api/seller/listings` (requireAuth, requireRole(['seller']))
+- Danh sách listing của shop seller, kèm `totalSold` (đơn không cancelled) và `status` ('active' nếu stock > 0, ngược lại 'out_of_stock').
+
+### `GET /api/seller/orders` (requireAuth, requireRole(['seller']))
+- Đơn hàng chứa listing của seller, kèm tên sản phẩm và seller line-item subtotal.
+
+### `GET /api/seller/stats` (requireAuth, requireRole(['seller']))
+- Trả về: `listingCount`, `activeListingCount`, `orderCount`, `totalRevenue`, `unitsSold`, `ordersByStatus` (pending/processing/shipped/delivered/cancelled). Doanh thu và số lượng bán không tính đơn cancelled và phí ship.
+
+---
+
+## 6. Hệ thống & Worker
+
+### `GET /health`
+- Kiểm tra kết nối database (`SELECT 1`).
+- Trả về: `{ status: 'ok', db: 'connected' }` hoặc `{ status: 'error', db: 'disconnected' }`.
+
+### Auto-buy Worker (`startAutoBuyWorker`, dòng 1848)
+- Bật khi `AUTO_BUY_WORKER_ENABLED === 'true'`.
+- Chạy `runAutoBuyWorker()` ngay khi khởi động, rồi mỗi `AUTO_BUY_WORKER_INTERVAL_MS` (mặc định 10000ms, tối thiểu 1000ms).
+- Mỗi lần xử lý tối đa `AUTO_BUY_WORKER_BATCH_SIZE` (mặc định 10, tối đa 100) item `pending`, FIFO.
+- Chỉ xử lý item có `watchlist.status='active'` và `user.autoBuyEnabled=true`.
+- Gọi cùng hàm `executeAutoBuySandboxJob()` như endpoint execute.
+- Log: `Auto-buy sandbox worker enabled (interval=..., batch=...)` và `Auto-buy sandbox worker completed N queue item(s).`.
+
+### Swagger UI
+- Tải từ `backend/openapi.yaml`, phục vụ tại `/docs`.
+
+---
