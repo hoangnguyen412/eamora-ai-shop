@@ -54,3 +54,24 @@ AI_features/data_with_embeddings.json
 # Log files
 *.out
 *.log
+
+# Logs & temp files
+*.out
+*.log
+*.pid
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+.next/
+out/
+
+# Env (đảm bảo không track nhầm)
+.env
+.env.*
+!.env.example
