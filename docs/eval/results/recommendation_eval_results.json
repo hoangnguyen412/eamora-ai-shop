@@ -1,0 +1,53 @@
+{
+  "limit": 10,
+  "base_url": "http://localhost:4000",
+  "users_evaluated": 1,
+  "personalized_count": 1,
+  "average_category_diversity": 0.1,
+  "average_brand_novelty": 0.3,
+  "diversity_target_met": false,
+  "categories_in_db": {
+    "Điện thoại": 1000
+  },
+  "note": "DB contains only 1 category ('Điện thoại'), so max diversity = 0.1 (target >0.3 not achievable with current data).",
+  "per_user": [
+    {
+      "user_id": "c957954d-4e44-4b9b-b1aa-ccc660918a91",
+      "source": "ai",
+      "reason": "",
+      "is_personalized": true,
+      "interactions_created": 8,
+      "limit": 10,
+      "diversity_above_03": false,
+      "returned_count": 10,
+      "distinct_categories": 1,
+      "distinct_brands": 3,
+      "category_diversity": 0.1,
+      "brand_novelty": 0.3,
+      "categories": [
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại",
+        "Điện thoại"
+      ],
+      "brands": [
+        "Other",
+        "Other",
+        "Other",
+        "Motorola",
+        "Motorola",
+        "Samsung",
+        "Samsung",
+        "Samsung",
+        "Samsung",
+        "Motorola"
+      ]
+    }
+  ]
+}
