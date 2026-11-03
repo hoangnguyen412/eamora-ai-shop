@@ -65,6 +65,16 @@ def embed_texts(req: EmbedRequest):
 
     return {"embeddings": embeddings_list}
 
+# Task T3-2-4: Encode single query for Hybrid Search
+class EncodeRequest(BaseModel):
+    query: str
+
+@app.post("/search/encode")
+def encode_query(req: EncodeRequest):
+    """Trả về vector 768 chiều cho một câu query (dùng cho Hybrid Search RRF)."""
+    embedding = model.encode(req.query)
+    return {"vector": embedding.tolist()}
+
 # 3. Task T3-2-3: Constraint Parser
 PRICE_UNIT_MULTIPLIERS = {
     "triệu": 1_000_000,

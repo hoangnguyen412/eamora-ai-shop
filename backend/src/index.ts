@@ -1168,6 +1168,259 @@ app.get('/api/products', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/search/hybrid', async (req: Request, res: Response) => {
+  try {
+    const rawQuery = req.query.q;
+    const rawCategoryId = req.query.categoryId;
+    const rawBrand = req.query.brand;
+    const rawLimit = req.query.limit;
+    const rawMinPrice = req.query.minPrice;
+    const rawMaxPrice = req.query.maxPrice;
+
+    const page = parseIntegerQuery(req.query.page, 1, 1, 1_000_000);
+    const limit = parseIntegerQuery(rawLimit ?? '20', 20, 1, 100);
+
+    if (page === null || limit === null) {
+      return res.status(400).json({ success: false, message: 'page must be 1–1000000 and limit must be 1–100' });
+    }
+
+    const q = typeof rawQuery === 'string' ? rawQuery.trim() : '';
+    const categoryId = typeof rawCategoryId === 'string' ? rawCategoryId.trim() : undefined;
+    const brand = typeof rawBrand === 'string' ? rawBrand.trim() : undefined;
+    const minPrice = typeof rawMinPrice === 'string' && rawMinPrice.trim() ? Number(rawMinPrice) : undefined;
+    const maxPrice = typeof rawMaxPrice === 'string' && rawMaxPrice.trim() ? Number(rawMaxPrice) : undefined;
+
+    if (q.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: page,
+        limit,
+        mode: 'hybrid',
+      });
+    }
+
+    // 1. Lấy vector từ AI service
+    let vector: number[] | null = null;
+    try {
+      const encRes = await fetch(`${AI_URL}/search/encode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      });
+      if (!encRes.ok) throw new Error(`AI encode failed: ${encRes.status}`);
+      const encJson = await encRes.json() as { vector?: number[] };
+      vector = encJson.vector ?? null;
+    } catch {
+      // Nếu AI service lỗi, vẫn tiếp tục với keyword-only (vector = null)
+    }
+
+    const offset = (page - 1) * limit;
+    const queryVectorStr = vector ? '[' + vector.map(String).join(',') + ']' : null;
+
+    // 2. Điều kiện filter động bằng Prisma.sql
+    const filterConditions = Prisma.sql`
+      WHERE 1=1
+      ${categoryId ? Prisma.sql`AND p."categoryId" = ${categoryId}` : Prisma.empty}
+      ${brand ? Prisma.sql`AND p."brand" ILIKE ${'%' + brand + '%'}` : Prisma.empty}
+      ${minPrice ? Prisma.sql`AND p."basePrice" >= ${minPrice}` : Prisma.empty}
+      ${maxPrice ? Prisma.sql`AND p."basePrice" <= ${maxPrice}` : Prisma.empty}
+    `;
+
+    // Điều kiện typo-tolerance: kiểm tra similarity cho từng từ trong query
+    const wordSimilarityCondition = Prisma.sql`
+      EXISTS (
+        SELECT 1 FROM unnest(string_to_array(${q}, ' ')) AS word
+        WHERE similarity(p."name", immutable_unaccent(word)) > 0.3
+      )
+    `;
+
+    // Câu lấy data (Keyword FTS + Vector + RRF) với pg_trgm hỗ trợ lỗi chính tả
+    const dataQuery = Prisma.sql`
+      WITH keyword_search AS (
+        SELECT
+          p.id,
+          (
+            ts_rank_cd(
+              to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))),
+              plainto_tsquery('simple', immutable_unaccent(${q}))
+            ) +
+            COALESCE(similarity(p."name", immutable_unaccent(${q})), 0)
+          ) AS kw_score
+        FROM "Product" p
+        ${filterConditions}
+        AND (
+          to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
+          OR
+          ${wordSimilarityCondition}
+        )
+        ORDER BY kw_score DESC
+        LIMIT 50
+      )
+      ${vector ? Prisma.sql`
+      , vector_search AS (
+        SELECT
+          p.id,
+          1 - (e."vector" <=> ${queryVectorStr}::vector) AS vec_score
+        FROM "Product" p
+        JOIN "Embedding" e ON e."productId" = p.id
+        ${filterConditions}
+        ORDER BY e."vector" <=> ${queryVectorStr}::vector
+        LIMIT 50
+      )
+      ` : Prisma.empty}
+      ${vector ? Prisma.sql`
+      , fused AS (
+        SELECT
+          id,
+          COALESCE(1.0 / (60 + kw_rank), 0) + COALESCE(1.0 / (60 + vec_rank), 0) AS fused_score
+        FROM (
+          SELECT id, ROW_NUMBER() OVER (ORDER BY kw_score DESC) AS kw_rank FROM keyword_search
+        ) kw
+        FULL OUTER JOIN (
+          SELECT id, ROW_NUMBER() OVER (ORDER BY vec_score DESC) AS vec_rank FROM vector_search
+        ) vec USING (id)
+      )
+      ` : Prisma.sql`
+      , fused AS (
+        SELECT
+          id,
+          COALESCE(1.0 / (60 + kw_rank), 0) AS fused_score
+        FROM (
+          SELECT id, ROW_NUMBER() OVER (ORDER BY kw_score DESC) AS kw_rank FROM keyword_search
+        ) kw
+      )
+      `}
+      SELECT p.id, f.fused_score
+      FROM fused f
+      JOIN "Product" p ON p.id = f.id
+      ORDER BY f.fused_score DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    // Câu đếm tổng số kết quả (áp dụng đầy đủ filter + điều kiện search)
+    const countQuery = Prisma.sql`
+      SELECT COUNT(DISTINCT p.id)::int as count
+      FROM "Product" p
+      ${filterConditions}
+      AND (
+        to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
+        OR
+        ${wordSimilarityCondition}
+      )
+    `;
+
+    console.log('=== HYBRID SEARCH DATA_QUERY ===');
+    console.log(dataQuery.sql);
+    console.log(dataQuery.values);
+    console.log('=== HYBRID SEARCH COUNT_QUERY ===');
+    console.log(countQuery.sql);
+    console.log(countQuery.values);
+
+    const [rows, countRows] = await Promise.all([
+      prisma.$queryRaw<Array<{ id: string; fused_score: number }>>(dataQuery),
+      prisma.$queryRaw<Array<{ count: number }>>(countQuery),
+    ]);
+
+    const totalItems = countRows.length > 0 ? Number(countRows[0].count) : 0;
+    const ids = rows.map((r) => r.id);
+
+    // 3. Lấy dữ liệu sản phẩm đầy đủ theo thứ tự fused_score
+    let products: any[] = [];
+    if (ids.length > 0) {
+      // Giữ thứ tự fused_score bằng cách map id -> rank
+      const rankMap = new Map<string, number>();
+      rows.forEach((r, i) => rankMap.set(r.id, i));
+
+      const productRows = await prisma.product.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          specs: true,
+          basePrice: true,
+          imageUrl: true,
+          brand: true,
+          rating: true,
+          reviewCount: true,
+          originalPrice: true,
+          discountPercent: true,
+          tags: true,
+          images: true,
+          category: { select: { name: true } },
+          listings: {
+            select: {
+              id: true,
+              shopId: true,
+              price: true,
+              stock: true,
+              shop: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      products = productRows
+        .map((p) => {
+          const listingPrices = p.listings.map((l) => l.price);
+          const offers = p.listings
+            .filter((l) => l.stock > 0)
+            .map((l) => ({
+              listingId: l.id,
+              shopId: l.shopId,
+              shopName: l.shop.name,
+              price: l.price,
+              stock: l.stock,
+            }))
+            .sort((a, b) => a.price - b.price);
+          const stockTotal = p.listings.reduce((t, l) => t + l.stock, 0);
+          const price = offers[0]?.price ?? (listingPrices.length > 0 ? Math.min(...listingPrices) : Number(p.basePrice ?? 0));
+          const imgUrl = p.imageUrl ?? '';
+
+          return {
+            id: p.id,
+            name: p.name,
+            slug: p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            brand: p.brand ?? p.name.split(' ')[0] ?? 'Brand',
+            category: p.category?.name ?? 'General',
+            price,
+            originalPrice: p.originalPrice,
+            discountPercent: p.discountPercent,
+            stock: stockTotal,
+            rating: p.rating,
+            reviewCount: p.reviewCount,
+            thumbnailUrl: imgUrl,
+            images: imgUrl ? [imgUrl] : [],
+            isFeatured: false,
+            specs: (p.specs as Record<string, any>) ?? {},
+            recommendationBadge: null,
+            createdAt: new Date().toISOString(),
+            description: p.description ?? '',
+            offers,
+            fusedScore: rankMap.get(p.id) !== undefined ? rows[rankMap.get(p.id)!].fused_score : 0,
+          };
+        })
+        .sort((a, b) => (b.fusedScore ?? 0) - (a.fusedScore ?? 0));
+    }
+
+    return res.json({
+      success: true,
+      data: products,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / limit)),
+      currentPage: page,
+      limit,
+      mode: 'hybrid',
+    });
+  } catch (error) {
+    return sendServerError(res, 'Unable to run hybrid search', error);
+  }
+});
+
 app.get('/api/products/:id', async (req: Request, res: Response) => {
   try {
     const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
