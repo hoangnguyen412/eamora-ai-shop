@@ -1,0 +1,274 @@
+{
+  "modes": [
+    "keyword",
+    "vector",
+    "hybrid"
+  ],
+  "limit": 10,
+  "ground_truth_path": "D:\\MONHOCCCCCCCCCCCCCC\\IT_For_E-Commerce\\e-Amora\\eval\\ground_truth.json",
+  "summaries": {
+    "keyword": {
+      "mode": "keyword",
+      "total_queries": 7,
+      "evaluated_queries": 3,
+      "hit_rate_10": 1.0,
+      "mrr": 1.0,
+      "ndcg_10": 1.0,
+      "avg_latency_ms": 451.08,
+      "p95_latency_ms": 604.81
+    },
+    "vector": {
+      "mode": "vector",
+      "total_queries": 7,
+      "evaluated_queries": 3,
+      "hit_rate_10": 0.0,
+      "mrr": 0.0,
+      "ndcg_10": 0.0,
+      "avg_latency_ms": 283.18,
+      "p95_latency_ms": 371.99
+    },
+    "hybrid": {
+      "mode": "hybrid",
+      "total_queries": 7,
+      "evaluated_queries": 3,
+      "hit_rate_10": 1.0,
+      "mrr": 0.5278,
+      "ndcg_10": 0.6957,
+      "avg_latency_ms": 453.44,
+      "p95_latency_ms": 467.65
+    }
+  },
+  "per_query": {
+    "keyword": [
+      {
+        "query": "iphone 11",
+        "expected_ids": [
+          "246",
+          "334",
+          "339"
+        ],
+        "returned_ids": [
+          "246",
+          "334",
+          "339",
+          "1139",
+          "1192",
+          "1536",
+          "1943",
+          "375",
+          "740",
+          "1713"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 1.0,
+        "ndcg_10": 1.0,
+        "latency_ms": 377.17,
+        "status": "OK"
+      },
+      {
+        "query": "iphone 13",
+        "expected_ids": [
+          "145",
+          "616",
+          "664"
+        ],
+        "returned_ids": [
+          "145",
+          "616",
+          "664",
+          "985",
+          "1364",
+          "1423",
+          "1689",
+          "393",
+          "464",
+          "1537"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 1.0,
+        "ndcg_10": 1.0,
+        "latency_ms": 371.25,
+        "status": "OK"
+      },
+      {
+        "query": "macbook air",
+        "expected_ids": [
+          "2014",
+          "2040",
+          "1989"
+        ],
+        "returned_ids": [
+          "2014",
+          "2040",
+          "2046",
+          "2053",
+          "2078",
+          "2079",
+          "2080",
+          "2081",
+          "2082",
+          "2981"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 1.0,
+        "ndcg_10": 1.0,
+        "latency_ms": 604.81,
+        "status": "OK"
+      }
+    ],
+    "vector": [
+      {
+        "query": "iphone 11",
+        "expected_ids": [
+          "246",
+          "334",
+          "339"
+        ],
+        "returned_ids": [
+          "900",
+          "621",
+          "1509",
+          "224",
+          "561",
+          "420",
+          "1370",
+          "1813",
+          "247",
+          "1900"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 371.99,
+        "status": "OK"
+      },
+      {
+        "query": "iphone 13",
+        "expected_ids": [
+          "145",
+          "616",
+          "664"
+        ],
+        "returned_ids": [
+          "818",
+          "477",
+          "1518",
+          "457",
+          "456",
+          "933",
+          "1040",
+          "1800",
+          "857",
+          "1143"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 249.56,
+        "status": "OK"
+      },
+      {
+        "query": "macbook air",
+        "expected_ids": [
+          "2014",
+          "2040",
+          "1989"
+        ],
+        "returned_ids": [
+          "2295",
+          "2361",
+          "2293",
+          "2432",
+          "2919",
+          "2717",
+          "2912",
+          "2323",
+          "3271",
+          "3274"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 227.98,
+        "status": "OK"
+      }
+    ],
+    "hybrid": [
+      {
+        "query": "iphone 11",
+        "expected_ids": [
+          "246",
+          "334",
+          "339"
+        ],
+        "returned_ids": [
+          "334",
+          "339",
+          "1943",
+          "246",
+          "1192",
+          "1139",
+          "1536",
+          "1713",
+          "375",
+          "740"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 1.0,
+        "ndcg_10": 0.9675,
+        "latency_ms": 466.62,
+        "status": "OK"
+      },
+      {
+        "query": "iphone 13",
+        "expected_ids": [
+          "145",
+          "616",
+          "664"
+        ],
+        "returned_ids": [
+          "1689",
+          "1423",
+          "616",
+          "145",
+          "664",
+          "985",
+          "1364",
+          "393",
+          "1537",
+          "464"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 0.3333,
+        "ndcg_10": 0.6183,
+        "latency_ms": 467.65,
+        "status": "OK"
+      },
+      {
+        "query": "macbook air",
+        "expected_ids": [
+          "2014",
+          "2040",
+          "1989"
+        ],
+        "returned_ids": [
+          "2981",
+          "2046",
+          "2053",
+          "2014",
+          "2040",
+          "2081",
+          "2082",
+          "2083",
+          "2078",
+          "2079"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 0.25,
+        "ndcg_10": 0.5013,
+        "latency_ms": 426.03,
+        "status": "OK"
+      }
+    ]
+  }
+}

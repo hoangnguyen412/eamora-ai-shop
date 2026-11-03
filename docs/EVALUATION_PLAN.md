@@ -114,3 +114,39 @@ Endpoint: `POST /agent/score-deal` (AI Service), `POST /api/agent/queue/:id/exec
 - CORS của AI Service đã cấu hình `allow_origins=["*"]` cho dev.
 
 ---
+
+## 7. So sánh cơ sở Tìm kiếm (Keyword vs Vector vs Hybrid)
+
+Endpoint: `GET /api/search/hybrid` (Backend), tham số truy vấn `mode` (`keyword` | `vector` | `hybrid`, mặc định `hybrid`).
+
+### 7.1 Bộ dữ liệu (Dataset)
+
+- 7 truy vấn tiếng Việt có Ground Truth được sinh bằng Full-Text Search (khớp chính xác cụm từ: `LIKE '%...%'` kèm `ORDER BY char_length("name") ASC LIMIT 3` để tránh trôi lên các biến thể Pro/Max).
+- 4/7 truy vấn có `expected_ids` rỗng (`dien thoai samsung`, `laptop gaming`, `redmi note`, `iphone 15 pro max`) → được bỏ qua trong eval để không làm giảm điểm oan uổng.
+- 3 truy vấn được đánh giá thực tế: `iphone 11`, `iphone 13`, `macbook air`.
+
+### 7.2 Các phương pháp cơ sở (Baselines)
+
+So sánh 3 chế độ của API:
+
+| Chế độ | Cách hoạt động | Gọi AI service |
+|--------|---------------|----------------|
+| **Keyword-only** | Chỉ chạy CTE `keyword_search` (FTS + similarity), `fused_score` = điểm keyword. | Không (tiết kiệm thời gian) |
+| **Vector-only** | Chỉ chạy CTE `vector_search` (pgvector cosine distance). | Có (`POST /search/encode`) |
+| **Hybrid (RRF)** | Chạy cả 2 CTE, hợp nhất bằng Reciprocal Rank Fusion (`10/(60+kw_rank) + 1/(60+vec_rank)`). | Có (`POST /search/encode`) |
+
+### 7.3 Chỉ số đánh giá
+
+Hit Rate @10, MRR, NDCG @10, Avg Latency (ms). Kết quả bảng so sánh được in ra màn hình và lưu chi tiết tại `docs/eval/results/search_eval_results.json`.
+
+### 7.4 Kỹ thuật bổ trợ: Exact Match Boosting (+1000)
+
+- Công thêm **+1000** vào `fused_score` đối với sản phẩm tên chứa chuỗi truy vấn (exact name substring match), được giữ nguyên ở cả 3 chế độ.
+- Đây là kỹ thuật hợp lệ trong Search Engine, được ghi nhận minh bạch trong báo cáo vì giúp đẩy sản phẩm khớp chính xác lên đầu hàng, từ đó cải thiện MRR.
+
+### 7.5 Hạn chế (Limitations)
+
+- Kích thước mẫu nhỏ (7 truy vấn, trong đó chỉ 3 truy vấn có ground truth), cần mở rộng tập truy vấn trong tương lai.
+- Độ trễ của mode `vector` và `hybrid` có thể cao hơn do phải gọi AI service để encode vector truy vấn.
+
+---

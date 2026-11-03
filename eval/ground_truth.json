@@ -1,0 +1,42 @@
+[
+  {
+    "query": "iphone 11",
+    "expected_ids": [
+      "246",
+      "334",
+      "339"
+    ]
+  },
+  {
+    "query": "iphone 13",
+    "expected_ids": [
+      "145",
+      "616",
+      "664"
+    ]
+  },
+  {
+    "query": "macbook air",
+    "expected_ids": [
+      "2014",
+      "2040",
+      "1989"
+    ]
+  },
+  {
+    "query": "dien thoai samsung",
+    "expected_ids": []
+  },
+  {
+    "query": "laptop gaming",
+    "expected_ids": []
+  },
+  {
+    "query": "redmi note",
+    "expected_ids": []
+  },
+  {
+    "query": "iphone 15 pro max",
+    "expected_ids": []
+  }
+]

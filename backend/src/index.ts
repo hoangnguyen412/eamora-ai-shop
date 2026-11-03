@@ -1206,6 +1206,7 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
     const rawLimit = req.query.limit;
     const rawMinPrice = req.query.minPrice;
     const rawMaxPrice = req.query.maxPrice;
+    const rawMode = req.query.mode;
 
     const page = parseIntegerQuery(req.query.page, 1, 1, 1_000_000);
     const limit = parseIntegerQuery(rawLimit ?? '20', 20, 1, 100);
@@ -1232,20 +1233,30 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
       });
     }
 
-    // 1. Lấy vector từ AI service
+    // 1. Lấy vector từ AI service (chỉ khi mode vector hoặc hybrid)
+    const mode = (typeof rawMode === 'string' ? rawMode.trim().toLowerCase() : 'hybrid') as
+      | 'keyword'
+      | 'vector'
+      | 'hybrid';
+    if (mode !== 'keyword' && mode !== 'vector' && mode !== 'hybrid') {
+      return res.status(400).json({ success: false, message: "mode must be 'keyword', 'vector' or 'hybrid'" });
+    }
+
     let vector: number[] | null = null;
-    try {
-      const encRes = await fetch(`${AI_URL}/search/encode`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
-        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-      });
-      if (!encRes.ok) throw new Error(`AI encode failed: ${encRes.status}`);
-      const encJson = await encRes.json() as { vector?: number[] };
-      vector = encJson.vector ?? null;
-    } catch {
-      // Nếu AI service lỗi, vẫn tiếp tục với keyword-only (vector = null)
+    if (mode !== 'keyword') {
+      try {
+        const encRes = await fetch(`${AI_URL}/search/encode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q }),
+          signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+        });
+        if (!encRes.ok) throw new Error(`AI encode failed: ${encRes.status}`);
+        const encJson = await encRes.json() as { vector?: number[] };
+        vector = encJson.vector ?? null;
+      } catch {
+        // Nếu AI service lỗi, vẫn tiếp tục với keyword-only (vector = null)
+      }
     }
 
     const offset = (page - 1) * limit;
@@ -1260,98 +1271,186 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
       ${maxPrice ? Prisma.sql`AND p."basePrice" <= ${maxPrice}` : Prisma.empty}
     `;
 
-    // Câu lấy data (Keyword FTS + Vector + RRF) với pg_trgm hỗ trợ lỗi chính tả (word_similarity)
-    const dataQuery = Prisma.sql`
-      WITH keyword_search AS (
-        SELECT
-          p.id,
-          (
-            ts_rank_cd(
-              to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))),
-              plainto_tsquery('simple', immutable_unaccent(${q}))
-            ) +
-            COALESCE(similarity(p."name", immutable_unaccent(${q})), 0)
-          ) AS kw_score
-        FROM "Product" p
-        ${filterConditions}
-        AND (
-          to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
-          OR
-          similarity(immutable_unaccent(p."name"), immutable_unaccent(${q})) > 0.3
-        )
-        ORDER BY kw_score DESC
-        LIMIT 50
-      )
-      ${vector ? Prisma.sql`
-      , vector_search AS (
-        SELECT
-          p.id,
-          1 - (e."vector" <=> ${queryVectorStr}::vector) AS vec_score
-        FROM "Product" p
-        JOIN "Embedding" e ON e."productId" = p.id
-        ${filterConditions}
-        ORDER BY e."vector" <=> ${queryVectorStr}::vector
-        LIMIT 50
-      )
-      ` : Prisma.empty}
-      ${vector ? Prisma.sql`
-      , fused AS (
-        SELECT
-          id,
-          COALESCE(1.0 / (60 + kw_rank), 0) + COALESCE(1.0 / (60 + vec_rank), 0) AS fused_score
-        FROM (
-          SELECT id, ROW_NUMBER() OVER (ORDER BY kw_score DESC) AS kw_rank FROM keyword_search
-        ) kw
-        FULL OUTER JOIN (
-          SELECT id, ROW_NUMBER() OVER (ORDER BY vec_score DESC) AS vec_rank FROM vector_search
-        ) vec USING (id)
-      )
-      ` : Prisma.sql`
-      , fused AS (
-        SELECT
-          id,
-          COALESCE(1.0 / (60 + kw_rank), 0) AS fused_score
-        FROM (
-          SELECT id, ROW_NUMBER() OVER (ORDER BY kw_score DESC) AS kw_rank FROM keyword_search
-        ) kw
-      )
-      `}
-      SELECT p.id, f.fused_score
-      FROM fused f
-      JOIN "Product" p ON p.id = f.id
-      ORDER BY f.fused_score DESC
-      LIMIT ${limit} OFFSET ${offset}
+    // Exact-match boost condition (dùng trong kw_score, fused_score, ORDER BY cuối)
+    const exactMatchBoost = Prisma.sql`
+      CASE WHEN position(LOWER(immutable_unaccent(${q})) in LOWER(immutable_unaccent(p."name"))) > 0 THEN 5.0 ELSE 0 END
     `;
 
-    // Câu đếm tổng số kết quả (khớp 100% với dataQuery trước khi phân trang)
-    const countQuery = Prisma.sql`
-      WITH keyword_search AS (
-        SELECT p.id
-        FROM "Product" p
-        ${filterConditions}
-        AND (
-          to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
-          OR
-          similarity(immutable_unaccent(p."name"), immutable_unaccent(${q})) > 0.3
-        )
-        LIMIT 50
-      ),
-      ${vector ? Prisma.sql`
-      vector_search AS (
-        SELECT p.id
-        FROM "Product" p
-        JOIN "Embedding" e ON e."productId" = p.id
-        ${filterConditions}
-        ORDER BY e."vector" <=> ${queryVectorStr}::vector
-        LIMIT 50
-      ),
-      ` : Prisma.empty}
-      fused AS (
-        SELECT id FROM keyword_search
-        ${vector ? Prisma.sql`UNION SELECT id FROM vector_search` : Prisma.empty}
-      )
-      SELECT COUNT(DISTINCT id)::int as count FROM fused
+    const kwScoreExpr = Prisma.sql`
+      ts_rank_cd(
+        to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))),
+        plainto_tsquery('simple', immutable_unaccent(${q}))
+      ) +
+      COALESCE(similarity(p."name", immutable_unaccent(${q})), 0) +
+      ${exactMatchBoost}
     `;
+
+    // Câu WHERE tìm kiếm (FTS OR similarity)
+    const whereSearchCondition = Prisma.sql`
+      AND (
+        to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
+        OR
+        similarity(immutable_unaccent(p."name"), immutable_unaccent(${q})) > 0.3
+      )
+    `;
+
+    // Exact match condition cho final ORDER BY (không prefix p. vì đã JOIN Product)
+    const finalOrderExactBoost = Prisma.sql`
+      CASE WHEN position(LOWER(immutable_unaccent(${q})) in LOWER(immutable_unaccent(p."name"))) > 0 THEN 10.0 ELSE 0 END
+    `;
+
+    // --- DATA QUERY theo mode ---
+    let dataQuery: Prisma.Sql;
+    if (mode === 'keyword') {
+      dataQuery = Prisma.sql`
+        WITH keyword_search AS (
+          SELECT
+            p.id,
+            p."name",
+            (${kwScoreExpr}) AS kw_score
+          FROM "Product" p
+          ${filterConditions}
+          ${whereSearchCondition}
+          ORDER BY kw_score DESC
+          LIMIT 50
+        )
+        SELECT id, kw_score AS fused_score
+        FROM keyword_search
+        ORDER BY kw_score +
+          CASE WHEN position(LOWER(immutable_unaccent(${q})) in LOWER(immutable_unaccent("name"))) > 0 THEN 10.0 ELSE 0 END DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+    } else if (mode === 'vector') {
+      dataQuery = Prisma.sql`
+        WITH vector_search AS (
+          SELECT
+            p.id,
+            1 - (e."vector" <=> ${queryVectorStr}::vector) AS vec_score
+          FROM "Product" p
+          JOIN "Embedding" e ON e."productId" = p.id
+          ${filterConditions}
+          ORDER BY e."vector" <=> ${queryVectorStr}::vector
+          LIMIT 50
+        )
+        SELECT p.id, vec_score AS fused_score
+        FROM vector_search
+        JOIN "Product" p ON p.id = vector_search.id
+        ORDER BY fused_score DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+    } else {
+      // hybrid
+      dataQuery = Prisma.sql`
+        WITH keyword_search AS (
+          SELECT
+            p.id,
+            (${kwScoreExpr}) AS kw_score
+          FROM "Product" p
+          ${filterConditions}
+          ${whereSearchCondition}
+          ORDER BY kw_score DESC
+          LIMIT 50
+        ),
+        ${vector ? Prisma.sql`
+        vector_search AS (
+          SELECT
+            p.id,
+            1 - (e."vector" <=> ${queryVectorStr}::vector) AS vec_score
+          FROM "Product" p
+          JOIN "Embedding" e ON e."productId" = p.id
+          ${filterConditions}
+          ORDER BY e."vector" <=> ${queryVectorStr}::vector
+          LIMIT 50
+        ),
+        ` : Prisma.empty}
+        fused AS (
+          SELECT
+            id,
+            (COALESCE(10.0 / (60 + kw_rank), 0) ${
+        vector ? Prisma.sql`+ COALESCE(1.0 / (60 + vec_rank), 0)` : Prisma.empty
+      })
+            + CASE WHEN EXISTS (
+              SELECT 1 FROM "Product" p2
+              WHERE p2.id = kw.id
+              AND position(immutable_unaccent(LOWER(${q})) in immutable_unaccent(LOWER(p2."name"))) > 0
+            ) THEN 1000.0 ELSE 0 END
+            AS fused_score
+          FROM (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY kw_score DESC) AS kw_rank FROM keyword_search
+          ) kw
+          ${vector ? Prisma.sql`
+          FULL OUTER JOIN (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY vec_score DESC) AS vec_rank FROM vector_search
+          ) vec USING (id)
+          ` : Prisma.empty}
+        )
+        SELECT p.id, f.fused_score
+        FROM fused f
+        JOIN "Product" p ON p.id = f.id
+        ORDER BY f.fused_score +
+          CASE WHEN position(LOWER(immutable_unaccent(${q})) in LOWER(immutable_unaccent(p."name"))) > 0 THEN 10.0 ELSE 0 END DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+    }
+
+    // --- COUNT QUERY theo mode ---
+    let countQuery: Prisma.Sql;
+    if (mode === 'keyword') {
+      countQuery = Prisma.sql`
+        WITH keyword_search AS (
+          SELECT
+            p.id,
+            (${kwScoreExpr}) AS kw_score
+          FROM "Product" p
+          ${filterConditions}
+          ${whereSearchCondition}
+          ORDER BY kw_score DESC
+          LIMIT 50
+        )
+        SELECT COUNT(*)::int as count FROM keyword_search
+      `;
+    } else if (mode === 'vector') {
+      countQuery = Prisma.sql`
+        WITH vector_search AS (
+          SELECT p.id
+          FROM "Product" p
+          JOIN "Embedding" e ON e."productId" = p.id
+          ${filterConditions}
+          ORDER BY e."vector" <=> ${queryVectorStr}::vector
+          LIMIT 50
+        )
+        SELECT COUNT(*)::int as count FROM vector_search
+      `;
+    } else {
+      // hybrid: cùng cấu trúc dataQuery nhưng chỉ SELECT id, không có LIMIT/OFFSET cuối
+      countQuery = Prisma.sql`
+        WITH keyword_search AS (
+          SELECT
+            p.id,
+            (${kwScoreExpr}) AS kw_score
+          FROM "Product" p
+          ${filterConditions}
+          ${whereSearchCondition}
+          ORDER BY kw_score DESC
+          LIMIT 50
+        ),
+        ${vector ? Prisma.sql`
+        vector_search AS (
+          SELECT p.id
+          FROM "Product" p
+          JOIN "Embedding" e ON e."productId" = p.id
+          ${filterConditions}
+          ORDER BY e."vector" <=> ${queryVectorStr}::vector
+          LIMIT 50
+        ),
+        ` : Prisma.empty}
+        fused AS (
+          SELECT id FROM keyword_search
+          ${vector ? Prisma.sql`UNION SELECT id FROM vector_search` : Prisma.empty}
+        )
+        SELECT COUNT(DISTINCT id)::int as count FROM fused
+      `;
+    }
 
     console.log('=== HYBRID SEARCH DATA_QUERY ===');
     console.log(dataQuery.sql);
@@ -1454,7 +1553,7 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
       totalPages: Math.max(1, Math.ceil(totalItems / limit)),
       currentPage: page,
       limit,
-      mode: 'hybrid',
+      mode,
     });
   } catch (error) {
     return sendServerError(res, 'Unable to run hybrid search', error);
