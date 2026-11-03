@@ -1260,15 +1260,7 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
       ${maxPrice ? Prisma.sql`AND p."basePrice" <= ${maxPrice}` : Prisma.empty}
     `;
 
-    // Điều kiện typo-tolerance: kiểm tra similarity cho từng từ trong query
-    const wordSimilarityCondition = Prisma.sql`
-      EXISTS (
-        SELECT 1 FROM unnest(string_to_array(${q}, ' ')) AS word
-        WHERE similarity(p."name", immutable_unaccent(word)) > 0.3
-      )
-    `;
-
-    // Câu lấy data (Keyword FTS + Vector + RRF) với pg_trgm hỗ trợ lỗi chính tả
+    // Câu lấy data (Keyword FTS + Vector + RRF) với pg_trgm hỗ trợ lỗi chính tả (word_similarity)
     const dataQuery = Prisma.sql`
       WITH keyword_search AS (
         SELECT
@@ -1285,7 +1277,7 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
         AND (
           to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
           OR
-          ${wordSimilarityCondition}
+          similarity(immutable_unaccent(p."name"), immutable_unaccent(${q})) > 0.3
         )
         ORDER BY kw_score DESC
         LIMIT 50
@@ -1331,16 +1323,34 @@ app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Re
       LIMIT ${limit} OFFSET ${offset}
     `;
 
-    // Câu đếm tổng số kết quả (áp dụng đầy đủ filter + điều kiện search)
+    // Câu đếm tổng số kết quả (khớp 100% với dataQuery trước khi phân trang)
     const countQuery = Prisma.sql`
-      SELECT COUNT(DISTINCT p.id)::int as count
-      FROM "Product" p
-      ${filterConditions}
-      AND (
-        to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
-        OR
-        ${wordSimilarityCondition}
+      WITH keyword_search AS (
+        SELECT p.id
+        FROM "Product" p
+        ${filterConditions}
+        AND (
+          to_tsvector('simple', immutable_unaccent(coalesce(p."name",'') || ' ' || coalesce(p."description",'') || ' ' || coalesce(p."brand",''))) @@ plainto_tsquery('simple', immutable_unaccent(${q}))
+          OR
+          similarity(immutable_unaccent(p."name"), immutable_unaccent(${q})) > 0.3
+        )
+        LIMIT 50
+      ),
+      ${vector ? Prisma.sql`
+      vector_search AS (
+        SELECT p.id
+        FROM "Product" p
+        JOIN "Embedding" e ON e."productId" = p.id
+        ${filterConditions}
+        ORDER BY e."vector" <=> ${queryVectorStr}::vector
+        LIMIT 50
+      ),
+      ` : Prisma.empty}
+      fused AS (
+        SELECT id FROM keyword_search
+        ${vector ? Prisma.sql`UNION SELECT id FROM vector_search` : Prisma.empty}
       )
+      SELECT COUNT(DISTINCT id)::int as count FROM fused
     `;
 
     console.log('=== HYBRID SEARCH DATA_QUERY ===');

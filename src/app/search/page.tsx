@@ -20,16 +20,11 @@ const PAGE_SIZE = 12;
 interface ProductSearchResponse {
   success: boolean;
   data: Product[];
-  filterOptions: {
-    categories: string[];
-    brands: string[];
-  };
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    limit: number;
-  };
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+  mode?: string;
   message?: string;
 }
 
@@ -61,7 +56,7 @@ function SearchContent() {
     (async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
-      if (selectedCategory) params.set("category", selectedCategory);
+      if (selectedCategory) params.set("categoryId", selectedCategory);
       if (selectedBrand) params.set("brand", selectedBrand);
       if (minPrice) params.set("minPrice", minPrice);
       if (maxPrice) params.set("maxPrice", maxPrice);
@@ -70,7 +65,7 @@ function SearchContent() {
       setError("");
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/products?${params}`, {
+        const response = await fetch(`${API_BASE_URL}/api/search/hybrid?${params}`, {
           signal: controller.signal,
         });
         const result = await response.json() as ProductSearchResponse;
@@ -79,10 +74,10 @@ function SearchContent() {
         }
 
         setProducts(result.data);
-        setCategories(result.filterOptions.categories);
-        setBrands(result.filterOptions.brands);
-        setTotalPages(result.pagination.totalPages);
-        setTotalItems(result.pagination.totalItems);
+        setCategories([]);
+        setBrands([]);
+        setTotalPages(result.totalPages);
+        setTotalItems(result.totalItems);
       } catch (fetchError) {
         if (fetchError instanceof Error && fetchError.name === "AbortError") return;
         setError(fetchError instanceof Error ? fetchError.message : "Không thể tải danh sách sản phẩm");

@@ -189,6 +189,52 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 - Body: `{ productId: string }`
 - Tạo `SearchClick` cho session.
 
+### `GET /api/search/hybrid` (Hybrid Search — Keyword + Vector)
+- Query params:
+  - `q` (string, bắt buộc): từ khóa tìm kiếm (hỗ trợ tiếng Việt, sai chính tả, không dấu).
+  - `categoryId` (string, optional): lọc theo danh mục.
+  - `brand` (string, optional): lọc theo thương hiệu (ILIKE).
+  - `minPrice` (number, optional): lọc giá >=.
+  - `maxPrice` (number, optional): lọc giá <=.
+  - `limit` (number, default 12, max 100): số sản phẩm trả về.
+  - `page` (number, default 1): trang phân trang.
+- Mô tả: Tìm kiếm sản phẩm kết hợp từ khóa (Full-Text Search với `pg_trgm`/`unaccent`) và ngữ nghĩa (pgvector cosine similarity). Backend gọi AI Service `POST /search/encode` để sinh vector 768-dim từ query, sau đó chạy Raw SQL trên Postgres: lấy top 50 kết quả từ Keyword Search và top 50 từ Vector Search, gộp bằng thuật toán **RRF (Reciprocal Rank Fusion, k=60)** để xếp hạng cuối cùng.
+- Trả về `200`:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "string",
+      "name": "string",
+      "slug": "string",
+      "brand": "string",
+      "category": "string",
+      "price": number,
+      "originalPrice": number,
+      "discountPercent": number,
+      "stock": number,
+      "rating": number,
+      "reviewCount": number,
+      "thumbnailUrl": "string",
+      "images": ["string"],
+      "isFeatured": boolean,
+      "specs": {},
+      "offers": [...],
+      "fusedScore": "string"
+    }
+  ],
+  "totalItems": number,
+  "totalPages": number,
+  "currentPage": number,
+  "limit": number,
+  "mode": "hybrid"
+}
+```
+- Lỗi: `400` (query rỗng), `500` (lỗi truy vấn DB / AI service).
+- Được cache bởi `node-cache` (stdTTL 300s) cho các request GET giống nhau.
+- Giới hạn bởi `apiRateLimiter` (300 req/15 phút).
+
 ---
 
 ## 5. Seller

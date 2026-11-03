@@ -202,6 +202,39 @@ sequenceDiagram
 - `runAutoBuyWorker()` trong `backend/src/index.ts`: `setInterval`, batch size `AUTO_BUY_WORKER_BATCH_SIZE`, processed FIFO (`ORDER BY createdAt ASC, id ASC`).
 - `startAutoBuyWorker()` trong `backend/src/index.ts`: chỉ chạy nếu `AUTO_BUY_WORKER_ENABLED === 'true'`.
 
+### 2.4 Hybrid Search (Keyword FTS + Vector + RRF)
+
+Luồng tìm kiếm sản phẩm kết hợp từ khóa và ngữ nghĩa:
+
+```mermaid
+sequenceDiagram
+    participant U as Người dùng (Frontend)
+    participant B as Backend (Express)
+    participant A as AI Service (FastAPI)
+    participant DB as PostgreSQL + pgvector + pg_trgm
+
+    U->>B: GET /api/search/hybrid?q={query}&limit={n}
+    B->>A: POST /search/encode {query}
+    A->>A: Sentence-Transformers sinh vector 768-dim từ query
+    A-->>B: {vector: [0.1, 0.2, ...]}
+    B->>DB: Raw SQL RRF (Prisma.sql template literal)
+    DB->>DB: Keyword Search: to_tsvector('simple', immutable_unaccent(name||description||brand)) @@ plainto_tsquery(...) OR similarity(name, ...) > 0.3 → top 50, kw_score = ts_rank_cd + similarity
+    DB->>DB: Vector Search: 1 - (vector <=> $query::vector) cosine nearest → top 50, vec_score
+    DB->>DB: Fused: COALESCE(1/(60+kw_rank),0) + COALESCE(1/(60+vec_rank),0) → ORDER BY fused_score DESC, LIMIT/OFFSET
+    DB-->>B: danh sách product id + fused_score
+    B->>DB: SELECT * FROM Product WHERE id IN (...) (full product data)
+    DB-->>B: product rows
+    B-->>U: {data: [...], totalItems, totalPages, currentPage, limit, mode: 'hybrid'}
+```
+
+**Các thành phần chính:**
+- `POST /search/encode` trong `AI_features/main.py`: nhận query string, trả về vector 768-dim qua Sentence-Transformers.
+- `GET /api/search/hybrid` trong `backend/src/index.ts`: dùng `Prisma.sql` template literal (tránh lỗi bind params), xây dựng `filterConditions` động, chạy `dataQuery` (RRF) và `countQuery` song song qua `Promise.all`.
+- Migration `20261103020000_hybrid_search_extensions`: cài extension `pg_trgm`, `unaccent`; tạo hàm `immutable_unaccent(text)` marked `IMMUTABLE PARALLEL SAFE STRICT` để dùng trong index expression; tạo GIN FTS index trên `to_tsvector('simple', immutable_unaccent(...))`, GIN trigram indexes trên `"name"` và `"brand"`, HNSW index (`vector_cosine_ops`) trên `Embedding.vector`.
+- Tìm kiếm sai chính tả: dùng `pg_trgm` `similarity(p."name", ...) > 0.3` (ngưỡng 0.3) trong WHERE clause, cộng vào `kw_score` để sắp xếp.
+- `countQuery` áp dụng đầy đủ `filterConditions` + điều kiện search (FTS OR similarity), tránh trả về tổng toàn bộ DB.
+- Cache: `node-cache` (stdTTL 300s) lưu kết quả `GET /api/search/hybrid` theo `req.originalUrl`.
+
 ---
 
 ## 3. Mô tả chi tiết các bảng Database chính

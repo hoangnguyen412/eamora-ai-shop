@@ -25,6 +25,8 @@ and this project adheres to Semantic Versioning.
 - `docs/ARCHITECTURE.md`, `docs/EVALUATION_PLAN.md` (mới tạo cho báo cáo)
 - `.env.example` tại root, `backend/`, `AI_features/` (gitignored `.env*`, cho phép `.env.example`)
 - Security warning block trong `README.md`, secrets thật bị thay bằng placeholder
+- **Hybrid Search**: Backend `GET /api/search/hybrid` (RRF — Reciprocal Rank Fusion) kết hợp PostgreSQL FTS (`pg_trgm`, `unaccent` wrapper `immutable_unaccent`, GIN index) và pgvector HNSW. Hỗ trợ tìm kiếm sai chính tả (trigram similarity > 0.3) và không dấu. AI service `POST /search/encode` tạo vector 768-dim từ query.
+- **Rate Limiting & Caching**: `express-rate-limit` (300 req/15 phút cho `/api`, 10 req/15 phút cho auth), `node-cache` (stdTTL 300s) cache `GET /api/products`, `GET /api/search/hybrid`.
 
 ### Fixed
 - Backend `GET /api/products` thiếu field `rating`, `reviewCount`, `originalPrice`, `discountPercent` → gây lỗi hiển thị 0 sao / không có badge giảm giá trên section "Khám phá sản phẩm"
