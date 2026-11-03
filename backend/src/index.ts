@@ -11,6 +11,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import path from 'path';
 import fs from 'fs';
+import NodeCache from 'node-cache';
 
 dotenv.config();
 const app = express();
@@ -18,6 +19,35 @@ const app = express();
 const connectionString = process.env.DATABASE_URL as string;
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
+
+// In-memory cache (5 phút TTL)
+const cache = new NodeCache({ stdTTL: 300 });
+
+// Middleware cache cho các route GET
+const cacheMiddleware = (duration: number) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Chỉ cache GET requests
+    if (req.method !== 'GET') {
+      return next();
+    }
+
+    const key = req.originalUrl;
+    const cached = cache.get(key);
+    if (cached !== undefined) {
+      console.log(`[Cache HIT] ${key}`);
+      return res.json(cached);
+    }
+
+    // Override res.json để lưu vào cache trước khi trả về
+    const originalJson = res.json.bind(res);
+    res.json = (data: any) => {
+      cache.set(key, data, duration);
+      return originalJson(data);
+    };
+
+    next();
+  };
+};
 
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
 const PORT = process.env.PORT || 4000;
@@ -1023,7 +1053,7 @@ app.get('/api/seller/stats', requireAuth, requireRole(['seller']), async (req: A
   }
 });
 
-app.get('/api/products', async (req: Request, res: Response) => {
+app.get('/api/products', cacheMiddleware(300), async (req: Request, res: Response) => {
   try {
     const page = parseIntegerQuery(req.query.page, 1, 1, 1_000_000);
     const limit = parseIntegerQuery(req.query.limit, 12, 1, 100);
@@ -1168,7 +1198,7 @@ app.get('/api/products', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/search/hybrid', async (req: Request, res: Response) => {
+app.get('/api/search/hybrid', cacheMiddleware(300), async (req: Request, res: Response) => {
   try {
     const rawQuery = req.query.q;
     const rawCategoryId = req.query.categoryId;
