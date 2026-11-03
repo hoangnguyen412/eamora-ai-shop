@@ -9,33 +9,33 @@
   "summaries": {
     "keyword": {
       "mode": "keyword",
-      "total_queries": 7,
-      "evaluated_queries": 3,
-      "hit_rate_10": 1.0,
-      "mrr": 1.0,
-      "ndcg_10": 1.0,
-      "avg_latency_ms": 451.08,
-      "p95_latency_ms": 604.81
+      "total_queries": 8,
+      "evaluated_queries": 7,
+      "hit_rate_10": 0.4286,
+      "mrr": 0.4286,
+      "ndcg_10": 0.4286,
+      "avg_latency_ms": 318.68,
+      "p95_latency_ms": 569.31
     },
     "vector": {
       "mode": "vector",
-      "total_queries": 7,
-      "evaluated_queries": 3,
-      "hit_rate_10": 0.0,
-      "mrr": 0.0,
-      "ndcg_10": 0.0,
-      "avg_latency_ms": 283.18,
-      "p95_latency_ms": 371.99
+      "total_queries": 8,
+      "evaluated_queries": 7,
+      "hit_rate_10": 0.1429,
+      "mrr": 0.0179,
+      "ndcg_10": 0.0451,
+      "avg_latency_ms": 217.96,
+      "p95_latency_ms": 286.58
     },
     "hybrid": {
       "mode": "hybrid",
-      "total_queries": 7,
-      "evaluated_queries": 3,
-      "hit_rate_10": 1.0,
-      "mrr": 0.5278,
-      "ndcg_10": 0.6957,
-      "avg_latency_ms": 453.44,
-      "p95_latency_ms": 467.65
+      "total_queries": 8,
+      "evaluated_queries": 7,
+      "hit_rate_10": 0.5714,
+      "mrr": 0.2798,
+      "ndcg_10": 0.3687,
+      "avg_latency_ms": 424.46,
+      "p95_latency_ms": 464.07
     }
   },
   "per_query": {
@@ -62,7 +62,7 @@
         "hit_rate_10": 1.0,
         "mrr": 1.0,
         "ndcg_10": 1.0,
-        "latency_ms": 377.17,
+        "latency_ms": 569.31,
         "status": "OK"
       },
       {
@@ -87,7 +87,7 @@
         "hit_rate_10": 1.0,
         "mrr": 1.0,
         "ndcg_10": 1.0,
-        "latency_ms": 371.25,
+        "latency_ms": 377.96,
         "status": "OK"
       },
       {
@@ -95,7 +95,7 @@
         "expected_ids": [
           "2014",
           "2040",
-          "1989"
+          "2046"
         ],
         "returned_ids": [
           "2014",
@@ -112,7 +112,61 @@
         "hit_rate_10": 1.0,
         "mrr": 1.0,
         "ndcg_10": 1.0,
-        "latency_ms": 604.81,
+        "latency_ms": 332.72,
+        "status": "OK"
+      },
+      {
+        "query": "laptop mỏng nhẹ cho sinh viên",
+        "expected_ids": [
+          "2428",
+          "2351",
+          "2226"
+        ],
+        "returned_ids": [],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 232.87,
+        "status": "OK"
+      },
+      {
+        "query": "điện thoại chụp ảnh đêm đẹp",
+        "expected_ids": [
+          "270",
+          "437"
+        ],
+        "returned_ids": [],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 241.5,
+        "status": "OK"
+      },
+      {
+        "query": "điện thoại pin trâu giá rẻ",
+        "expected_ids": [
+          "954",
+          "540",
+          "1694"
+        ],
+        "returned_ids": [],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 240.17,
+        "status": "OK"
+      },
+      {
+        "query": "laptop chơi game màn hình lớn",
+        "expected_ids": [
+          "3128",
+          "3434"
+        ],
+        "returned_ids": [],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 236.22,
         "status": "OK"
       }
     ],
@@ -139,7 +193,7 @@
         "hit_rate_10": 0.0,
         "mrr": 0.0,
         "ndcg_10": 0.0,
-        "latency_ms": 371.99,
+        "latency_ms": 286.58,
         "status": "OK"
       },
       {
@@ -164,7 +218,7 @@
         "hit_rate_10": 0.0,
         "mrr": 0.0,
         "ndcg_10": 0.0,
-        "latency_ms": 249.56,
+        "latency_ms": 209.27,
         "status": "OK"
       },
       {
@@ -172,7 +226,7 @@
         "expected_ids": [
           "2014",
           "2040",
-          "1989"
+          "2046"
         ],
         "returned_ids": [
           "2295",
@@ -189,7 +243,105 @@
         "hit_rate_10": 0.0,
         "mrr": 0.0,
         "ndcg_10": 0.0,
-        "latency_ms": 227.98,
+        "latency_ms": 215.14,
+        "status": "OK"
+      },
+      {
+        "query": "laptop mỏng nhẹ cho sinh viên",
+        "expected_ids": [
+          "2428",
+          "2351",
+          "2226"
+        ],
+        "returned_ids": [
+          "2421",
+          "2293",
+          "2641",
+          "2642",
+          "2338",
+          "2420",
+          "2631",
+          "2636",
+          "2224",
+          "2165"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 199.37,
+        "status": "OK"
+      },
+      {
+        "query": "điện thoại chụp ảnh đêm đẹp",
+        "expected_ids": [
+          "270",
+          "437"
+        ],
+        "returned_ids": [
+          "1719",
+          "1430",
+          "1828",
+          "1780",
+          "1871",
+          "762",
+          "957",
+          "1957",
+          "892",
+          "1929"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 213.92,
+        "status": "OK"
+      },
+      {
+        "query": "điện thoại pin trâu giá rẻ",
+        "expected_ids": [
+          "954",
+          "540",
+          "1694"
+        ],
+        "returned_ids": [
+          "3353",
+          "3124",
+          "2314",
+          "3299",
+          "3322",
+          "2108",
+          "3362",
+          "2422",
+          "2236",
+          "2346"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 199.47,
+        "status": "OK"
+      },
+      {
+        "query": "laptop chơi game màn hình lớn",
+        "expected_ids": [
+          "3128",
+          "3434"
+        ],
+        "returned_ids": [
+          "2194",
+          "2438",
+          "2562",
+          "2578",
+          "2504",
+          "2146",
+          "2421",
+          "3128",
+          "3000",
+          "2184"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 0.125,
+        "ndcg_10": 0.3155,
+        "latency_ms": 201.95,
         "status": "OK"
       }
     ],
@@ -216,7 +368,7 @@
         "hit_rate_10": 1.0,
         "mrr": 1.0,
         "ndcg_10": 0.9675,
-        "latency_ms": 466.62,
+        "latency_ms": 464.07,
         "status": "OK"
       },
       {
@@ -241,7 +393,7 @@
         "hit_rate_10": 1.0,
         "mrr": 0.3333,
         "ndcg_10": 0.6183,
-        "latency_ms": 467.65,
+        "latency_ms": 435.12,
         "status": "OK"
       },
       {
@@ -249,7 +401,7 @@
         "expected_ids": [
           "2014",
           "2040",
-          "1989"
+          "2046"
         ],
         "returned_ids": [
           "2981",
@@ -264,9 +416,107 @@
           "2079"
         ],
         "hit_rate_10": 1.0,
-        "mrr": 0.25,
-        "ndcg_10": 0.5013,
-        "latency_ms": 426.03,
+        "mrr": 0.5,
+        "ndcg_10": 0.6797,
+        "latency_ms": 430.38,
+        "status": "OK"
+      },
+      {
+        "query": "laptop mỏng nhẹ cho sinh viên",
+        "expected_ids": [
+          "2428",
+          "2351",
+          "2226"
+        ],
+        "returned_ids": [
+          "2421",
+          "2293",
+          "2641",
+          "2642",
+          "2338",
+          "2420",
+          "2631",
+          "2636",
+          "2224",
+          "2165"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 419.21,
+        "status": "OK"
+      },
+      {
+        "query": "điện thoại chụp ảnh đêm đẹp",
+        "expected_ids": [
+          "270",
+          "437"
+        ],
+        "returned_ids": [
+          "1719",
+          "1430",
+          "1828",
+          "1780",
+          "1871",
+          "762",
+          "1957",
+          "957",
+          "1929",
+          "892"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 410.53,
+        "status": "OK"
+      },
+      {
+        "query": "điện thoại pin trâu giá rẻ",
+        "expected_ids": [
+          "954",
+          "540",
+          "1694"
+        ],
+        "returned_ids": [
+          "3353",
+          "3124",
+          "2314",
+          "3299",
+          "3322",
+          "2108",
+          "3362",
+          "2422",
+          "2236",
+          "2346"
+        ],
+        "hit_rate_10": 0.0,
+        "mrr": 0.0,
+        "ndcg_10": 0.0,
+        "latency_ms": 398.14,
+        "status": "OK"
+      },
+      {
+        "query": "laptop chơi game màn hình lớn",
+        "expected_ids": [
+          "3128",
+          "3434"
+        ],
+        "returned_ids": [
+          "2194",
+          "2438",
+          "2562",
+          "2578",
+          "2504",
+          "2146",
+          "2421",
+          "3128",
+          "3000",
+          "2184"
+        ],
+        "hit_rate_10": 1.0,
+        "mrr": 0.125,
+        "ndcg_10": 0.3155,
+        "latency_ms": 413.77,
         "status": "OK"
       }
     ]

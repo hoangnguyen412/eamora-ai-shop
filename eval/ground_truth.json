@@ -20,23 +20,41 @@
     "expected_ids": [
       "2014",
       "2040",
-      "1989"
+      "2046"
     ]
   },
   {
-    "query": "dien thoai samsung",
-    "expected_ids": []
+    "query": "laptop mỏng nhẹ cho sinh viên",
+    "expected_ids": [
+      "2428",
+      "2351",
+      "2226"
+    ]
   },
   {
-    "query": "laptop gaming",
-    "expected_ids": []
+    "query": "điện thoại chụp ảnh đêm đẹp",
+    "expected_ids": [
+      "270",
+      "437"
+    ]
   },
   {
-    "query": "redmi note",
-    "expected_ids": []
+    "query": "điện thoại pin trâu giá rẻ",
+    "expected_ids": [
+      "954",
+      "540",
+      "1694"
+    ]
   },
   {
-    "query": "iphone 15 pro max",
+    "query": "laptop chơi game màn hình lớn",
+    "expected_ids": [
+      "3128",
+      "3434"
+    ]
+  },
+  {
+    "query": "máy tính bảng đọc sách",
     "expected_ids": []
   }
 ]

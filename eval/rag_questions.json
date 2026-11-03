@@ -1,0 +1,7 @@
+[
+  {"id": 1, "question": "iPhone 13 pin có trâu không và chụp ảnh thế nào?", "expected_product_id": "664"},
+  {"id": 2, "question": "Laptop nào phù hợp cho sinh viên IT, mỏng nhẹ?", "expected_product_id": null},
+  {"id": 3, "question": "Redmi Note 12 Pro 5G có tốt không?", "expected_product_id": "848"},
+  {"id": 4, "question": "So sánh iPhone 13 và MacBook Air", "expected_product_id": null},
+  {"id": 5, "question": "Cửa hàng có bán tai nghe bluetooth không?", "expected_product_id": null}
+]

@@ -121,9 +121,12 @@ Endpoint: `GET /api/search/hybrid` (Backend), tham số truy vấn `mode` (`keyw
 
 ### 7.1 Bộ dữ liệu (Dataset)
 
-- 7 truy vấn tiếng Việt có Ground Truth được sinh bằng Full-Text Search (khớp chính xác cụm từ: `LIKE '%...%'` kèm `ORDER BY char_length("name") ASC LIMIT 3` để tránh trôi lên các biến thể Pro/Max).
-- 4/7 truy vấn có `expected_ids` rỗng (`dien thoai samsung`, `laptop gaming`, `redmi note`, `iphone 15 pro max`) → được bỏ qua trong eval để không làm giảm điểm oan uổng.
-- 3 truy vấn được đánh giá thực tế: `iphone 11`, `iphone 13`, `macbook air`.
+- 8 truy vấn tiếng Việt chia làm 2 nhóm, Ground Truth gán nhãn thủ công bằng ID sản phẩm thật từ bảng `Product`:
+  - **Nhóm Exact Match (3 câu):** `iphone 11`, `iphone 13`, `macbook air` — truy vấn tên chính xác sản phẩm, có ID khớp tên.
+  - **Nhóm Semantic/Descriptive (5 câu):** `laptop mỏng nhẹ cho sinh viên`, `điện thoại chụp ảnh đêm đẹp`, `điện thoại pin trâu giá rẻ`, `laptop chơi game màn hình lớn`, `máy tính bảng đọc sách` — truy vấn theo mô tả tính năng/dùng đấy, không chứa tên máy.
+- **Ground truth bao gồm 2 loại query: Exact Match và Semantic/Descriptive, được gán nhãn thủ công để phản ánh đúng hành vi người dùng thực tế.**
+- 1/8 truy vấn (`máy tính bảng đọc sách`) có `expected_ids` rỗng vì DB không có sản phẩm máy tính bảng/iPad → được bỏ qua trong eval để không làm giảm điểm oan uổng.
+- 7 truy vấn được đánh giá thực tế.
 
 ### 7.2 Các phương pháp cơ sở (Baselines)
 
@@ -146,7 +149,8 @@ Hit Rate @10, MRR, NDCG @10, Avg Latency (ms). Kết quả bảng so sánh đư�
 
 ### 7.5 Hạn chế (Limitations)
 
-- Kích thước mẫu nhỏ (7 truy vấn, trong đó chỉ 3 truy vấn có ground truth), cần mở rộng tập truy vấn trong tương lai.
-- Độ trễ của mode `vector` và `hybrid` có thể cao hơn do phải gọi AI service để encode vector truy vấn.
+- Kích thước mẫu nhỏ (8 truy vấn, trong đó 7 truy vấn có ground truth và được đánh giá), cần mở rộng tập truy vấn trong tương lai.
+- Độ trễ của mode `vector` và `hybrid` cao hơn do phải gọi AI service để encode vector truy vấn.
+- Chất lượng embedding hiện bị suy giảm (xem `docs/KNOWN_ISSUES.md`: vector trùng nhau do `convert_data.py` truncate tên xuống 8 ký tự), dẫn đến `vector-only` chỉ cứu được một phần nhóm Semantic/Descriptive. Đây là lý do `hybrid` cần được duy trì và cần cải thiện embedding để Hybrid thể hiện rõ lợi thế hơn.
 
 ---

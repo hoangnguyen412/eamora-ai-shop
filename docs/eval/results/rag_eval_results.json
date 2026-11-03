@@ -1,0 +1,206 @@
+{
+  "judge_model": "qwen/qwen3.8-27b",
+  "chat_api": "http://localhost:8000/chat/rag",
+  "total_questions": 5,
+  "average_faithfulness": 4.6,
+  "average_relevancy": 4.4,
+  "average_overall": 4.5,
+  "per_question": [
+    {
+      "id": 1,
+      "question": "iPhone 13 pin có trâu không và chụp ảnh thế nào?",
+      "expected_product_id": "664",
+      "answer": "Dạ, hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.",
+      "context": "1. [732] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n2. [133] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n3. [38] iPhone 14 Pro | Thương hiệu: Apple | Giá: 2,190,000 VND | Danh mục: cat-phone",
+      "retrieved_product_count": 3,
+      "retrieved_products": [
+        {
+          "id": "732",
+          "name": "iPhone 14 Pro Max",
+          "price": 2078100.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/6/x/j/-original-imaghxejqvpwfqh2.jpeg?q=70",
+          "categoryId": "cat-phone"
+        },
+        {
+          "id": "133",
+          "name": "iPhone 14 Pro Max",
+          "price": 2078100.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/k/s/t/-original-imaghxengzjc2djt.jpeg?q=70",
+          "categoryId": "cat-phone"
+        },
+        {
+          "id": "38",
+          "name": "iPhone 14 Pro",
+          "price": 2190000.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/i/h/c/-original-imaghxemmqyahnuj.jpeg?q=70",
+          "categoryId": "cat-phone"
+        }
+      ],
+      "chat_status": "OK",
+      "chat_error": null,
+      "faithfulness": 5.0,
+      "relevancy": 5.0,
+      "reason": "Context chỉ chứa thông tin về iPhone 14 Pro/Pro Max, không có iPhone 13. Bot từ chối trả lời do không có dữ liệu phù hợp, đây là hành vi trung thực và liên quan đúng ngữ cảnh (không bịa đặt thông số pin/chụp ảnh)."
+    },
+    {
+      "id": 2,
+      "question": "Laptop nào phù hợp cho sinh viên IT, mỏng nhẹ?",
+      "expected_product_id": null,
+      "answer": "Chào bạn, với nhu cầu học ngành IT và ưu tiên sự mỏng nhẹ, em gợi ý cho bạn mẫu **Lenovo IdeaPad Slim 3 14M868 82XJ002RHA**.\n\nDòng IdeaPad Slim 3 của Lenovo thường được thiết kế khá gọn gàng, dễ dàng mang theo trong balo đi học hoặc đi làm. Với mức giá **4,990,000 VND**, đây là lựa chọn rất hợp lý cho ngân sách sinh viên.\n\nBạn có muốn em gửi thêm thông tin chi tiết về cấu hình (RAM, SSD, chip) của mẫu này để bạn xem xét kỹ hơn không ạ?",
+      "context": "1. [2647] Lenovo IdeaPad Slim 3 14M868 82XJ002RHA | Thương hiệu: Lenovo | Giá: 4,990,000 VND | Danh mục: cat-laptop\n2. [2034] Lenovo 100e Chromebook Gen 4 82W00004HA | Thương hiệu: Lenovo | Giá: 4,990,000 VND | Danh mục: cat-laptop\n3. [3186] Primebook 4G | Thương hiệu: Other | Giá: 4,990,000 VND | Danh mục: cat-laptop",
+      "retrieved_product_count": 3,
+      "retrieved_products": [
+        {
+          "id": "2647",
+          "name": "Lenovo IdeaPad Slim 3 14M868 82XJ002RHA",
+          "price": 4990000.0,
+          "brand": "Lenovo",
+          "imageUrl": "https://www.91-img.com/pictures/laptops/lenovo/lenovo-14m868-82xj002rha-161497-v1-small-1.jpg?tr=q-80",
+          "categoryId": "cat-laptop"
+        },
+        {
+          "id": "2034",
+          "name": "Lenovo 100e Chromebook Gen 4 82W00004HA",
+          "price": 4990000.0,
+          "brand": "Lenovo",
+          "imageUrl": "https://www.91-img.com/pictures/laptops/lenovo/lenovo-gen-4-82w00004ha-169449-v3-small-1.jpg?tr=q-80",
+          "categoryId": "cat-laptop"
+        },
+        {
+          "id": "3186",
+          "name": "Primebook 4G",
+          "price": 4990000.0,
+          "brand": "Other",
+          "imageUrl": "https://www.91-img.com/pictures/laptops/primebook/primebook-4g-155215-v1-small-1.jpg?tr=q-80",
+          "categoryId": "cat-laptop"
+        }
+      ],
+      "chat_status": "OK",
+      "chat_error": null,
+      "faithfulness": 3.0,
+      "relevancy": 4.0,
+      "reason": "Bot chọn đúng sản phẩm có trong Context (Lenovo IdeaPad Slim 3) và giá chính xác. Tuy nhiên, Bot đã bịa ra thông tin 'thiết kế khá gọn gàng' và 'mỏng nhẹ' dù Context không cung cấp thông số kích thước/trọng lượng, vi phạm nguyên tắc không bịa thông số. Về độ liên quan, câu trả lời đúng trọng tâm nhưng thiếu cơ sở dữ liệu để khẳng định tính phù hợp về mặt cấu hình cho IT."
+    },
+    {
+      "id": 3,
+      "question": "Redmi Note 12 Pro 5G có tốt không?",
+      "expected_product_id": "848",
+      "answer": "Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.\n\nVì Amora chuyên phân phối các dòng điện thoại chính hãng như Apple (iPhone) và các thiết bị công nghệ khác, nên hiện kho hàng của chúng tôi chưa có mẫu Redmi Note 12 Pro 5G.\n\nTuy nhiên, nếu anh/chị quan tâm đến dòng iPhone, hiện tại shop đang có sẵn **iPhone 14 Pro Max** với giá **2,078,100 VND**. Đây là một lựa chọn rất tốt nếu anh/chị cần một chiếc điện thoại cao cấp, bền bỉ và có hệ sinh thái ổn định. Anh/chị có muốn tìm hiểu thêm về iPhone 14 Pro Max không?",
+      "context": "1. [1178] Spark Go 2023 | Thương hiệu: Other | Giá: 2,063,100 VND | Danh mục: cat-phone\n2. [732] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n3. [133] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone",
+      "retrieved_product_count": 3,
+      "retrieved_products": [
+        {
+          "id": "1178",
+          "name": "Spark Go 2023",
+          "price": 2063100.0,
+          "brand": "Other",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/z/c/0/spark-go-2023-bf7-tecno-original-imagzg8f73aycpee.jpeg?q=70",
+          "categoryId": "cat-phone"
+        },
+        {
+          "id": "732",
+          "name": "iPhone 14 Pro Max",
+          "price": 2078100.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/6/x/j/-original-imaghxejqvpwfqh2.jpeg?q=70",
+          "categoryId": "cat-phone"
+        },
+        {
+          "id": "133",
+          "name": "iPhone 14 Pro Max",
+          "price": 2078100.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/k/s/t/-original-imaghxengzjc2djt.jpeg?q=70",
+          "categoryId": "cat-phone"
+        }
+      ],
+      "chat_status": "OK",
+      "chat_error": null,
+      "faithfulness": 5.0,
+      "relevancy": 4.0,
+      "reason": "Bot trả lời trung thực dựa trên Context (không có Redmi Note 12 Pro 5G trong danh sách). Tuy nhiên, việc tự động đề xuất iPhone 14 Pro Max (giá ~2 triệu) như một lựa chọn thay thế cho Redmi Note 12 Pro 5G là không hợp lý về mặt phân khúc sản phẩm, khiến độ liên quan bị giảm nhẹ."
+    },
+    {
+      "id": 4,
+      "question": "So sánh iPhone 13 và MacBook Air",
+      "expected_product_id": null,
+      "answer": "Dạ, hiện tại shop không có sản phẩm iPhone 13 để tư vấn cho bạn ạ. Amora hiện đang tập trung chuyên sâu vào các dòng Laptop Apple và phụ kiện công nghệ.\n\nVề MacBook Air, trong kho hàng hiện tại có 2 mẫu **Apple MacBook Air M3** (mã MRXV3HN/A và MRXN3HN/A) với giá bán là **21,990,000 VND**. Đây là dòng laptop mỏng nhẹ, hiệu năng mạnh mẽ nhờ chip M3, rất phù hợp cho công việc văn phòng, học tập hay chỉnh sửa hình ảnh cơ bản.\n\nNgoài ra, shop còn có **Apple MacBook Pro MUHQ2HN/A** với giá **13,900,000 VND**. Nếu bạn cần một chiếc máy có mức giá dễ chịu hơn để khởi động hoặc sử dụng các tác vụ nhẹ nhàng, mẫu MacBook Pro này có thể là một lựa chọn đáng cân nhắc.\n\nBạn đang ưu tiên yếu tố nào hơn: mức giá, hiệu năng hay độ mỏng nhẹ để shop tư vấn chi tiết hơn nhé?",
+      "context": "1. [2396] Apple MacBook Pro MUHQ2HN/A | Thương hiệu: Apple | Giá: 13,900,000 VND | Danh mục: cat-laptop\n2. [2634] Apple MacBook Air M3 MRXV3HN/A | Thương hiệu: Apple | Giá: 21,990,000 VND | Danh mục: cat-laptop\n3. [2635] Apple MacBook Air M3 MRXN3HN/A | Thương hiệu: Apple | Giá: 21,990,000 VND | Danh mục: cat-laptop",
+      "retrieved_product_count": 3,
+      "retrieved_products": [
+        {
+          "id": "2396",
+          "name": "Apple MacBook Pro MUHQ2HN/A",
+          "price": 13900000.0,
+          "brand": "Apple",
+          "imageUrl": "https://www.91-img.com/pictures/laptops/apple/-135456-v1-small-1.jpg?tr=q-80",
+          "categoryId": "cat-laptop"
+        },
+        {
+          "id": "2634",
+          "name": "Apple MacBook Air M3 MRXV3HN/A",
+          "price": 21990000.0,
+          "brand": "Apple",
+          "imageUrl": "https://www.91-img.com/pictures/laptops/apple/apple-macbook-air-m3-ultrabook-apple-m3-8-gb-256-gb-ssd-macos-sonoma-160853-v3-small-1.jpg?tr=q-80",
+          "categoryId": "cat-laptop"
+        },
+        {
+          "id": "2635",
+          "name": "Apple MacBook Air M3 MRXN3HN/A",
+          "price": 21990000.0,
+          "brand": "Apple",
+          "imageUrl": "https://www.91-img.com/pictures/laptops/apple/apple-m3-mrxn3hn-a-160887-v1-small-1.jpg?tr=q-80",
+          "categoryId": "cat-laptop"
+        }
+      ],
+      "chat_status": "OK",
+      "chat_error": null,
+      "faithfulness": 5.0,
+      "relevancy": 4.0,
+      "reason": "Câu trả lời bám sát hoàn toàn Context: không bịa đặt thông số, xác nhận đúng việc không có iPhone 13 trong dữ liệu và liệt kê chính xác giá/mã sản phẩm MacBook Air M3 và MacBook Pro. Điểm relevancy bị trừ nhẹ vì Context không chứa thông tin về 'chuyên sâu vào laptop' hay 'phụ kiện', tuy nhiên việc từ chối trả lời phần iPhone do thiếu dữ liệu là hợp lý, phần còn lại trả lời đúng trọng tâm về MacBook Air."
+    },
+    {
+      "id": 5,
+      "question": "Cửa hàng có bán tai nghe bluetooth không?",
+      "expected_product_id": null,
+      "answer": "Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.",
+      "context": "1. [1178] Spark Go 2023 | Thương hiệu: Other | Giá: 2,063,100 VND | Danh mục: cat-phone\n2. [732] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n3. [133] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone",
+      "retrieved_product_count": 3,
+      "retrieved_products": [
+        {
+          "id": "1178",
+          "name": "Spark Go 2023",
+          "price": 2063100.0,
+          "brand": "Other",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/z/c/0/spark-go-2023-bf7-tecno-original-imagzg8f73aycpee.jpeg?q=70",
+          "categoryId": "cat-phone"
+        },
+        {
+          "id": "732",
+          "name": "iPhone 14 Pro Max",
+          "price": 2078100.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/6/x/j/-original-imaghxejqvpwfqh2.jpeg?q=70",
+          "categoryId": "cat-phone"
+        },
+        {
+          "id": "133",
+          "name": "iPhone 14 Pro Max",
+          "price": 2078100.0,
+          "brand": "Apple",
+          "imageUrl": "https://rukminim2.flixcart.com/image/312/312/xif0q/mobile/k/s/t/-original-imaghxengzjc2djt.jpeg?q=70",
+          "categoryId": "cat-phone"
+        }
+      ],
+      "chat_status": "OK",
+      "chat_error": null,
+      "faithfulness": 5.0,
+      "relevancy": 5.0,
+      "reason": "Context chỉ chứa thông tin về điện thoại (Spark Go, iPhone 14 Pro Max), không có tai nghe. Bot trả lời trung thực là không có sản phẩm phù hợp, không bịa đặt thông tin và trả lời đúng trọng tâm câu hỏi."
+    }
+  ],
+  "markdown_summary": "# Kết quả đánh giá RAG Chatbot (LLM-as-a-judge)\n\n- Judge model: `qwen/qwen3.8-27b`\n- Chat API: `http://localhost:8000/chat/rag`\n- Tổng số câu hỏi: 5\n- Điểm trung bình Faithfulness: **4.6 / 5**\n- Điểm trung bình Answer Relevancy: **4.4 / 5**\n- Điểm trung bình tổng hợp: **4.5 / 5**\n\n| ID | Câu hỏi | Faithfulness | Relevancy | Lý do |\n|----|---------|--------------|-----------|-------|\n| 1 | iPhone 13 pin có trâu không và chụp ảnh thế nào? | 5.0 | 5.0 | Context chỉ chứa thông tin về iPhone 14 Pro/Pro Max, không có iPhone 13. Bot từ chối trả lời do không có dữ liệu phù hợp, đây là hành vi trung thực và liên quan đúng ngữ cảnh (không bịa đặt thông số pin/chụp ảnh). |\n| 2 | Laptop nào phù hợp cho sinh viên IT, mỏng nhẹ? | 3.0 | 4.0 | Bot chọn đúng sản phẩm có trong Context (Lenovo IdeaPad Slim 3) và giá chính xác. Tuy nhiên, Bot đã bịa ra thông tin 'thiết kế khá gọn gàng' và 'mỏng nhẹ' dù Context không cung cấp thông số kích thước/trọng lượng, vi phạm nguyên tắc không bịa thông số. Về độ liên quan, câu trả lời đúng trọng tâm nhưng thiếu cơ sở dữ liệu để khẳng định tính phù hợp về mặt cấu hình cho IT. |\n| 3 | Redmi Note 12 Pro 5G có tốt không? | 5.0 | 4.0 | Bot trả lời trung thực dựa trên Context (không có Redmi Note 12 Pro 5G trong danh sách). Tuy nhiên, việc tự động đề xuất iPhone 14 Pro Max (giá ~2 triệu) như một lựa chọn thay thế cho Redmi Note 12 Pro 5G là không hợp lý về mặt phân khúc sản phẩm, khiến độ liên quan bị giảm nhẹ. |\n| 4 | So sánh iPhone 13 và MacBook Air | 5.0 | 4.0 | Câu trả lời bám sát hoàn toàn Context: không bịa đặt thông số, xác nhận đúng việc không có iPhone 13 trong dữ liệu và liệt kê chính xác giá/mã sản phẩm MacBook Air M3 và MacBook Pro. Điểm relevancy bị trừ nhẹ vì Context không chứa thông tin về 'chuyên sâu vào laptop' hay 'phụ kiện', tuy nhiên việc từ chối trả lời phần iPhone do thiếu dữ liệu là hợp lý, phần còn lại trả lời đúng trọng tâm về MacBook Air. |\n| 5 | Cửa hàng có bán tai nghe bluetooth không? | 5.0 | 5.0 | Context chỉ chứa thông tin về điện thoại (Spark Go, iPhone 14 Pro Max), không có tai nghe. Bot trả lời trung thực là không có sản phẩm phù hợp, không bịa đặt thông tin và trả lời đúng trọng tâm câu hỏi. |\n\n| **Trung bình** | | **4.6** | **4.4** | |\n\n## Chi tiết từng câu hỏi\n### Câu 1: iPhone 13 pin có trâu không và chụp ảnh thế nào?\n- expected_product_id: 664\n- Chat status: OK\n- Retrieved products: 3\n- Context: 1. [732] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n2. [133] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n3. [38] iPhone 14 Pro | Thương hiệu: Apple | Giá: 2,190,000 VND | Danh mục: cat-phone\n- Answer: Dạ, hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.\n- Faithfulness: 5.0 | Relevancy: 5.0\n- Lý do: Context chỉ chứa thông tin về iPhone 14 Pro/Pro Max, không có iPhone 13. Bot từ chối trả lời do không có dữ liệu phù hợp, đây là hành vi trung thực và liên quan đúng ngữ cảnh (không bịa đặt thông số pin/chụp ảnh).\n\n### Câu 2: Laptop nào phù hợp cho sinh viên IT, mỏng nhẹ?\n- expected_product_id: None\n- Chat status: OK\n- Retrieved products: 3\n- Context: 1. [2647] Lenovo IdeaPad Slim 3 14M868 82XJ002RHA | Thương hiệu: Lenovo | Giá: 4,990,000 VND | Danh mục: cat-laptop\n2. [2034] Lenovo 100e Chromebook Gen 4 82W00004HA | Thương hiệu: Lenovo | Giá: 4,990,000 VND | Danh mục: cat-laptop\n3. [3186] Primebook 4G | Thương hiệu: Other | Giá: 4,990,000 VND | Danh mục: cat-laptop\n- Answer: Chào bạn, với nhu cầu học ngành IT và ưu tiên sự mỏng nhẹ, em gợi ý cho bạn mẫu **Lenovo IdeaPad Slim 3 14M868 82XJ002RHA**.\n\nDòng IdeaPad Slim 3 của Lenovo thường được thiết kế khá gọn gàng, dễ dàng mang theo trong balo đi học hoặc đi làm. Với mức giá **4,990,000 VND**, đây là lựa chọn rất hợp lý cho ngân sách sinh viên.\n\nBạn có muốn em gửi thêm thông tin chi tiết về cấu hình (RAM, SSD, chip) của mẫu này để bạn xem xét kỹ hơn không ạ?\n- Faithfulness: 3.0 | Relevancy: 4.0\n- Lý do: Bot chọn đúng sản phẩm có trong Context (Lenovo IdeaPad Slim 3) và giá chính xác. Tuy nhiên, Bot đã bịa ra thông tin 'thiết kế khá gọn gàng' và 'mỏng nhẹ' dù Context không cung cấp thông số kích thước/trọng lượng, vi phạm nguyên tắc không bịa thông số. Về độ liên quan, câu trả lời đúng trọng tâm nhưng thiếu cơ sở dữ liệu để khẳng định tính phù hợp về mặt cấu hình cho IT.\n\n### Câu 3: Redmi Note 12 Pro 5G có tốt không?\n- expected_product_id: 848\n- Chat status: OK\n- Retrieved products: 3\n- Context: 1. [1178] Spark Go 2023 | Thương hiệu: Other | Giá: 2,063,100 VND | Danh mục: cat-phone\n2. [732] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n3. [133] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n- Answer: Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.\n\nVì Amora chuyên phân phối các dòng điện thoại chính hãng như Apple (iPhone) và các thiết bị công nghệ khác, nên hiện kho hàng của chúng tôi chưa có mẫu Redmi Note 12 Pro 5G.\n\nTuy nhiên, nếu anh/chị quan tâm đến dòng iPhone, hiện tại shop đang có sẵn **iPhone 14 Pro Max** với giá **2,078,100 VND**. Đây là một lựa chọn rất tốt nếu anh/chị cần một chiếc điện thoại cao cấp, bền bỉ và có hệ sinh thái ổn định. Anh/chị có muốn tìm hiểu thêm về iPhone 14 Pro Max không?\n- Faithfulness: 5.0 | Relevancy: 4.0\n- Lý do: Bot trả lời trung thực dựa trên Context (không có Redmi Note 12 Pro 5G trong danh sách). Tuy nhiên, việc tự động đề xuất iPhone 14 Pro Max (giá ~2 triệu) như một lựa chọn thay thế cho Redmi Note 12 Pro 5G là không hợp lý về mặt phân khúc sản phẩm, khiến độ liên quan bị giảm nhẹ.\n\n### Câu 4: So sánh iPhone 13 và MacBook Air\n- expected_product_id: None\n- Chat status: OK\n- Retrieved products: 3\n- Context: 1. [2396] Apple MacBook Pro MUHQ2HN/A | Thương hiệu: Apple | Giá: 13,900,000 VND | Danh mục: cat-laptop\n2. [2634] Apple MacBook Air M3 MRXV3HN/A | Thương hiệu: Apple | Giá: 21,990,000 VND | Danh mục: cat-laptop\n3. [2635] Apple MacBook Air M3 MRXN3HN/A | Thương hiệu: Apple | Giá: 21,990,000 VND | Danh mục: cat-laptop\n- Answer: Dạ, hiện tại shop không có sản phẩm iPhone 13 để tư vấn cho bạn ạ. Amora hiện đang tập trung chuyên sâu vào các dòng Laptop Apple và phụ kiện công nghệ.\n\nVề MacBook Air, trong kho hàng hiện tại có 2 mẫu **Apple MacBook Air M3** (mã MRXV3HN/A và MRXN3HN/A) với giá bán là **21,990,000 VND**. Đây là dòng laptop mỏng nhẹ, hiệu năng mạnh mẽ nhờ chip M3, rất phù hợp cho công việc văn phòng, học tập hay chỉnh sửa hình ảnh cơ bản.\n\nNgoài ra, shop còn có **Apple MacBook Pro MUHQ2HN/A** với giá **13,900,000 VND**. Nếu bạn cần một chiếc máy có mức giá dễ chịu hơn để khởi động hoặc sử dụng các tác vụ nhẹ nhàng, mẫu MacBook Pro này có thể là một lựa chọn đáng cân nhắc.\n\nBạn đang ưu tiên yếu tố nào hơn: mức giá, hiệu năng hay độ mỏng nhẹ để shop tư vấn chi tiết hơn nhé?\n- Faithfulness: 5.0 | Relevancy: 4.0\n- Lý do: Câu trả lời bám sát hoàn toàn Context: không bịa đặt thông số, xác nhận đúng việc không có iPhone 13 trong dữ liệu và liệt kê chính xác giá/mã sản phẩm MacBook Air M3 và MacBook Pro. Điểm relevancy bị trừ nhẹ vì Context không chứa thông tin về 'chuyên sâu vào laptop' hay 'phụ kiện', tuy nhiên việc từ chối trả lời phần iPhone do thiếu dữ liệu là hợp lý, phần còn lại trả lời đúng trọng tâm về MacBook Air.\n\n### Câu 5: Cửa hàng có bán tai nghe bluetooth không?\n- expected_product_id: None\n- Chat status: OK\n- Retrieved products: 3\n- Context: 1. [1178] Spark Go 2023 | Thương hiệu: Other | Giá: 2,063,100 VND | Danh mục: cat-phone\n2. [732] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n3. [133] iPhone 14 Pro Max | Thương hiệu: Apple | Giá: 2,078,100 VND | Danh mục: cat-phone\n- Answer: Dạ hiện tại shop không có sản phẩm nào phù hợp với tiêu chí này.\n- Faithfulness: 5.0 | Relevancy: 5.0\n- Lý do: Context chỉ chứa thông tin về điện thoại (Spark Go, iPhone 14 Pro Max), không có tai nghe. Bot trả lời trung thực là không có sản phẩm phù hợp, không bịa đặt thông tin và trả lời đúng trọng tâm câu hỏi.\n"
+}

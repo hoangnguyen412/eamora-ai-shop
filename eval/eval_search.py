@@ -10,7 +10,14 @@ import json
 import time
 import math
 import statistics
+import sys
 from pathlib import Path
+
+# Đảm bảo stdout in UTF-8 để hỗ trợ tiếng Việt trên Windows console (cp1252).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 import requests
 
