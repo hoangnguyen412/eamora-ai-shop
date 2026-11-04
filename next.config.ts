@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   images: {
+    // Ảnh sản phẩm gần như không đổi → cache lâu, tránh optimize lại mỗi request.
+    minimumCacheTTL: 2678400,
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "api.dicebear.com" },
@@ -22,6 +24,20 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async headers() {
+    return [
+      {
+        // Font self-host đổi tên file khi đổi nội dung → cache vĩnh viễn an toàn.
+        source: "/fonts/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
   },
 };
 

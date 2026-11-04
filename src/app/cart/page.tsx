@@ -37,7 +37,7 @@ export default function CartPage() {
         </p>
         <Link
           href="/search"
-          className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}
+          className={buttonVariants({ className: "mt-4" })}
         >
           Tiếp tục mua sắm
         </Link>
@@ -228,7 +228,7 @@ export default function CartPage() {
               {canCheckout ? (
                 <Link
                   href="/checkout"
-                  className={buttonVariants({ size: "lg", className: "block h-12 w-full gap-2 bg-gradient-brand text-white hover:opacity-90" })}
+                  className={buttonVariants({ size: "lg", className: "block h-12 w-full gap-2" })}
                 >
                     Tiến hành thanh toán
                     <ArrowRight className="h-4 w-4" />

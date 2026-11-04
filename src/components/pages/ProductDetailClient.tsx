@@ -212,8 +212,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
         {/* Images */}
         <div className="space-y-4">
-          <div className="aspect-square w-full max-h-[500px] flex items-center justify-center bg-slate-50 rounded-2xl p-4">
-            <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="h-full w-full object-contain" loading="eager" unoptimized />
+          <div className="flex aspect-square max-h-[500px] w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-50 p-6">
+            <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="device-shadow h-full w-full object-contain" loading="eager" unoptimized />
           </div>
           {product.images.length > 1 && (
             <div className="flex flex-wrap gap-3">
@@ -236,18 +236,18 @@ export default function ProductDetailClient({ id }: { id: string }) {
         {/* Info */}
         <div className="space-y-6">
           {product.recommendationBadge && (
-            <Badge className="gap-1.5 bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-0">
-              <Sparkles className="h-3 w-3" /> {product.recommendationBadge.label}
+            <Badge className="gap-1.5 border border-blue-100 bg-blue-50 text-blue-700">
+              <Sparkles className="h-3 w-3" aria-hidden="true" /> {product.recommendationBadge.label}
             </Badge>
           )}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{product.brand}</span><span>•</span><span>{product.category}</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">{product.name}</h1>
           </div>
           <ProductRating rating={product.rating} reviewCount={product.reviewCount} size="detail" />
-          <div className="space-y-2 rounded-xl border bg-card p-4 sm:p-5">
+          <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
             <ProductPrice
               price={product.price}
               originalPrice={product.originalPrice}
@@ -293,8 +293,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
                 addItem(product, quantity);
                 setCartToast({ open: true, message: `Đã thêm ${quantity} × ${product.name} vào giỏ hàng.` });
                 setTimeout(() => setCartToast({ open: false, message: "" }), 3000);
-              }} className="flex-1 gap-2 bg-gradient-brand text-white hover:opacity-90 h-12" size="lg">
-                <ShoppingCart className="h-5 w-5" /> Thêm vào giỏ hàng
+              }} className="h-12 flex-1 gap-2" size="lg">
+                <ShoppingCart className="h-5 w-5" aria-hidden="true" /> Thêm vào giỏ hàng
               </Button>
               <Link
                 href="/cart"
@@ -344,7 +344,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
         <TabsContent value="price">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">📈 Lịch sử giá — {product.name}</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">Lịch sử giá — {product.name}</CardTitle>
             </CardHeader>
             <CardContent>
               {!currentPriceHistory ? (

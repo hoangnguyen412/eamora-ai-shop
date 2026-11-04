@@ -2,6 +2,67 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Self-hosted fonts: chỉ giữ subset latin + vietnamese.
+   Bản next/font mặc định nạp thêm latin-ext (~85KB Inter + ~19KB Space Grotesk)
+   vì các ký tự ă/Đ/ơ/ư khớp unicode-range latin-ext trước vietnamese — hoàn toàn
+   không cần thiết. Cùng typeface, cùng weight, chỉ bớt byte. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-vietnamese.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169,
+    U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323,
+    U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-vietnamese.woff2") format("woff2");
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169,
+    U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323,
+    U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: "Inter Fallback";
+  src: local(Arial);
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+@font-face {
+  font-family: "Space Grotesk Fallback";
+  src: local(Arial);
+  ascent-override: 89.71%;
+  descent-override: 26.62%;
+  line-gap-override: 0%;
+  size-adjust: 109.69%;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -9,7 +70,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -47,7 +108,9 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* Custom brand colors */
+  /* GadgetHub brand tokens */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-muted: var(--brand-muted);
@@ -57,95 +120,104 @@
 }
 
 :root {
-  /* Soft Off-White Background (#FAFAFA) */
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.14 0.01 260);
+  /* Base: pure white */
+  --background: #ffffff;
+  --foreground: #111827;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.14 0.01 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.14 0.01 260);
+  /* Self-hosted type scale (latin + vietnamese subsets only) */
+  --font-sans: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Space Grotesk", "Space Grotesk Fallback", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Deep Navy Brand Colors */
-  --primary: oklch(0.25 0.04 260);
-  --primary-foreground: oklch(0.985 0 0);
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
 
-  --secondary: oklch(0.96 0.01 260);
-  --secondary-foreground: oklch(0.25 0.04 260);
-  --muted: oklch(0.96 0.01 260);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.96 0.01 260);
-  --accent-foreground: oklch(0.25 0.04 260);
+  /* Accent: honest blue */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
 
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.01 260);
-  --input: oklch(0.92 0.01 260);
-  --ring: oklch(0.25 0.04 260);
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.334);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --destructive: #dc2626;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #2563eb;
 
+  --chart-1: #2563eb;
+  --chart-2: #0ea5e9;
+  --chart-3: #111827;
+  --chart-4: #94a3b8;
+  --chart-5: #cbd5e1;
+
+  /* Slightly tighter radius: rounded-lg / rounded-xl feel */
   --radius: 0.5rem;
 
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.14 0.01 260);
-  --sidebar-primary: oklch(0.25 0.04 260);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.96 0.01 260);
-  --sidebar-accent-foreground: oklch(0.25 0.04 260);
-  --sidebar-border: oklch(0.92 0.01 260);
-  --sidebar-ring: oklch(0.25 0.04 260);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f8fafc;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #2563eb;
 
-  /* Brand */
-  --brand: oklch(0.25 0.04 260);
-  --brand-foreground: oklch(0.985 0 0);
-  --brand-muted: oklch(0.92 0.01 260);
-  --success: oklch(0.6 0.15 150);
-  --warning: oklch(0.75 0.15 70);
-  --info: oklch(0.6 0.15 250);
+  /* GadgetHub extras */
+  --ink: #111827;
+  --ink-soft: #1f2937;
+  --brand: #2563eb;
+  --brand-foreground: #ffffff;
+  --brand-muted: #eff6ff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --info: #2563eb;
 }
 
 .dark {
-  /* Sleek Dark Navy/Slate Background */
-  --background: oklch(0.15 0.02 260);
-  --foreground: oklch(0.985 0 0);
+  --background: #0b1120;
+  --foreground: #f9fafb;
 
-  --card: oklch(0.18 0.02 260);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.02 260);
-  --popover-foreground: oklch(0.985 0 0);
+  --card: #111827;
+  --card-foreground: #f9fafb;
+  --popover: #111827;
+  --popover-foreground: #f9fafb;
 
-  /* In dark mode, primary is typically white or light for contrast */
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.15 0.02 260);
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.22 0.02 260);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0.02 260);
-  --muted-foreground: oklch(0.7 0.02 260);
-  --accent: oklch(0.22 0.02 260);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: #1f2937;
+  --secondary-foreground: #f9fafb;
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+  --accent: #1e3a8a;
+  --accent-foreground: #dbeafe;
 
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(0.26 0.02 260);
-  --input: oklch(0.26 0.02 260);
-  --ring: oklch(0.985 0 0);
+  --destructive: #f87171;
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #60a5fa;
 
-  --sidebar: oklch(0.18 0.02 260);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.985 0 0);
-  --sidebar-primary-foreground: oklch(0.15 0.02 260);
-  --sidebar-accent: oklch(0.22 0.02 260);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.26 0.02 260);
-  --sidebar-ring: oklch(0.985 0 0);
+  --sidebar: #111827;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f2937;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #60a5fa;
 
-  --brand: oklch(0.985 0 0);
-  --brand-foreground: oklch(0.15 0.02 260);
-  --brand-muted: oklch(0.26 0.02 260);
+  --ink: #f9fafb;
+  --ink-soft: #e5e7eb;
+  --brand: #3b82f6;
+  --brand-foreground: #ffffff;
+  --brand-muted: #1e3a8a;
 }
 
 @layer base {
@@ -158,39 +230,56 @@
   html {
     @apply font-sans scroll-smooth;
   }
-  a:focus-visible {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading tracking-tight;
+  }
+  a:focus-visible,
+  button:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
 
-/* Custom utilities - Cleaned up to match minimalist theme */
+/* Flat utilities — GadgetHub keeps it honest, no heavy gradients */
 @layer utilities {
+  /* Legacy aliases kept flat so older markup cannot reintroduce gradients. */
   .text-gradient {
-    background: linear-gradient(135deg, oklch(0.14 0.01 260), oklch(0.4 0.05 260));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .dark .text-gradient {
-    background: linear-gradient(135deg, oklch(0.985 0 0), oklch(0.7 0.02 260));
+    color: var(--foreground);
+    background: none;
+    -webkit-text-fill-color: currentColor;
   }
   .bg-gradient-brand {
-    background: linear-gradient(135deg, oklch(0.25 0.04 260), oklch(0.18 0.04 260));
-  }
-  .dark .bg-gradient-brand {
-    background: linear-gradient(135deg, oklch(0.985 0 0), oklch(0.9 0 0));
+    background-color: var(--primary);
   }
 
-  /* Minimalist subtle blur instead of heavy glass */
+  /* Depth for 3D product renders / illustrations */
+  .device-shadow {
+    filter: drop-shadow(0 24px 32px rgb(17 24 39 / 0.16))
+      drop-shadow(0 6px 10px rgb(17 24 39 / 0.08));
+  }
+  .device-shadow-sm {
+    filter: drop-shadow(0 10px 16px rgb(17 24 39 / 0.12));
+  }
+
+  /* Subtle dotted / grid backdrop for hero illustrations */
+  .bg-grid-soft {
+    background-image: radial-gradient(circle at 1px 1px, rgb(17 24 39 / 0.08) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
   .glass {
-    background: oklch(1 0 0 / 85%);
+    background: rgb(255 255 255 / 0.88);
     backdrop-filter: blur(8px);
-    border: 1px solid oklch(0.92 0.01 260);
+    border: 1px solid var(--border);
   }
   .dark .glass {
-    background: oklch(0.18 0.02 260 / 85%);
-    border-color: oklch(0.26 0.02 260);
+    background: rgb(17 24 39 / 0.88);
+    border-color: var(--border);
   }
 }
 

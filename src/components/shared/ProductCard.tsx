@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Product } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, TrendingDown, Sparkles, Eye, Users } from "lucide-react";
+import { ShoppingCart, Sparkles } from "lucide-react";
 import ProductPrice from "@/components/shared/ProductPrice";
 import ProductRating from "@/components/shared/ProductRating";
 import { useCart } from "@/context/CartProvider";
@@ -14,21 +15,6 @@ interface ProductCardProps {
   product: Product;
   className?: string;
   explanation?: string;
-}
-
-function BadgeIcon({ type }: { type: string }) {
-  switch (type) {
-    case "ai_pick":
-      return <Sparkles className="h-3 w-3" />;
-    case "price_drop":
-      return <TrendingDown className="h-3 w-3" />;
-    case "frequently_viewed":
-      return <Eye className="h-3 w-3" />;
-    case "similar_user":
-      return <Users className="h-3 w-3" />;
-    default:
-      return null;
-  }
 }
 
 function getValidImageUrl(product: Product): string | null {
@@ -58,34 +44,38 @@ export default function ProductCard({ product, className = "", explanation }: Pr
   const imageUrl = getValidImageUrl(product);
 
   return (
-    <Card className={`group relative flex flex-col overflow-hidden border border-zinc-200 rounded-2xl bg-white transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${className}`}>
-      {/* Recommendation Badge (Clean Pill) */}
+    <Card
+      className={`group relative flex flex-col overflow-hidden rounded-xl border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${className}`}
+    >
+      {/* Real recommendation label — flat, one style only */}
       {product.recommendationBadge && (
-        <div className="absolute top-4 left-4 z-10">
-          <span className="flex items-center gap-1.5 bg-zinc-900 text-white text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
-            <BadgeIcon type={product.recommendationBadge.type} />
+        <div className="absolute left-3 top-3 z-10">
+          <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/95 px-2.5 py-1 text-[11px] font-medium text-gray-700 shadow-sm">
+            <Sparkles className="h-3 w-3 text-blue-600" aria-hidden="true" />
             {product.recommendationBadge.label}
           </span>
         </div>
       )}
 
-      {/* Recommendation explanation badge (top-left pill) */}
-      {explanation && (
-        <div className="absolute top-4 left-4 z-10">
+      {/* AI explanation — subtle, not spammy */}
+      {!product.recommendationBadge && explanation && (
+        <div className="absolute left-3 top-3 z-10">
           <span
-            className="flex items-center gap-1.5 bg-zinc-100 text-zinc-900 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm border border-zinc-200"
+            className="inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700"
             title={explanation}
           >
-            <Sparkles className="h-3 w-3" />
-            {explanation.length > 30 ? `${explanation.slice(0, 30)}…` : explanation}
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+            <span className="truncate">
+              {explanation.length > 26 ? `${explanation.slice(0, 26)}…` : explanation}
+            </span>
           </span>
         </div>
       )}
 
-      {/* Discount badge (Elegant Ribbon) */}
+      {/* Honest discount tag — flat pastel, never flashy red */}
       {product.discountPercent > 0 && (
-        <div className="absolute top-3 right-3 z-10">
-          <span className="flex items-center justify-center bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+        <div className="absolute right-3 top-3 z-10">
+          <span className="inline-flex items-center rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-white">
             -{product.discountPercent}%
           </span>
         </div>
@@ -95,31 +85,29 @@ export default function ProductCard({ product, className = "", explanation }: Pr
       <Link
         href={`/products/${product.id}`}
         onClick={() => logInteraction(product.id, "click")}
-        className="flex-shrink-0"
+        className="flex-shrink-0 rounded-t-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
       >
-        <div className="aspect-square overflow-hidden bg-zinc-50 p-4">
+        <div className="aspect-square overflow-hidden bg-gray-50 p-5 relative">
           {imageUrl ? (
-            <img
+            <Image
               src={imageUrl}
               alt={product.name}
+              fill
+              sizes="(max-width: 768px) 100vw, 200px"
+              className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
               loading="lazy"
-              className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  "https://placehold.co/400x400?text=No+Image";
-              }}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400">
+            <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400">
               No Image
             </div>
           )}
         </div>
       </Link>
 
-      <CardContent className="flex flex-1 flex-col gap-2 p-5 relative">
+      <CardContent className="flex flex-1 flex-col gap-2 p-4">
         {/* Category & Brand */}
-        <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium tracking-wide uppercase">
+        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-gray-400">
           <span className="truncate">{product.brand}</span>
           <span aria-hidden="true">·</span>
           <span className="truncate">{product.category}</span>
@@ -129,8 +117,9 @@ export default function ProductCard({ product, className = "", explanation }: Pr
         <Link
           href={`/products/${product.id}`}
           onClick={() => logInteraction(product.id, "click")}
+          className="rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
-          <h3 className="line-clamp-2 text-base font-bold leading-tight transition-colors hover:text-primary">
+          <h3 className="line-clamp-2 font-heading text-[15px] font-semibold leading-snug text-gray-900 transition-colors duration-200 hover:text-blue-600">
             {product.name}
           </h3>
         </Link>
@@ -138,21 +127,21 @@ export default function ProductCard({ product, className = "", explanation }: Pr
         <ProductRating rating={product.rating} reviewCount={product.reviewCount} />
 
         {/* Price */}
-        <div className="pt-2 text-primary">
+        <div className="pt-1 text-gray-900">
           <ProductPrice price={product.price} originalPrice={product.originalPrice} />
         </div>
 
-        {/* Add to cart - hidden by default, fades in on hover; in normal flex flow so it never overlaps the price */}
-        <div className="mt-auto opacity-0 group-hover:opacity-100 transition-all duration-300">
+        {/* Static CTA — always visible */}
+        <div className="mt-auto pt-3">
           <Button
             onClick={(e) => {
               e.preventDefault();
               addItem(product);
             }}
-            className="w-full gap-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-full shadow-md transition-colors"
+            className="w-full gap-2"
             size="sm"
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-4 w-4" aria-hidden="true" />
             Thêm vào giỏ
           </Button>
         </div>

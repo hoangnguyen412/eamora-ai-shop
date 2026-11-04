@@ -106,10 +106,10 @@ function SearchContent() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <header className="mb-6 space-y-1">
-        <p className="text-sm font-medium text-primary">Khám phá Eamora</p>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tìm sản phẩm</h1>
-        <p className="text-sm text-muted-foreground">Lọc theo danh mục, thương hiệu hoặc khoảng giá.</p>
+      <header className="mb-6 space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">Khám phá Amora</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Tìm sản phẩm</h1>
+        <p className="text-sm text-gray-500">Lọc theo danh mục, thương hiệu hoặc khoảng giá.</p>
       </header>
       
       {/* Search bar */}
@@ -125,7 +125,7 @@ function SearchContent() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="pl-10 h-12 text-sm"
+              className="h-12 rounded-full border-gray-300 pl-10 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             />
             {search && (
               <Button

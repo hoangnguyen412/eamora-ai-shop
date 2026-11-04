@@ -271,14 +271,14 @@ export default function WatchlistPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="space-y-2 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-slate-50 p-5 sm:p-6">
+      <header className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white">
-            <TrendingDown className="h-5 w-5" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <TrendingDown className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Price Agent</h1>
-            <p className="text-sm text-muted-foreground">Theo dõi mức giá và quản lý cấu hình của bạn.</p>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Price Agent</h1>
+            <p className="text-sm text-gray-500">Theo dõi mức giá và quản lý cấu hình của bạn.</p>
           </div>
         </div>
       </header>
@@ -326,9 +326,9 @@ export default function WatchlistPage() {
         )}
       </section>
 
-      <div className="rounded-xl border shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <BellRing className="h-5 w-5 text-indigo-600" />
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <BellRing className="h-5 w-5 text-blue-600" aria-hidden="true" />
           <h2 className="text-xl font-semibold">Quy tắc mua tự động</h2>
         </div>
         <p className="text-sm text-muted-foreground mb-6">
@@ -347,8 +347,8 @@ export default function WatchlistPage() {
             />
             <div
               className={`
-                w-11 h-6 bg-gray-200 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300
-                peer peer-checked:bg-indigo-600
+                w-11 h-6 bg-gray-200 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-200
+                peer peer-checked:bg-blue-600
                 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border
                 after:rounded-full after:h-5 after:w-5 after:transition-all
                 peer-checked:after:translate-x-full peer-checked:after:border-white

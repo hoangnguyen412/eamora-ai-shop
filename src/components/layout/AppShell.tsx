@@ -1,14 +1,25 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import dynamic from "next/dynamic";
 import Header from "@/components/layout/Header";
-import Sidebar from "@/components/layout/Sidebar";
 import Footer from "@/components/layout/Footer";
 import { CartProvider } from "@/context/CartProvider";
 import { AuthProvider } from "@/context/AuthProvider";
 
+// Drawer điều hướng (base-ui Sheet) chỉ cần khi người dùng bấm menu.
+const Sidebar = dynamic(() => import("@/components/layout/Sidebar"), {
+  ssr: false,
+});
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMounted, setSidebarMounted] = useState(false);
+
+  const openSidebar = () => {
+    setSidebarMounted(true);
+    setSidebarOpen(true);
+  };
 
   return (
     <AuthProvider>
@@ -20,9 +31,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           Bỏ qua đến nội dung chính
         </a>
         <Suspense fallback={<div className="h-16 bg-white border-b"></div>}>
-          <Header menuOpen={sidebarOpen} onMenuClick={() => setSidebarOpen(true)} />
+          <Header menuOpen={sidebarOpen} onMenuClick={openSidebar} />
         </Suspense>
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        {sidebarMounted && (
+          <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        )}
         <main id="main-content" tabIndex={-1} className="flex-1">
           {children}
         </main>

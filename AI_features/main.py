@@ -582,7 +582,7 @@ def chat_message(req: ChatRequest):
                 {"role": "user", "content": req.message}
             ],
             temperature=0.7,
-            max_tokens=1024,
+            max_tokens=800,
         )
         answer = completion.choices[0].message.content
     except Exception as llm_err:

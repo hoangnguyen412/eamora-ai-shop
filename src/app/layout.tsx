@@ -1,26 +1,35 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/AppShell";
-import ChatWidget from "@/components/shared/ChatWidget";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin", "vietnamese"],
-});
+import ChatWidgetMount from "@/components/shared/ChatWidgetMount";
 
 export const metadata: Metadata = {
-  title: "Amora - AI-Powered Tech Store",
+  title: "Amora - Công nghệ chính hãng",
   description:
-    "Nền tảng E-commerce đồ công nghệ tích hợp AI thông minh.",
+    "Cửa hàng công nghệ chính hãng: điện thoại, laptop, âm thanh và nhà thông minh.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={`${plusJakartaSans.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="vi" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground" suppressHydrationWarning>
+        {/* React hoists <link rel="preload"> lên <head> — font latin nạp song song với CSS. */}
+        <link
+          rel="preload"
+          href="/fonts/inter-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/space-grotesk-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <AppShell>{children}</AppShell>
-        <ChatWidget />
+        <ChatWidgetMount />
       </body>
     </html>
   );
