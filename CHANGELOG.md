@@ -36,6 +36,7 @@ and this project adheres to Semantic Versioning.
 - **Price Agent execute endpoint trước đây không tạo Order, không check DQS, không check budget** → đã bổ sung logic trong `executeAutoBuySandboxJob()`: gọi `getDealScore()` (AI service), kiểm tra `dqs >= 70`, kiểm tra `currentPrice <= targetPrice`, tạo `Order` status `sandbox` + `OrderItem` khi happy path
 - **API_CONTRACT.md và AI_SERVICE_CONTRACT.md chưa có các endpoint Price Agent mới** → đã cập nhật đầy đủ JSON schema
 - TypeScript `any` type bị bỏ trong các interface mới (`RecommendProductRow`, `RecommendProduct`, `AuthenticatedRequest`)
+- **Auto-buy Worker**: thêm `autoEnqueueWatchlistHits()` quét Watchlist mỗi tick worker (60s trigger), heartbeat log `pending_before`/`pending_after`, DQS cache TTL 120s (`dqsCache`), fix mutex `isAutoBuyWorkerRunning`, fix env `AI_URL` fallback
 
 ### Changed
 - Section "Sản phẩm nổi bật" (Featured) sort theo `rating DESC` thay vì `price DESC` (sau khi backend trả đủ field rating)

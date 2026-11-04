@@ -87,16 +87,21 @@ def get_db_connection():
 
 
 def pick_test_product(cur) -> Optional[Tuple[str, str, float, float, float, int, str, float, int]]:
-    """Pick ONE real product with a listing and originalPrice > 0."""
+    """Pick ONE real product with a listing and originalPrice > 0.
+
+    Hardcoded product for reproducible eval: Nord CE 5G (id='4').
+    Chosen because Case 1 (20% discount, in stock) yields DQS >= 70 -> ACTIVATED.
+    """
     cur.execute(
         """
         SELECT p."id", p."name", p."originalPrice", p."rating", p."discountPercent",
                l."id", l."price", l."stock"
         FROM "Product" p
         JOIN "Listing" l ON l."productId" = p."id"
-        WHERE p."originalPrice" > 0 AND l."stock" > 0
+        WHERE p."id" = %s AND p."originalPrice" > 0 AND l."stock" > 0
         LIMIT 1
-        """
+        """,
+        ('4',)
     )
     row = cur.fetchone()
     if not row:

@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "m.media-amazon.com" },
       { protocol: "https", hostname: "placehold.co" },
       { protocol: "https", hostname: "cdn2.cellphones.com.vn" },
+      { protocol: "https", hostname: "www.91-img.com" },
     ],
   },
   turbopack: {

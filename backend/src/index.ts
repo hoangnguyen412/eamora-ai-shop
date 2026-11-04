@@ -20,8 +20,12 @@ const connectionString = process.env.DATABASE_URL as string;
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
-// In-memory cache (5 phút TTL)
+// In-memory cache (5 phút TTL) cho các route GET
 const cache = new NodeCache({ stdTTL: 300 });
+
+// Cache DQS theo (product_id, current_price), TTL 2 phút (giá/lịch sử giá có thể thay đổi).
+// Không bao gồm originalPrice/rating/history_hash vì AI service tính internally từ DB.
+const dqsCache = new NodeCache({ stdTTL: 120 });
 
 // Middleware cache cho các route GET
 const cacheMiddleware = (duration: number) => {
@@ -1978,10 +1982,22 @@ app.get('/api/agent/queue', requireAuth, requireRole(['buyer']), async (req: Aut
   }
 });
 
+app.delete('/api/agent/cache', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
+  dqsCache.flushAll();
+  return res.json({ success: true, message: 'DQS cache flushed' });
+});
+
 async function getDealScore(productId: string, currentPrice: number): Promise<{ dqs: number; is_deal: boolean } | null> {
+  if (currentPrice === null || currentPrice === undefined) return null;
+  const cacheKey = `dqs:${productId}:${currentPrice}`;
+  const cached = dqsCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached as { dqs: number; is_deal: boolean };
+  }
+
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
     const resp = await fetch(`${AI_URL}/agent/score-deal`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1992,7 +2008,9 @@ async function getDealScore(productId: string, currentPrice: number): Promise<{ 
     if (!resp.ok) return null;
     const data = (await resp.json()) as { dqs?: number; is_deal?: boolean };
     if (typeof data.dqs === 'number') {
-      return { dqs: data.dqs, is_deal: data.is_deal ?? false };
+      const result = { dqs: data.dqs, is_deal: data.is_deal ?? false };
+      dqsCache.set(cacheKey, result);
+      return result;
     }
     return null;
   } catch {
@@ -2192,6 +2210,59 @@ app.post('/api/agent/queue/:id/execute', requireAuth, requireRole(['buyer']), as
 });
 
 let isAutoBuyWorkerRunning = false;
+
+const autoEnqueueWatchlistHits = async () => {
+  try {
+    const watches = await prisma.watchlist.findMany({
+      where: {
+        status: 'active',
+        user: { is: { autoBuyEnabled: true } },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            listings: {
+              where: { stock: { gt: 0 } },
+              orderBy: { price: 'asc' },
+              take: 1,
+              select: { id: true, price: true },
+            },
+          },
+        },
+      },
+    });
+
+    for (const watch of watches) {
+      const alreadyQueued = await prisma.autoBuyQueueItem.findFirst({
+        where: { watchlistId: watch.id },
+      });
+      if (alreadyQueued && ['pending', 'processing', 'completed'].includes(alreadyQueued.status)) continue;
+
+      const listing = watch.product.listings[0];
+      const currentPrice = listing?.price ?? null;
+      const targetPrice = watch.targetPrice;
+
+      if (currentPrice === null || currentPrice > targetPrice) continue;
+
+      let dealScore: { dqs: number; is_deal: boolean } | null = null;
+      if (typeof watch.product.id === 'string' && typeof currentPrice === 'number') {
+        dealScore = await getDealScore(watch.product.id, currentPrice);
+      }
+      const dqs = dealScore?.dqs ?? null;
+
+      if (dqs === null || dqs < 70) continue;
+
+      await prisma.autoBuyQueueItem.create({
+        data: { watchlistId: watch.id },
+      });
+    }
+  } catch (error) {
+    console.error('Auto-enqueue watchlist hits failed:', error);
+  }
+};
+
 const runAutoBuyWorker = async () => {
   if (isAutoBuyWorkerRunning) return;
   isAutoBuyWorkerRunning = true;
@@ -2215,6 +2286,28 @@ const runAutoBuyWorker = async () => {
       },
     });
 
+    const pendingBefore = pendingItems.length;
+
+    await autoEnqueueWatchlistHits();
+
+    const pendingAfterRows = await prisma.autoBuyQueueItem.findMany({
+      where: {
+        status: 'pending',
+        watchlist: {
+          is: {
+            status: 'active',
+            user: { is: { autoBuyEnabled: true } },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    const pendingAfter = pendingAfterRows.length;
+
+    console.info(
+      `[${new Date().toISOString()}] worker tick pending_before=${pendingBefore} pending_after=${pendingAfter}`,
+    );
+
     let completedCount = 0;
     for (const item of pendingItems) {
       try {
@@ -2234,7 +2327,7 @@ const runAutoBuyWorker = async () => {
     }
 
     if (completedCount > 0) {
-      console.info(`Auto-buy sandbox worker completed ${completedCount} queue item(s).`);
+      console.info(`[${new Date().toISOString()}] Auto-buy sandbox worker completed ${completedCount} queue item(s).`);
     }
   } catch (error) {
     console.error('Auto-buy sandbox worker poll failed:', error);

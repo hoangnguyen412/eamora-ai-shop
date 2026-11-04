@@ -1,35 +1,39 @@
-# API CONTRACT (Node.js Backend — Express)
+# API CONTRACT — Hệ thống Amora (Backend Express + FastAPI AI Service)
 
-Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), trích xuất từ `backend/src/index.ts`. Dùng cho viết Chương 3 (API Design) của báo cáo.
+Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000) và AI Service FastAPI (cổng 8000). Trích xuất từ `backend/src/index.ts` và `AI_features/main.py`. Dùng cho viết Chương 3 (API Design) của báo cáo.
+
+<!-- Source: backend/src/index.ts, AI_features/main.py -->
 
 ---
 
-## Cấu hình bảo mật và giới hạn (từ code)
+## 1. Cấu hình toàn cầu
+
+### 1.1 Bảo mật & giới hạn (từ code)
 
 - `JWT_SECRET`: bắt buộc trong production, ít nhất 32 bytes; development fallback `'dev-secret-change-me'`.
 - `CORS_ORIGINS`: danh sách origins `http(s)://host[:port]`, cách nhau bởi dấu phẩy. Development cho phép tất cả khi chưa cấu hình.
 - `TRUST_PROXY_HOPS`: mặc định `0`.
 - JSON request body giới hạn 100 KB (`express.json({ limit: '100kb' })`).
-- Rate limit: 300 request / 15 phút trên tất cả `/api`; 10 request / 15 phút cho register/login (`authRateLimiter`). Trả về 429 kèm `Retry-After`.
-- Auth: kiểm tra user hiện tại qua database trên mỗi request protected; fails closed (503) nếu database không sẵn sàng. Chi tiết lỗi nội bộ không được trả về HTTP 500.
+- Rate limit: 300 request / 15 phút trên tất cả `/api`; 10 request / 15 phút cho register/login (`authRateLimiter`). Trả về 429.
+- Auth: kiểm tra user hiện tại qua database trên mỗi request protected; fails closed (503) nếu database không sẵn sàng.
 - Email tối đa 254 ký tự; mật khẩu 8–72 UTF-8 bytes.
 - Pagination: `page` 1–1.000.000, `limit` 1–100.
 - Price-history / agent queue / agent-history `limit`: chỉ nhận integer 1–100.
 - `MOCK_BUYER_ID = 'mock-user-123'`: dùng cho anonymous interaction và order khi chưa đăng nhập.
 
+### 1.2 Middleware bảo vệ
+
+| Middleware | Dòng số | Mô tả |
+|------------|---------|-------|
+| `requireAuth` | 444 | Xác thực JWT HS256, tra cứu user trong DB, gán `req.user`. Trả về 401 nếu thiếu token / token hết hạn / user không tồn tại. |
+| `optionalAuth` | 487 | Chỉ xác thực nếu có header `Authorization`; nếu không thì cho tiếp (dùng cho interaction, search session). |
+| `requireRole([...])` | 494 | Kiểm tra `req.user.role` nằm trong danh sách roles được phép (`buyer`, `seller`). Trả về 403 nếu không khớp. |
+
+<!-- Source: backend/src/index.ts dòng 444-506 -->
+
 ---
 
-## Middleware bảo vệ
-
-| Middleware | Mô tả |
-|------------|-------|
-| `requireAuth` (dòng 404) | Xác thực JWT HS256, tra cứu user trong DB, gán `req.user`. Trả về 401 nếu thiếu token / token hết hạn / user không tồn tại. |
-| `optionalAuth` (dòng 447) | Chỉ xác thực nếu có header `Authorization`; nếu không thì cho tiếp (dùng cho interaction, search session). |
-| `requireRole([...])` (dòng 454) | Kiểm tra `req.user.role` nằm trong danh sách roles được phép (`buyer`, `seller`). Trả về 403 nếu không khớp. |
-
----
-
-## 1. Auth & User
+## 2. Auth & User (Backend)
 
 ### `POST /api/auth/register`
 - Body: `{ email: string, password: string, role: 'buyer' | 'seller' }`
@@ -46,9 +50,11 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 - Trả về `200`: `{ user: { id, email, role, createdAt } }`
 - Lỗi: `401` (chưa xác thực / user không tồn tại), `503` (database không sẵn sàng).
 
+<!-- Source: backend/src/index.ts dòng 557-666 -->
+
 ---
 
-## 2. Core Marketplace
+## 3. Core Marketplace (Backend)
 
 ### `GET /api/products`
 - Query: `q` (tìm theo tên/thương hiệu/danh mục), `search` (ngôn ngữ tự nhiên Việt, ưu tiên hơn `q`), `category`, `brand`, `minPrice`, `maxPrice`, `page` (1–1.000.000), `limit` (1–100).
@@ -121,9 +127,11 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 ### `GET /api/orders` (không yêu cầu auth, lấy tất cả đơn)
 - Trả về danh sách tất cả đơn hàng (dùng cho admin/xem tổng quan).
 
+<!-- Source: backend/src/index.ts dòng 688-915 -->
+
 ---
 
-## 3. Price Agent (tất cả requireAuth + requireRole(['buyer']))
+## 4. Price Agent (tất cả requireAuth + requireRole(['buyer']))
 
 ### `POST /api/agent/watch`
 - Body: `{ product_id: string, target_price: number (duyên > 0) }`
@@ -172,9 +180,15 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 - Watchlist kèm `listings[].priceHistory` (giới hạn `limit` điểm, sắp xếp `recordedAt desc`).
 - Orders kèm `items[]`.
 
+### `DELETE /api/agent/cache` (buyer)
+- Flush toàn bộ DQS cache (`dqsCache.flushAll()`).
+- Trả về `200`: `{ success: true, message: 'DQS cache flushed' }`
+
+<!-- Source: backend/src/index.ts dòng 1797-1988, 2201-2210, 2352-2408 -->
+
 ---
 
-## 4. Search & Interaction
+## 5. Search & Interaction (Backend)
 
 ### `POST /api/interactions` (optionalAuth)
 - Body: `{ productId: string, action: 'view' | 'click' | 'add_to_cart' | 'purchase' }`
@@ -235,9 +249,11 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 - Được cache bởi `node-cache` (stdTTL 300s) cho các request GET giống nhau.
 - Giới hạn bởi `apiRateLimiter` (300 req/15 phút).
 
+<!-- Source: backend/src/index.ts dòng 2410-2451, 2588-2642, 1205-1565 -->
+
 ---
 
-## 5. Seller
+## 6. Seller (Backend)
 
 ### `GET /api/seller/listings` (requireAuth, requireRole(['seller']))
 - Danh sách listing của shop seller, kèm `totalSold` (đơn không cancelled) và `status` ('active' nếu stock > 0, ngược lại 'out_of_stock').
@@ -248,15 +264,60 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 ### `GET /api/seller/stats` (requireAuth, requireRole(['seller']))
 - Trả về: `listingCount`, `activeListingCount`, `orderCount`, `totalRevenue`, `unitsSold`, `ordersByStatus` (pending/processing/shipped/delivered/cancelled). Doanh thu và số lượng bán không tính đơn cancelled và phí ship.
 
+<!-- Source: backend/src/index.ts dòng 917-1058 -->
+
 ---
 
-## 6. Hệ thống & Worker
+## 7. AI Service Endpoints (FastAPI, port 8000)
 
 ### `GET /health`
+- Trả về: `{ "status": "ok", "service": "AI Features" }`
+
+### `POST /embed`
+- Body: `{ texts: string[] }`
+- Trả về: `{ embeddings: number[][] }` (vector 768-dim cho mỗi text qua Sentence-Transformers).
+
+### `POST /search/encode`
+- Body: `{ query: string }`
+- Trả về: `{ vector: number[] }` (vector 768-dim cho query, dùng cho Hybrid Search RRF).
+
+### `POST /search/parse`
+- Body: `{ query: string }`
+- Trả về filters: `{ category_id, min_price, max_price, brand, category, budget_min, budget_max, strict_budget }`.
+
+### `POST /search/semantic`
+- Body: `{ query: string }`
+- Trả về: `{ query, embedding_length, filters, results: [{ id, name, price, description, imageUrl, brand, score }] }`.
+
+### `POST /search/vector`
+- Stub endpoint, trả về: `{ results: [{ productId: 1, score: 0.95 }] }`.
+
+### `POST /chat/message` & `POST /chat/rag`
+- Body: `{ sessionId: string, message: string }`
+- Trả về: `{ answer: string, products: [...], groundedness_score: 0.95 }`.
+
+### `POST /agent/score-deal`
+- Body: `{ productId: string, currentPrice: float }`
+- Trả về: `{ dqs: number, is_deal: boolean, breakdown: { discount_score, history_score, rating_score } }`.
+
+### `GET /products/{product_id}/related`
+- Trả về top 4 RelatedProduct (cosine similarity của embedding, loại trừ sản phẩm gốc).
+
+### `POST /recommendations`
+- Body: `{ userId: string, interactions: [{ productId, action }], limit: int }`
+- Trả về: `{ products: [{ id, name, basePrice, imageUrl, brand, categoryName, rating, reviewCount, originalPrice, discountPercent, stock, explanation, score }], count: int }`.
+
+<!-- Source: AI_features/main.py -->
+
+---
+
+## 8. Hệ thống & Worker
+
+### `GET /health` (Backend)
 - Kiểm tra kết nối database (`SELECT 1`).
 - Trả về: `{ status: 'ok', db: 'connected' }` hoặc `{ status: 'error', db: 'disconnected' }`.
 
-### Auto-buy Worker (`startAutoBuyWorker`, dòng 1848)
+### Auto-buy Worker (`startAutoBuyWorker`, `runAutoBuyWorker`)
 - Bật khi `AUTO_BUY_WORKER_ENABLED === 'true'`.
 - Chạy `runAutoBuyWorker()` ngay khi khởi động, rồi mỗi `AUTO_BUY_WORKER_INTERVAL_MS` (mặc định 10000ms, tối thiểu 1000ms).
 - Mỗi lần xử lý tối đa `AUTO_BUY_WORKER_BATCH_SIZE` (mặc định 10, tối đa 100) item `pending`, FIFO.
@@ -267,4 +328,4 @@ Tài liệu mô tả toàn bộ endpoint của Backend Express (cổng 4000), tr
 ### Swagger UI
 - Tải từ `backend/openapi.yaml`, phục vụ tại `/docs`.
 
----
+<!-- Source: backend/src/index.ts dòng 2339-2350, 545-546 -->
