@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, DollarSign, Package, ShoppingCart, TrendingUp } from "lucide-react";
+import { AlertCircle, DollarSign, Package, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { useRouter } from "next/navigation";
 
@@ -197,10 +197,9 @@ export default function SellerPage() {
   const totalOrders = sellerStats?.orderCount ?? orders.length;
 
   const stats = [
-    { label: "Doanh thu", value: formatPrice(totalRevenue), icon: DollarSign, color: "from-emerald-500 to-teal-500" },
-    { label: "Đơn hàng", value: totalOrders.toString(), icon: ShoppingCart, color: "from-blue-500 to-cyan-500" },
-    { label: "Sản phẩm", value: sellerStats?.listingCount?.toString() ?? sellerProducts.length.toString(), icon: Package, color: "from-violet-500 to-indigo-500" },
-    { label: "Tăng trưởng", value: "+12.5%", icon: TrendingUp, color: "from-amber-500 to-orange-500" },
+    { label: "Doanh thu", value: formatPrice(totalRevenue), icon: DollarSign, color: "" },
+    { label: "Đơn hàng", value: totalOrders.toString(), icon: ShoppingCart, color: "" },
+    { label: "Sản phẩm", value: sellerStats?.listingCount?.toString() ?? sellerProducts.length.toString(), icon: Package, color: "" },
   ];
 
   // Auth loading state
@@ -209,8 +208,7 @@ export default function SellerPage() {
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+            <h1 className="figure text-4xl sm:text-5xl">Seller Dashboard</h1>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">Đang kiểm tra quyền truy cập...</p>
@@ -233,8 +231,7 @@ export default function SellerPage() {
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+            <h1 className="figure text-4xl sm:text-5xl">Seller Dashboard</h1>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">Đang tải đơn hàng...</p>
@@ -247,8 +244,7 @@ export default function SellerPage() {
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+            <h1 className="figure text-4xl sm:text-5xl">Seller Dashboard</h1>
           </div>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -262,23 +258,22 @@ export default function SellerPage() {
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-primary">Kênh nhà bán</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Seller Dashboard</h1>
+          <h1 className="figure text-4xl sm:text-5xl">Seller Dashboard</h1>
           <p className="text-sm text-muted-foreground">Quản lý đơn hàng và sản phẩm của bạn</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
         {stats.map((s) => (
           <Card key={s.label} className="border-border/70">
             <CardContent className="flex items-center gap-3 p-4 sm:gap-4">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${s.color} shadow-lg`}>
-                <s.icon className="h-6 w-6 text-white" />
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center bg-foreground text-background`}>
+                <s.icon className="h-6 w-6" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className="text-lg font-bold">{s.value}</p>
+                <p className="figure text-2xl">{s.value}</p>
               </div>
             </CardContent>
           </Card>

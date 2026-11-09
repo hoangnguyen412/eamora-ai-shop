@@ -21,6 +21,7 @@ const colors = [
   { name: "Warning", token: "--warning", value: "var(--warning)" },
   { name: "Destructive", token: "--destructive", value: "var(--destructive)" },
   { name: "Border", token: "--border", value: "var(--border)" },
+  { name: "Brand (cam tín hiệu)", token: "--brand", value: "var(--brand)" },
 ];
 
 const sampleProduct = mockData.products[0] as unknown as Product;
@@ -29,10 +30,7 @@ export default function StyleguidePage() {
   return (
     <div className="mx-auto max-w-7xl space-y-12 px-4 py-10 sm:px-6 lg:px-8">
       <header className="border-b border-border pb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          Amora / Design System
-        </p>
-        <h1 className="mt-3 text-3xl font-bold">Styleguide</h1>
+        <h1 className="figure text-5xl">Styleguide</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Tokens and shared interface components currently used across the storefront.
         </p>
@@ -45,7 +43,7 @@ export default function StyleguidePage() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {colors.map((color) => (
-            <div key={color.token} className="overflow-hidden rounded-lg border border-border bg-card">
+            <div key={color.token} className="overflow-hidden border border-border bg-card">
               <div
                 className="h-20 border-b border-border"
                 style={{ backgroundColor: color.value }}
@@ -63,28 +61,28 @@ export default function StyleguidePage() {
       <section aria-labelledby="type-heading" className="space-y-5">
         <div>
           <h2 id="type-heading" className="text-xl font-semibold">Typography</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Inter with a compact hierarchy for product browsing.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Bricolage Grotesque cho tiêu đề và con số, Inter cho nội dung.</p>
         </div>
         <div className="space-y-4 border-y border-border py-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-[32px] leading-10 font-bold">Display heading</p>
-            <code className="text-xs text-muted-foreground">32 / 40 · Bold</code>
+            <p className="figure text-6xl leading-none">Laptop và điện thoại</p>
+            <code className="text-xs text-muted-foreground">Display · Bricolage 700</code>
           </div>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-2xl leading-8 font-bold">Page title</p>
-            <code className="text-xs text-muted-foreground">24 / 32 · Bold</code>
+            <p className="figure text-4xl leading-none">Sản phẩm nổi bật</p>
+            <code className="text-xs text-muted-foreground">Tiêu đề trang / mục · Bricolage 700</code>
           </div>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-xl leading-7 font-semibold">Section title</p>
-            <code className="text-xs text-muted-foreground">20 / 28 · Semibold</code>
+            <p className="figure text-3xl leading-none">42.990.000 ₫</p>
+            <code className="text-xs text-muted-foreground">Giá · Bricolage 700, số đều nhau</code>
           </div>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-base leading-6">Body text for product descriptions and forms.</p>
-            <code className="text-xs text-muted-foreground">16 / 24 · Regular</code>
+            <p className="text-base leading-6">Nội dung mô tả sản phẩm và biểu mẫu.</p>
+            <code className="text-xs text-muted-foreground">16 / 24 · Inter Regular</code>
           </div>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm leading-5 text-muted-foreground">Supporting text and secondary information.</p>
-            <code className="text-xs text-muted-foreground">14 / 20 · Regular</code>
+            <p className="text-sm leading-5 text-muted-foreground">Thông tin phụ và chú thích.</p>
+            <code className="text-xs text-muted-foreground">14 / 20 · Inter Regular</code>
           </div>
         </div>
       </section>

@@ -23,10 +23,10 @@ export default function AccountMenu({ email, role, onSignOut }: AccountMenuProps
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Mở menu tài khoản"
-        className="cursor-pointer rounded-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        className="cursor-pointer rounded-[2px] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
-        <Avatar className="h-9 w-9 ring-1 ring-gray-200">
-          <AvatarFallback className="bg-gray-100 text-gray-700">
+        <Avatar className="h-9 w-9 ring-1 ring-border">
+          <AvatarFallback className="bg-secondary text-foreground">
             <User className="h-4 w-4" />
           </AvatarFallback>
         </Avatar>

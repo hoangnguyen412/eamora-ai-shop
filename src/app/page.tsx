@@ -1,29 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import ProductCard from "@/components/shared/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/types";
-import { Card } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
-  Sparkles,
-  Smartphone,
-  Laptop,
   ArrowRight,
+  ArrowUpRight,
   ShieldCheck,
   Truck,
   RotateCcw,
   Wrench,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
-// Hero renders are bundled locally so the LCP image never waits on a third-party
-// CDN (DNS + TLS + cold remote optimizer fetch). Static imports also give Next
-// the intrinsic size and a blur placeholder at build time.
-import heroLaptop from "@/assets/hero/laptop.webp";
-import heroPhone from "@/assets/hero/phone.webp";
-import heroWatch from "@/assets/hero/watch.webp";
+// Ảnh hero gói sẵn trong repo để LCP không phụ thuộc CDN ngoài.
+import heroLaptop from "@/assets/hero/panel-laptop.jpg";
+import heroPhone from "@/assets/hero/panel-phone.jpg";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
@@ -81,10 +76,10 @@ async function fetchJson(path: string, init?: RequestInit): Promise<unknown> {
   }
 }
 
-const departments = [
-  { icon: Smartphone, title: "Điện thoại", href: "/search?category=Smartphone" },
-  { icon: Laptop, title: "Laptop", href: "/search?category=Laptop" },
-];
+const panels = [
+  { title: "Laptop", cta: "Xem tất cả laptop", href: "/search?category=Laptop", img: heroLaptop, alt: "Laptop mở nắp, màn hình sáng rực trong phòng tối", delay: "0ms", imgClass: "group-hover:scale-[1.06]" },
+  { title: "Điện thoại", cta: "Xem tất cả điện thoại", href: "/search?category=Smartphone", img: heroPhone, alt: "Điện thoại Samsung đặt trên hộp máy", delay: "150ms", imgClass: "origin-top-left scale-[1.4] group-hover:scale-[1.46]" },
+] as const;
 
 const faqs = [
   {
@@ -107,14 +102,14 @@ const faqs = [
 
 function SkeletonCard() {
   return (
-    <Card className="h-full overflow-hidden">
-      <div className="aspect-square animate-pulse bg-gray-100" />
+    <div className="h-full overflow-hidden border border-border bg-card">
+      <div className="aspect-square animate-pulse bg-muted" />
       <div className="space-y-2 p-4">
-        <div className="h-3 w-3/4 animate-pulse rounded bg-gray-100" />
-        <div className="h-3 w-1/2 animate-pulse rounded bg-gray-100" />
-        <div className="mt-3 h-8 animate-pulse rounded-full bg-gray-100" />
+        <div className="h-3 w-3/4 animate-pulse bg-muted" />
+        <div className="h-3 w-1/2 animate-pulse bg-muted" />
+        <div className="mt-3 h-8 animate-pulse bg-muted" />
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -132,20 +127,20 @@ function SectionHeading({
   hrefLabel?: string;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
       <div>
-        <h2 id={id} className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+        <h2 id={id} className="figure text-4xl leading-none sm:text-5xl">
           {title}
         </h2>
-        {desc && <p className="mt-1.5 text-sm text-gray-500">{desc}</p>}
+        {desc && <p className="mt-3 max-w-xl text-sm text-muted-foreground">{desc}</p>}
       </div>
       {href && (
         <Link
           href={href}
-          className="inline-flex items-center gap-1 rounded-full text-sm font-semibold text-blue-600 transition-colors duration-200 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          className="group inline-flex items-center gap-1.5 text-sm font-semibold underline decoration-border underline-offset-[6px] transition-colors duration-200 hover:decoration-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           {hrefLabel}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
         </Link>
       )}
     </div>
@@ -224,153 +219,102 @@ export default function HomePage() {
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     .slice(0, 4);
 
+
+  const errorBlock = (title: string, onRetry: () => void) => (
+    <div className="flex flex-col items-center justify-center gap-3 py-12">
+      <Alert variant="destructive" className="w-full max-w-md rounded-[2px]">
+        <AlertTitle>{title}</AlertTitle>
+        <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
+      </Alert>
+      <Button variant="outline" onClick={onRetry} className="rounded-[2px]">Thử lại</Button>
+    </div>
+  );
+
+  const skeletons = (
+    <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+    </div>
+  );
+
   return (
-    <div className="bg-white">
-      {/* Preload LCP image ngay từ <head> — không chờ parser tới <body>. */}
-      <link
-        rel="preload"
-        as="image"
-        href={heroLaptop.src}
-        type="image/webp"
-        fetchPriority="high"
-      />
-      <div className="mx-auto max-w-7xl space-y-16 px-4 py-8 sm:px-6 sm:py-10 lg:space-y-20 lg:px-8">
-        <h1 className="sr-only">Amora — cửa hàng công nghệ chính hãng</h1>
-
-        {/* ============ HERO ============ */}
-        <section aria-labelledby="hero-heading" className="relative">
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
-            <div className="max-w-xl">
-              <h1
-                id="hero-heading"
-                className="mt-5 font-heading text-4xl font-bold leading-[1.08] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl"
-              >
-                Công nghệ phù hợp.
-                <br />
-                <span className="text-blue-600">Giá thật.</span> Không thổi phồng.
-              </h1>
-
-              <p className="mt-5 max-w-md text-base leading-relaxed text-gray-600">
-                Điện thoại và laptop — được chọn theo nhu cầu thực tế, tư vấn minh
-                bạch và bảo hành rõ ràng.
+    <div className="bg-background">
+      {/* ============ HERO: laptop & điện thoại ============ */}
+      <section aria-labelledby="hero-heading" className="border-b border-border">
+        <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:px-8 lg:pb-12 lg:pt-12">
+          <div className="grid items-end gap-6 lg:grid-cols-12 lg:gap-10">
+            <h1
+              id="hero-heading"
+              className="figure text-[clamp(2.5rem,6.6vw,5.5rem)] font-bold leading-[1.05] [text-wrap:balance] lg:col-span-8"
+            >
+              Laptop và điện thoại chính hãng, <span className="text-brand">giá thật.</span>
+            </h1>
+            <div className="lg:col-span-4 lg:pb-2">
+              <p className="max-w-sm text-base leading-relaxed text-muted-foreground">
+                Chọn theo nhu cầu thực tế, tư vấn minh bạch, bảo hành 24 tháng và đổi trả trong 7 ngày.
               </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+              <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   href="/search"
-                  className="inline-flex h-12 items-center gap-2 rounded-full bg-blue-600 px-7 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-blue-700 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  className="group inline-flex h-11 items-center gap-2 bg-foreground px-6 text-sm font-semibold text-background transition-colors duration-200 hover:bg-brand hover:text-[#111315] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   Khám phá cửa hàng
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
                 </Link>
                 <Link
                   href="/watchlist"
-                  className="inline-flex h-12 items-center rounded-full border border-gray-300 bg-white px-6 text-sm font-semibold text-gray-800 transition-all duration-200 hover:scale-[1.02] hover:border-blue-600 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  className="inline-flex h-11 items-center border border-foreground px-5 text-sm font-semibold transition-colors duration-200 hover:bg-foreground hover:text-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   Theo dõi giá
                 </Link>
               </div>
-
-              <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 border-t border-gray-100 pt-6">
-                <div>
-                  <dt className="text-xs text-gray-500">Bảo hành</dt>
-                  <dd className="font-heading text-lg font-bold text-gray-900">24 tháng</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Đổi trả</dt>
-                  <dd className="font-heading text-lg font-bold text-gray-900">7 ngày</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Hỗ trợ</dt>
-                  <dd className="font-heading text-lg font-bold text-gray-900">24/7</dd>
-                </div>
-              </dl>
-            </div>
-
-            {/* Illustration composition — 3D product renders with drop shadow */}
-            <div className="relative">
-              <div className="relative mx-auto aspect-[4/3] w-full max-w-lg rounded-2xl bg-gray-50 bg-grid-soft">
-                {/* Laptop — LCP image: bundled WebP, preloaded, ảnh tĩnh thuần <img> */}
-                <img
-                  src={heroLaptop.src}
-                  alt="Laptop được chọn lọc tại Amora"
-                  width={heroLaptop.width}
-                  height={heroLaptop.height}
-                  fetchPriority="high"
-                  loading="eager"
-                  decoding="sync"
-                  className="device-shadow absolute left-1/2 top-1/2 z-10 w-[68%] -translate-x-1/2 -translate-y-[58%] rounded-xl object-cover"
-                />
-                {/* Phone */}
-                <img
-                  src={heroPhone.src}
-                  alt="Điện thoại thông minh"
-                  width={heroPhone.width}
-                  height={heroPhone.height}
-                  decoding="async"
-                  className="device-shadow-sm absolute -bottom-2 right-4 z-20 w-[26%] rotate-3 rounded-xl object-cover"
-                />
-                {/* Watch */}
-                <img
-                  src={heroWatch.src}
-                  alt="Đồng hồ thông minh"
-                  width={heroWatch.width}
-                  height={heroWatch.height}
-                  decoding="async"
-                  className="device-shadow-sm absolute -left-2 bottom-4 z-20 w-[24%] -rotate-6 rounded-xl object-cover"
-                />
-              </div>
             </div>
           </div>
-        </section>
 
-        {/* ============ DEPARTMENTS ============ */}
-        <section aria-labelledby="departments-heading">
-          <SectionHeading
-            id="departments-heading"
-            title="Mua theo danh mục"
-          />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {departments.map((dept) => (
+          <div className="mt-8 grid gap-3 md:grid-cols-2 lg:mt-10 lg:gap-4">
+            {panels.map((panel) => (
               <Link
-                key={dept.title}
-                href={dept.href}
-                className="group flex flex-col items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                key={panel.title}
+                href={panel.href}
+                style={{ animationDelay: panel.delay }}
+                className="panel-enter group relative block aspect-[4/3] overflow-hidden bg-[#0e0f11] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:aspect-[5/4] lg:aspect-[16/11]"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-200 group-hover:bg-blue-50 group-hover:text-blue-600">
-                  <dept.icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="font-heading text-sm font-semibold text-gray-900">
-                  {dept.title}
-                </span>
+                <Image
+                  src={panel.img}
+                  alt={panel.alt}
+                  fill
+                  priority
+                  placeholder="blur"
+                  sizes="(min-width: 1280px) 600px, (min-width: 768px) 50vw, 100vw"
+                  className={`object-cover transition-transform duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${panel.imgClass}`}
+                />
+                {/* scrim: giữ chữ trắng đọc được trên mọi vùng ảnh */}
+                <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-black/60" />
+                <div className="label-enter absolute inset-0 flex flex-col justify-between p-5 text-white sm:p-8" style={{ animationDelay: `${500 + parseInt(panel.delay)}ms` }}>
+                  <p className="figure text-5xl leading-none sm:text-7xl">{panel.title}</p>
+                  <div className="flex items-end justify-between gap-4">
+                    <p className="text-sm font-medium text-white/90 sm:text-base">{panel.cta}</p>
+                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand text-[#111315] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-1 group-hover:translate-x-1 sm:h-16 sm:w-16">
+                      <ArrowUpRight className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
+                    </span>
+                  </div>
+                </div>
               </Link>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ============ STAFF PICKS / FEATURED ============ */}
+      <div className="mx-auto max-w-7xl space-y-24 px-4 py-16 sm:px-6 lg:space-y-32 lg:px-8 lg:py-24">
+        {/* ============ FEATURED ============ */}
         <section id="products" aria-labelledby="products-heading">
           <SectionHeading
             id="products-heading"
             title="Sản phẩm nổi bật"
             desc="Thiết bị được chọn lọc — giá và tình trạng tồn kho hiển thị thật."
             href="/search?sort=featured"
-            hrefLabel="Xem tất cả"
           />
-          {loading.products ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : errorProducts ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12">
-              <Alert variant="destructive" className="w-full max-w-md rounded-xl">
-                <AlertTitle>Không tải được sản phẩm</AlertTitle>
-                <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
-              </Alert>
-              <Button variant="outline" onClick={loadProducts}>Thử lại</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {loading.products ? skeletons : errorProducts ? errorBlock("Không tải được sản phẩm", loadProducts) : (
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {featuredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} className="h-full" />
               ))}
@@ -379,64 +323,41 @@ export default function HomePage() {
         </section>
 
         {/* ============ SERVICE PROMISES ============ */}
-        <section aria-label="Cam kết mua sắm" className="grid grid-cols-2 gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5 md:grid-cols-4">
-          {[
-            { icon: Truck, title: "Miễn phí vận chuyển", desc: "Đơn từ 500.000đ" },
-            { icon: ShieldCheck, title: "Hàng chính hãng", desc: "Bảo hành 24 tháng" },
-            { icon: RotateCcw, title: "Đổi trả 7 ngày", desc: "Không cần lý do" },
-            { icon: Wrench, title: "Hỗ trợ kỹ thuật", desc: "Tư vấn 24/7" },
-          ].map((f) => (
-            <div key={f.title} className="flex items-center gap-3 rounded-lg bg-white p-3 transition-shadow duration-200 hover:shadow-sm">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                <f.icon className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-900">{f.title}</p>
-                <p className="truncate text-xs text-gray-500">{f.desc}</p>
-              </div>
-            </div>
-          ))}
+        <section aria-label="Cam kết mua sắm">
+          <ul className="grid grid-cols-2 border-y border-border md:grid-cols-4">
+            {[
+              { icon: Truck, title: "Miễn phí vận chuyển", desc: "Đơn từ 500.000đ" },
+              { icon: ShieldCheck, title: "Hàng chính hãng", desc: "Bảo hành 24 tháng" },
+              { icon: RotateCcw, title: "Đổi trả 7 ngày", desc: "Không cần lý do" },
+              { icon: Wrench, title: "Hỗ trợ kỹ thuật", desc: "Tư vấn 24/7" },
+            ].map((f, i) => (
+              <li key={f.title} className={`flex flex-col gap-3 p-5 sm:p-6 ${i > 0 ? "md:border-l md:border-border" : ""} ${i % 2 === 1 ? "border-l border-border md:border-l" : ""} ${i > 1 ? "border-t border-border md:border-t-0" : ""}`}>
+                <f.icon className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
+                <div>
+                  <p className="text-base font-semibold">{f.title}</p>
+                  <p className="text-sm text-muted-foreground">{f.desc}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* ============ RECOMMENDATIONS ============ */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-              <Sparkles className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div>
-              {recSource === 'ai' ? (
-                <>
-                  <h2 className="font-heading text-2xl font-bold tracking-tight text-gray-900">Gợi ý cá nhân hóa</h2>
-                  <p className="mt-1 text-sm text-gray-500">Dành riêng cho phong cách của bạn</p>
-                </>
-              ) : (
-                <>
-                  <h2 className="font-heading text-2xl font-bold tracking-tight text-gray-900">Sản phẩm phổ biến</h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Hiện khi dịch vụ gợi ý AI chưa sẵn sàng hoặc bạn chưa đăng nhập
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {loading.recommendations ? (
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
-              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : errorRecommendations ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12">
-              <Alert variant="destructive" className="w-full max-w-md rounded-xl">
-                <AlertTitle>Không tải được gợi ý</AlertTitle>
-                <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
-              </Alert>
-              <Button variant="outline" onClick={loadRecommendations}>Thử lại</Button>
-            </div>
-          ) : recommendations.length === 0 ? (
-            <div className="py-12 text-center text-gray-500">Không có gợi ý phù hợp</div>
+        <section aria-labelledby="rec-heading">
+          <SectionHeading
+            id="rec-heading"
+            title={recSource === "ai" ? "Gợi ý cá nhân hóa" : "Sản phẩm phổ biến"}
+            desc={
+              recSource === "ai"
+                ? "Dành riêng cho phong cách của bạn"
+                : "Hiện khi dịch vụ gợi ý AI chưa sẵn sàng hoặc bạn chưa đăng nhập"
+            }
+            href="/search"
+          />
+          {loading.recommendations ? skeletons : errorRecommendations ? errorBlock("Không tải được gợi ý", loadRecommendations) : recommendations.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">Không có gợi ý phù hợp</div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
               {recommendations.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -449,54 +370,25 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* ============ ALL PRODUCTS ============ */}
-        <section className="space-y-6">
-          <SectionHeading
-            title="Khám phá sản phẩm"
-            desc="Tìm thiết bị phù hợp với nhu cầu của bạn."
-            href="/search"
-            hrefLabel="Xem tất cả"
-          />
-          {loading.products ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : errorProducts ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12">
-              <Alert variant="destructive" className="w-full max-w-md rounded-xl">
-                <AlertTitle>Không tải được sản phẩm</AlertTitle>
-                <AlertDescription>Không thể kết nối đến máy chủ. Vui lòng thử lại.</AlertDescription>
-              </Alert>
-              <Button variant="outline" onClick={loadProducts}>Thử lại</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} className="h-full" />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ============ CTA BAND ============ */}
-        <section className="overflow-hidden rounded-xl bg-blue-600 px-6 py-12 text-center sm:px-10 lg:py-14">
-          <h2 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        {/* ============ CTA ============ */}
+        <section className="bg-foreground px-6 py-16 text-background sm:px-12 lg:py-24">
+          <h2 className="figure max-w-3xl text-[clamp(2.25rem,6vw,4.5rem)] font-extrabold leading-[0.96] [text-wrap:balance]">
             Sẵn sàng chọn thiết bị tiếp theo?
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-blue-100 sm:text-base">
+          <p className="mt-5 max-w-xl text-base leading-relaxed opacity-75">
             Xem toàn bộ sản phẩm, so sánh giá thật và chọn thiết bị đúng nhu cầu.
           </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
               href="/search"
-              className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-7 text-sm font-semibold text-blue-700 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="group inline-flex h-12 items-center gap-2 bg-brand px-7 text-sm font-semibold text-[#111315] transition-colors duration-200 hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               Khám phá cửa hàng
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
             </Link>
             <Link
               href="/watchlist"
-              className="inline-flex h-12 items-center rounded-full border border-white/40 px-6 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex h-12 items-center border border-background/50 px-6 text-sm font-semibold transition-colors duration-200 hover:border-background hover:bg-background hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               Bật Price Agent
             </Link>
@@ -505,24 +397,17 @@ export default function HomePage() {
 
         {/* ============ FAQ ============ */}
         <section aria-labelledby="faq-heading" className="mx-auto max-w-3xl">
-          <div className="mb-6 text-center">
-            <h2 id="faq-heading" className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-              Câu hỏi thường gặp
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Những điều khách hàng hay hỏi trước khi mua.
-            </p>
-          </div>
-          <div className="divide-y divide-gray-200 rounded-xl border border-gray-200">
+          <SectionHeading id="faq-heading" title="Câu hỏi thường gặp" desc="Những điều khách hàng hay hỏi trước khi mua." />
+          <div className="border-t border-border">
             {faqs.map((faq) => (
-              <details key={faq.q} className="group px-5 py-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded text-sm font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
+              <details key={faq.q} className="group border-b border-border py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
                   {faq.q}
-                  <span className="text-xl leading-none text-gray-400 transition-transform duration-200 group-open:rotate-45" aria-hidden="true">
+                  <span className="text-2xl leading-none text-muted-foreground transition-transform duration-300 group-open:rotate-45 group-open:text-brand" aria-hidden="true">
                     +
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-gray-600">{faq.a}</p>
+                <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
               </details>
             ))}
           </div>

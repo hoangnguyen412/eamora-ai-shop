@@ -118,7 +118,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20">
         <div className="flex flex-col gap-6 max-w-2xl">
-          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-48 w-full rounded-[2px]" />
           <div className="space-y-3">
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
@@ -148,7 +148,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   }
 
   {cartToast.open && (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl bg-green-900 text-white shadow-lg animate-in fade-in slide-in-from-right-2 duration-300">
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 bg-foreground text-background animate-in fade-in slide-in-from-right-2 duration-300">
       <ShoppingCart className="h-5 w-5" />
       <span className="text-sm font-medium">{cartToast.message}</span>
     </div>
@@ -212,7 +212,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
         {/* Images */}
         <div className="space-y-4">
-          <div className="flex aspect-square max-h-[500px] w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-50 p-6">
+          <div className="flex aspect-square max-h-[500px] w-full items-center justify-center rounded-xl border border-border bg-muted p-6">
             <Image src={product.images[selectedImage] || product.thumbnailUrl} alt={product.name} width={800} height={800} className="device-shadow h-full w-full object-contain" loading="eager" unoptimized />
           </div>
           {product.images.length > 1 && (
@@ -236,7 +236,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
         {/* Info */}
         <div className="space-y-6">
           {product.recommendationBadge && (
-            <Badge className="gap-1.5 border border-blue-100 bg-blue-50 text-blue-700">
+            <Badge className="gap-1.5 border border-border bg-card text-foreground">
               <Sparkles className="h-3 w-3" aria-hidden="true" /> {product.recommendationBadge.label}
             </Badge>
           )}
@@ -244,10 +244,10 @@ export default function ProductDetailClient({ id }: { id: string }) {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>{product.brand}</span><span>•</span><span>{product.category}</span>
             </div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">{product.name}</h1>
+            <h1 className="figure text-3xl leading-[1.05] sm:text-5xl">{product.name}</h1>
           </div>
           <ProductRating rating={product.rating} reviewCount={product.reviewCount} size="detail" />
-          <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="space-y-2 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
             <ProductPrice
               price={product.price}
               originalPrice={product.originalPrice}

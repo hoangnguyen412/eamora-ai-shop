@@ -20,8 +20,8 @@ interface PriceChartProps {
 
 export default function PriceChart({ priceData }: PriceChartProps) {
   const trendIcon = {
-    down: <TrendingDown className="h-4 w-4 text-green-500" />,
-    up: <TrendingUp className="h-4 w-4 text-red-500" />,
+    down: <TrendingDown className="h-4 w-4 text-success" />,
+    up: <TrendingUp className="h-4 w-4 text-destructive" />,
     stable: <Minus className="h-4 w-4 text-muted-foreground" />,
   };
 
@@ -32,8 +32,8 @@ export default function PriceChart({ priceData }: PriceChartProps) {
   };
 
   const trendColor = {
-    down: "text-green-500",
-    up: "text-red-500",
+    down: "text-success",
+    up: "text-destructive",
     stable: "text-muted-foreground",
   };
 
@@ -41,21 +41,21 @@ export default function PriceChart({ priceData }: PriceChartProps) {
     <div className="space-y-4">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-3 text-center">
+        <div className="border border-border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">Giá thấp nhất</p>
-          <p className="text-sm font-bold text-green-600 dark:text-green-400">
+          <p className="text-sm font-bold text-success">
             {formatPrice(priceData.lowestPrice)}
           </p>
         </div>
-        <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3 text-center">
+        <div className="border border-foreground bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">Hiện tại</p>
-          <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+          <p className="text-sm font-bold text-foreground">
             {formatPrice(priceData.currentPrice)}
           </p>
         </div>
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-center">
+        <div className="border border-border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">Cao nhất</p>
-          <p className="text-sm font-bold text-red-600 dark:text-red-400">
+          <p className="text-sm font-bold text-destructive">
             {formatPrice(priceData.highestPrice)}
           </p>
         </div>
