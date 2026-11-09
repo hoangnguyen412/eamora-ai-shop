@@ -41,18 +41,18 @@ export default function CheckoutPage() {
   if (submitted) {
     return (
       <div className="mx-auto max-w-lg space-y-4 px-4 py-20 text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-          <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+        <div className="mx-auto flex h-20 w-20 items-center justify-center bg-secondary">
+          <CheckCircle2 className="h-10 w-10 text-success" />
         </div>
         <h1 className="text-2xl font-bold">Đặt hàng thành công!</h1>
         <p className="text-muted-foreground">
           Mã đơn hàng: <strong>{orderId}</strong>
         </p>
         <p className="text-sm text-muted-foreground">
-          Cảm ơn bạn đã mua sắm tại Amora. Đơn hàng sẽ được xử lý trong
+          Cảm ơn bạn đã mua sắm tại Eamora. Đơn hàng sẽ được xử lý trong
           24 giờ.
         </p>
-        <Link href="/" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>
+        <Link href="/" className={buttonVariants({ className: "mt-4 bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315]" })}>
           Về trang chủ
         </Link>
       </div>
@@ -62,12 +62,12 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[2px] bg-primary/10">
           <ShoppingBag className="h-9 w-9 text-primary" />
         </div>
         <h1 className="mt-5 text-2xl font-bold">Chưa có sản phẩm để thanh toán</h1>
         <p className="text-muted-foreground">Thêm sản phẩm vào giỏ hàng để bắt đầu đặt hàng.</p>
-        <Link href="/search" className={buttonVariants({ className: "mt-4 bg-gradient-brand text-white hover:opacity-90" })}>
+        <Link href="/search" className={buttonVariants({ className: "mt-4 bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315]" })}>
           Khám phá sản phẩm
         </Link>
       </div>
@@ -137,8 +137,7 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header className="mb-6">
-        <p className="text-sm font-medium text-primary">Bước cuối cùng</p>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Thanh toán</h1>
+        <h1 className="figure text-4xl sm:text-5xl">Thanh toán</h1>
         <p className="mt-1 text-sm text-muted-foreground">Xác nhận thông tin nhận hàng và phương thức thanh toán.</p>
       </header>
 
@@ -262,7 +261,7 @@ export default function CheckoutPage() {
                           className="object-cover"
                           unoptimized
                         />
-                        <Badge className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-[8px]">
+                        <Badge className="absolute -top-1 -right-1 h-4 w-4 rounded-[2px] p-0 flex items-center justify-center text-[8px]">
                           {item.quantity}
                         </Badge>
                       </div>
@@ -304,7 +303,7 @@ export default function CheckoutPage() {
                 )}
                 <Button
                   type="submit"
-                  className="w-full bg-gradient-brand text-white hover:opacity-90 h-12"
+                  className="w-full bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315] h-12"
                   size="lg"
                   disabled={isSubmitting}
                 >

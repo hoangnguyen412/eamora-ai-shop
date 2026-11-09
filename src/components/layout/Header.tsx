@@ -8,11 +8,10 @@ import {
   ShoppingCart,
   Search,
   Menu,
-  Cpu,
   LayoutDashboard,
   TrendingDown,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 import { useAuth } from "@/context/AuthProvider";
 import { useState, useEffect } from "react";
 
@@ -34,11 +33,12 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
 
   const navLinkClass = (active: boolean) =>
     [
-      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm transition-all duration-200",
-      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+      "relative inline-flex items-center gap-1.5 px-3.5 py-2 text-sm transition-colors duration-200",
+      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+      "after:absolute after:inset-x-3.5 after:-bottom-[17px] after:h-0.5 after:origin-left after:bg-brand after:transition-transform after:duration-300",
       active
-        ? "bg-blue-50 font-semibold text-blue-700"
-        : "font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+        ? "font-semibold text-foreground after:scale-x-100"
+        : "font-medium text-muted-foreground hover:text-foreground after:scale-x-0 hover:after:scale-x-100",
     ].join(" ");
 
   useEffect(() => {
@@ -46,13 +46,13 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Mobile menu button */}
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-gray-700 transition-colors duration-200 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 lg:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center text-foreground transition-colors duration-200 hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:hidden"
             onClick={onMenuClick}
             aria-label="Mở menu điều hướng"
             aria-expanded={menuOpen}
@@ -64,18 +64,11 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
           {/* Logo */}
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            className="flex shrink-0 items-center gap-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900">
-              <Cpu className="h-5 w-5 text-white" aria-hidden="true" />
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="font-heading text-xl font-bold tracking-tight text-gray-900">
-                Amora
-              </span>
-              <span className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-gray-400">
-                Tech store
-              </span>
+            <span className="h-3 w-3 bg-brand" aria-hidden="true" />
+            <span className="font-heading text-xl font-extrabold sm:text-2xl uppercase leading-none tracking-[0.02em]">
+              Eamora
             </span>
           </Link>
 
@@ -99,28 +92,29 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
             {/* Cart */}
             <Link
               href="/cart"
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition-all duration-200 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="relative inline-flex h-10 w-10 items-center justify-center text-foreground transition-colors duration-200 hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-label={`Giỏ hàng${isMounted && itemCount > 0 ? `, ${itemCount} sản phẩm` : ""}`}
             >
               <ShoppingCart className="h-5 w-5" aria-hidden="true" />
               {isMounted && (
-                <Badge
+                <span
                   aria-hidden="true"
-                  className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-0 bg-blue-600 p-0 px-1 text-[10px] text-white"
+                  className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center bg-brand px-1 text-[10px] font-bold text-[#111315]"
                 >
                   {itemCount}
-                </Badge>
+                </span>
               )}
             </Link>
 
             {!user ? (
               <Link
                 href="/login"
-                className="inline-flex h-10 items-center rounded-full bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                className="ml-1 inline-flex h-10 items-center whitespace-nowrap bg-foreground px-3 sm:px-5 text-sm font-semibold text-background transition-colors duration-200 hover:bg-brand hover:text-[#111315] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 {isLoading ? "Đang tải..." : "Đăng nhập"}
               </Link>

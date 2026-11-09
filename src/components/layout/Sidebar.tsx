@@ -40,7 +40,7 @@ const categories = [
 ];
 
 const itemClass =
-  "mb-0.5 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600";
+  "mb-0.5 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-200 hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   return (
@@ -48,17 +48,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       <SheetContent id="navigation-sidebar" side="left" className="w-72 p-0">
         <SheetHeader className="p-4 pb-2">
           <SheetTitle className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
               <Cpu className="h-4 w-4 text-white" aria-hidden="true" />
             </span>
-            <span className="font-heading text-lg font-bold tracking-tight text-gray-900">
-              Amora
+            <span className="font-heading text-lg font-bold tracking-tight text-foreground">
+              Eamora
             </span>
           </SheetTitle>
         </SheetHeader>
 
         <div className="px-2 py-2">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Điều hướng
           </p>
           {navItems.map((item) => (
@@ -72,7 +72,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         <Separator className="my-2" />
 
         <div className="px-2 py-2">
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Danh mục
           </p>
           {categories.map((cat) => (

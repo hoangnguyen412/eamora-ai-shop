@@ -28,7 +28,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[2px] bg-primary/10">
           <ShoppingCart className="h-8 w-8 text-primary" />
         </div>
         <h1 className="mt-5 text-2xl font-bold">Giỏ hàng đang trống</h1>
@@ -49,10 +49,9 @@ export default function CartPage() {
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-primary">Kiểm tra lựa chọn của bạn</p>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Giỏ hàng</h1>
+          <h1 className="figure text-4xl sm:text-5xl">Giỏ hàng</h1>
         </div>
-        <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">
+        <span className="rounded-[2px] bg-muted px-3 py-1 text-sm text-muted-foreground">
           {itemCount} sản phẩm
         </span>
       </header>

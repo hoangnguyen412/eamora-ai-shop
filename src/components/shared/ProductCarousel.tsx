@@ -93,7 +93,7 @@ export default function ProductCarousel({ products }: ProductCarouselProps) {
           <div className="flex flex-wrap gap-3 pt-2">
             <Link
               href={`/products/${product.id}`}
-              className={buttonVariants({ className: "bg-gradient-brand text-white hover:opacity-90" })}
+              className={buttonVariants({ className: "bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315]" })}
             >
               Xem chi tiết
             </Link>

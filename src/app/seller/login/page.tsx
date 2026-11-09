@@ -51,22 +51,21 @@ function SellerLoginForm() {
   return (
     <div className="mx-auto grid max-w-4xl gap-6 px-4 py-10 sm:px-6 sm:py-16 lg:grid-cols-5 lg:items-stretch lg:px-8">
       <h1 className="sr-only">Đăng nhập tài khoản người bán</h1>
-      <section className="hidden flex-col justify-between rounded-2xl bg-gradient-to-br from-primary/10 via-background to-violet-500/10 p-8 lg:col-span-2 lg:flex">
+      <section className="hidden flex-col justify-between bg-foreground p-8 text-background lg:col-span-2 lg:flex">
         <div>
-          <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-lg shadow-primary/20">
+          <div className="mb-8 flex h-12 w-12 items-center justify-center bg-brand text-[#111315]">
             <Cpu className="h-6 w-6" />
           </div>
-          <p className="text-sm font-semibold text-primary">Amora</p>
-          <h2 className="mt-3 text-3xl font-bold leading-tight">Kênh Người Bán</h2>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="font-heading text-xl font-extrabold uppercase tracking-[-0.02em]">Eamora</p>
+          <h2 className="figure mt-3 text-4xl leading-[1.02]">Kênh Người Bán</h2>
+          <p className="mt-4 text-sm leading-relaxed opacity-75">
             Đăng nhập để quản lý shop, sản phẩm và đơn hàng của bạn.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">Một tài khoản người bán cho các trải nghiệm bán hàng.</p>
+        <p className="text-xs opacity-60">Một tài khoản người bán cho các trải nghiệm bán hàng.</p>
       </section>
       <Card className="w-full border-border/70 shadow-sm lg:col-span-3">
         <CardHeader className="space-y-2 p-6 sm:p-8">
-          <p className="text-sm font-medium text-primary">Chào mừng người bán</p>
           <CardTitle>Đăng nhập người bán</CardTitle>
           <CardDescription>
             Đăng nhập bằng tài khoản người bán để tiếp tục quản lý cửa hàng của bạn.
@@ -99,7 +98,7 @@ function SellerLoginForm() {
               />
             </div>
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="h-11 w-full bg-gradient-brand text-white hover:opacity-90" disabled={isSubmitting || isLoading}>
+            <Button type="submit" className="h-11 w-full bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315]" disabled={isSubmitting || isLoading}>
               {isSubmitting ? "Đang xử lý..." : "Đăng nhập người bán"}
             </Button>
           </form>

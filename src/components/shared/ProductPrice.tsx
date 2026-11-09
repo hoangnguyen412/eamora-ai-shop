@@ -18,11 +18,11 @@ export default function ProductPrice({
 
   return (
     <div className="flex flex-wrap items-baseline gap-2">
-      <span className={`${size === "detail" ? "text-3xl" : "text-xl"} font-bold text-zinc-900`}>
+      <span className={`figure text-foreground ${size === "detail" ? "text-4xl" : "text-[1.65rem] leading-none"}`}>
         {formatPrice(price)}
       </span>
       {hasDiscount && (
-        <span className={`${size === "detail" ? "text-lg" : "text-xs"} text-zinc-400 line-through`}>
+        <span className={`${size === "detail" ? "text-lg" : "text-xs"} text-muted-foreground line-through`}>
           {formatPrice(originalPrice)}
         </span>
       )}

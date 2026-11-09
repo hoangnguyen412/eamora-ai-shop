@@ -22,7 +22,7 @@ const initialMessages: ChatMessage[] = [
   {
     id: "init-welcome",
     role: "assistant",
-    content: "Xin chào! Mình là trợ lý AI mua sắm Amora. Mình có thể giúp gì cho bạn hôm nay?",
+    content: "Xin chào! Mình là trợ lý AI mua sắm Eamora. Mình có thể giúp gì cho bạn hôm nay?",
     timestamp: new Date().toISOString(),
   },
 ];
@@ -115,22 +115,22 @@ export default function ChatWidget() {
     <>
       {/* Khung chat nổi */}
       {isOpen && (
-        <div className="fixed bottom-20 right-6 z-50 w-[calc(100vw-3rem)] sm:w-96 h-[500px] shadow-2xl border rounded-xl overflow-hidden flex flex-col bg-white">
+        <div className="fixed bottom-20 right-6 z-50 w-[calc(100vw-3rem)] sm:w-96 h-[500px] shadow-2xl border border-foreground overflow-hidden flex flex-col bg-card">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/40">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 shadow-sm shrink-0">
-                <Bot className="h-4 w-4 text-white" />
+              <div className="flex h-8 w-8 items-center justify-center bg-foreground text-background shrink-0">
+                <Bot className="h-4 w-4 text-background" />
               </div>
               <div className="leading-tight">
-                <span className="text-xs font-bold">Trợ lý Amora</span>
-                <span className="text-[10px] text-muted-foreground">Tư vấn mua sắm Amora</span>
+                <span className="text-xs font-bold">Trợ lý Eamora</span>
+                <span className="text-[10px] text-muted-foreground">Tư vấn mua sắm Eamora</span>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-full"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-[2px]"
               onClick={() => setIsOpen(false)}
               aria-label="Đóng chat"
             >
@@ -153,7 +153,7 @@ export default function ChatWidget() {
                     <AvatarFallback
                       className={
                         msg.role === "assistant"
-                          ? "bg-gradient-to-br from-violet-500 to-indigo-500 text-white"
+                          ? "bg-foreground text-background"
                           : "bg-primary text-primary-foreground"
                       }
                     >
@@ -162,7 +162,7 @@ export default function ChatWidget() {
                   </Avatar>
                   <div className={`max-w-[85%] space-y-2 ${msg.role === "user" ? "items-end" : ""}`}>
                     <div
-                      className={`rounded-2xl p-3 text-xs leading-relaxed ${
+                      className={`rounded-[2px] p-3 text-xs leading-relaxed ${
                         msg.role === "user"
                           ? "bg-primary text-primary-foreground rounded-tr-xs"
                           : "bg-muted rounded-tl-md text-foreground"
@@ -213,11 +213,11 @@ export default function ChatWidget() {
               {isTyping && (
                 <div className="flex gap-2.5" role="status" aria-label="Trợ lý đang nhập">
                   <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-indigo-500 text-white">
+                    <AvatarFallback className="bg-foreground text-background">
                       <Bot className="h-3.5 w-3.5" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-muted rounded-2xl rounded-tl-md p-3">
+                  <div className="bg-muted rounded-[2px] rounded-tl-md p-3">
                     <div className="flex gap-1">
                       <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" />
                       <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -246,7 +246,7 @@ export default function ChatWidget() {
                 onClick={handleSend}
                 disabled={!input.trim() || isTyping}
                 aria-label="Gửi tin nhắn"
-                className="bg-gradient-brand text-white hover:opacity-90 shrink-0 h-[38px] w-[38px]"
+                className="bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315] shrink-0 h-[38px] w-[38px]"
                 size="icon"
               >
                 <Send className="h-3.5 w-3.5" aria-hidden="true" />
@@ -259,13 +259,13 @@ export default function ChatWidget() {
       {/* Floating Action Button (FAB) */}
       <Button
         onClick={() => setIsOpen((prev) => !prev)}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-gradient-brand text-white shadow-xl hover:scale-105 transition-transform flex items-center justify-center p-0"
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-[2px] bg-foreground text-background shadow-xl hover:bg-brand hover:text-[#111315] transition-colors flex items-center justify-center p-0"
         aria-label={isOpen ? "Đóng AI Chat" : "Mở AI Chat"}
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-white" />
+          <X className="h-6 w-6 text-background" />
         ) : (
-          <MessageCircle className="h-6 w-6 text-white" />
+          <MessageCircle className="h-6 w-6 text-background" />
         )}
       </Button>
     </>

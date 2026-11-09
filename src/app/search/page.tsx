@@ -107,9 +107,8 @@ function SearchContent() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <header className="mb-6 space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">Khám phá Amora</p>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Tìm sản phẩm</h1>
-        <p className="text-sm text-gray-500">Lọc theo danh mục, thương hiệu hoặc khoảng giá.</p>
+        <h1 className="figure text-4xl sm:text-5xl">Tìm sản phẩm</h1>
+        <p className="text-sm text-muted-foreground">Lọc theo danh mục, thương hiệu hoặc khoảng giá.</p>
       </header>
       
       {/* Search bar */}
@@ -125,7 +124,7 @@ function SearchContent() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="h-12 rounded-full border-gray-300 pl-10 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="h-12 rounded-[2px] border-input pl-10 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             />
             {search && (
               <Button
@@ -192,7 +191,7 @@ function SearchContent() {
                       key={cat}
                       type="button"
                       aria-pressed={selectedCategory === cat}
-                      className={`rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      className={`rounded-[2px] border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         selectedCategory === cat
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
@@ -219,7 +218,7 @@ function SearchContent() {
                       key={brand}
                       type="button"
                       aria-pressed={selectedBrand === brand}
-                      className={`rounded-full border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      className={`rounded-[2px] border px-3 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         selectedBrand === brand
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"

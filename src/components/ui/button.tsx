@@ -3,21 +3,21 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-200 outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-[2px] border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-200 outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-blue-600 text-white shadow-sm hover:scale-[1.02] hover:bg-blue-700 hover:shadow-md",
+          "border-transparent bg-primary text-primary-foreground hover:bg-brand hover:text-[#111315]",
         outline:
-          "border-gray-300 bg-background text-gray-800 hover:scale-[1.02] hover:border-blue-600 hover:bg-blue-50 hover:text-blue-700",
+          "border-foreground bg-transparent text-foreground hover:bg-foreground hover:text-background",
         secondary:
-          "bg-gray-100 text-gray-900 hover:bg-gray-200 aria-expanded:bg-gray-200 aria-expanded:text-gray-900",
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-muted aria-expanded:bg-muted",
         ghost:
-          "text-gray-700 hover:bg-gray-100 hover:text-gray-900 aria-expanded:bg-gray-100 aria-expanded:text-gray-900",
+          "border-transparent text-foreground hover:bg-secondary aria-expanded:bg-secondary",
         destructive:
-          "bg-red-50 text-red-700 hover:bg-red-100 focus-visible:outline-red-600 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60",
-        link: "text-blue-600 underline-offset-4 hover:underline",
+          "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:outline-destructive",
+        link: "border-transparent text-foreground underline decoration-brand underline-offset-4",
       },
       size: {
         default:

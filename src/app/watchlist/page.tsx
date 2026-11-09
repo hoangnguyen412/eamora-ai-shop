@@ -271,20 +271,20 @@ export default function WatchlistPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      <header className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
+      <header className="space-y-2 rounded-xl border border-border bg-muted p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-600 text-white">
+          <div className="flex h-11 w-11 items-center justify-center bg-foreground text-background">
             <TrendingDown className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Price Agent</h1>
-            <p className="text-sm text-gray-500">Theo dõi mức giá và quản lý cấu hình của bạn.</p>
+            <h1 className="figure text-4xl sm:text-5xl">Price Agent</h1>
+            <p className="text-sm text-muted-foreground">Theo dõi mức giá và quản lý cấu hình của bạn.</p>
           </div>
         </div>
       </header>
 
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
-      {notice && <p role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
+      {notice && <p role="status" className="rounded-xl border border-success/40 bg-success/5 p-4 text-sm text-success">{notice}</p>}
 
       <section className="space-y-4" aria-labelledby="price-alerts-heading">
         <div>
@@ -306,7 +306,7 @@ export default function WatchlistPage() {
         ) : (
           <div className="space-y-3">
             {priceNotifications.map(({ watch, listing }) => (
-              <Card key={`${watch.id}-${listing.id}`} className="border-emerald-500/30">
+              <Card key={`${watch.id}-${listing.id}`} className="border-success/40">
                 <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
                   <div>
                     <p className="font-medium">
@@ -326,9 +326,9 @@ export default function WatchlistPage() {
         )}
       </section>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
-          <BellRing className="h-5 w-5 text-blue-600" aria-hidden="true" />
+          <BellRing className="h-5 w-5 text-signal-text" aria-hidden="true" />
           <h2 className="text-xl font-semibold">Quy tắc mua tự động</h2>
         </div>
         <p className="text-sm text-muted-foreground mb-6">
@@ -347,15 +347,15 @@ export default function WatchlistPage() {
             />
             <div
               className={`
-                w-11 h-6 bg-gray-200 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-200
-                peer peer-checked:bg-blue-600
-                after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border
+                w-11 h-6 bg-input rounded-full peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring
+                peer peer-checked:bg-foreground
+                after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-input after:border
                 after:rounded-full after:h-5 after:w-5 after:transition-all
-                peer-checked:after:translate-x-full peer-checked:after:border-white
+                peer-checked:after:translate-x-full peer-checked:after:border-background
               `}
               aria-hidden="true"
             />
-            <span className="ml-3 text-sm font-medium text-gray-900">Bật mua tự động</span>
+            <span className="ml-3 text-sm font-medium text-foreground">Bật mua tự động</span>
             <span className="text-xs text-muted-foreground">
               Tự động tạo đơn hàng thử nghiệm khi giá sản phẩm chạm ngưỡng mong muốn.
             </span>
@@ -423,7 +423,7 @@ export default function WatchlistPage() {
                     </div>
                     <div className="text-right">
                       {isTargetReached ? (
-                        <Badge variant="default" className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                        <Badge variant="default" className="bg-success/10 text-success border-success/30">
                           Đã chạm giá mục tiêu
                         </Badge>
                       ) : (
