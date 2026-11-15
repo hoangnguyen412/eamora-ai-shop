@@ -23,40 +23,39 @@ interface RelatedProductsProps {
   productId: string;
 }
 
+interface RelatedResponse {
+  success: boolean;
+  data?: RelatedProduct[];
+}
+
 export default function RelatedProducts({ productId }: RelatedProductsProps) {
   const [products, setProducts] = useState<RelatedProduct[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    const aiBaseUrl = (process.env.NEXT_PUBLIC_AI_URL ?? "http://localhost:8000").replace(/\/$/, "");
+    const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
-    fetch(`${aiBaseUrl}/products/${encodeURIComponent(productId)}/related`, {
+    fetch(`${apiBaseUrl}/api/products/${encodeURIComponent(productId)}/related`, {
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (response.status === 404) {
-          setError("not-found");
+        if (response.status === 404 || !response.ok) {
+          setProducts([]);
           return;
         }
-        if (!response.ok) {
-          throw new Error(`Server returned status ${response.status}`);
-        }
-        const data = await response.json();
-        setProducts(Array.isArray(data) ? data : []);
+        const data = (await response.json()) as RelatedResponse;
+        setProducts(Array.isArray(data?.data) ? data.data : []);
       })
-      .catch((err: unknown) => {
-        if (err instanceof Error && err.name !== "AbortError") {
-          console.error("Related products fetch error:", err);
-          setError(err.message);
-        }
+      .catch(() => {
+        // AI service chết hoặc lỗi mạng → trả về mảng rỗng, ẩn component
+        setProducts([]);
       });
 
     return () => controller.abort();
   }, [productId]);
 
-  // Loading / error / empty → return null, không layout shift
-  if (products === null || error === "not-found" || products.length === 0) {
+  // Lỗi hoặc rỗng → return null, không layout shift, không hiển thị giao diện lỗi
+  if (!products || products.length === 0) {
     return null;
   }
 

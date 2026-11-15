@@ -18,7 +18,15 @@ const app = express();
 
 const connectionString = process.env.DATABASE_URL as string;
 const adapter = new PrismaPg({ connectionString });
-const prisma = new PrismaClient({ adapter });
+// Neon (serverless PG) có thể mất >5s để khởi động connection đầu tiên; timeout mặc định
+// 5s của Prisma gây P2028 "commit on expired transaction". Nâng lên 15s.
+const prisma = new PrismaClient({
+  adapter,
+  transactionOptions: {
+    maxWait: 10000,
+    timeout: 15000,
+  },
+});
 
 // In-memory cache (5 phút TTL) cho các route GET
 const cache = new NodeCache({ stdTTL: 300 });
@@ -56,7 +64,9 @@ const cacheMiddleware = (duration: number) => {
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
 const PORT = process.env.PORT || 4000;
 const AI_URL = (process.env.AI_URL ?? "http://localhost:8000").replace(/\/$/, "");
-const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 2000;
+// FastAPI cần thời gian load model (sentence-transformers) ở lần gọi đầu; 2s là quá ngắn
+// và gây AbortError. Nâng mặc định lên 10s.
+const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 10000;
 const RECOMMENDATIONS_DEFAULT_LIMIT = 12;
 const RECOMMENDATIONS_MAX_LIMIT = 50;
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
@@ -1057,6 +1067,115 @@ app.get('/api/seller/stats', requireAuth, requireRole(['seller']), async (req: A
   }
 });
 
+app.get('/api/categories', async (_req: Request, res: Response) => {
+  try {
+    const categories = await prisma.category.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    return res.json({ success: true, data: categories });
+  } catch (error) {
+    return sendServerError(res, 'Unable to fetch categories', error);
+  }
+});
+
+interface CreateProductBody {
+  name: string;
+  description?: string;
+  categoryId: string;
+  brand?: string;
+  basePrice: number;
+  originalPrice?: number;
+  discountPercent?: number;
+  stock: number;
+  imageUrl?: string;
+  tags?: string[];
+}
+
+app.post('/api/products', requireAuth, requireRole(['seller']), async (req: AuthenticatedRequest, res: Response) => {
+  const body = req.body as Partial<CreateProductBody>;
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const description = typeof body.description === 'string' ? body.description.trim() : null;
+  const categoryId = typeof body.categoryId === 'string' ? body.categoryId.trim() : '';
+  const brand = typeof body.brand === 'string' ? body.brand.trim() : null;
+  const basePrice = typeof body.basePrice === 'number' ? body.basePrice : Number(body.basePrice);
+  const originalPrice = body.originalPrice === undefined || body.originalPrice === null
+    ? basePrice
+    : Number(body.originalPrice);
+  const discountPercent = body.discountPercent === undefined || body.discountPercent === null
+    ? 0
+    : Number(body.discountPercent);
+  const stock = typeof body.stock === 'number' ? body.stock : Number(body.stock);
+  const imageUrl = typeof body.imageUrl === 'string' ? body.imageUrl.trim() : null;
+  const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === 'string') : [];
+
+  if (!name) {
+    return res.status(400).json({ success: false, message: 'Tên sản phẩm là bắt buộc' });
+  }
+  if (!categoryId) {
+    return res.status(400).json({ success: false, message: 'Danh mục là bắt buộc' });
+  }
+  if (!Number.isFinite(basePrice) || basePrice < 0) {
+    return res.status(400).json({ success: false, message: 'Giá sản phẩm không hợp lệ' });
+  }
+  if (!Number.isSafeInteger(stock) || stock < 0) {
+    return res.status(400).json({ success: false, message: 'Tồn kho không hợp lệ' });
+  }
+
+  try {
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { id: true },
+    });
+    if (!category) {
+      return res.status(404).json({ success: false, message: 'Danh mục không tồn tại' });
+    }
+
+    let shop = await prisma.shop.findFirst({
+      where: { sellerId: req.user!.id },
+      select: { id: true },
+    });
+    if (!shop) {
+      shop = await prisma.shop.create({
+        data: {
+          sellerId: req.user!.id,
+          name: `Shop của ${req.user!.email}`,
+        },
+        select: { id: true },
+      });
+    }
+
+    const product = await prisma.product.create({
+      data: {
+        categoryId,
+        name,
+        description,
+        basePrice,
+        originalPrice,
+        discountPercent,
+        brand,
+        imageUrl,
+        images: imageUrl ? [imageUrl] : [],
+        tags,
+      },
+    });
+
+    const listing = await prisma.listing.create({
+      data: {
+        productId: product.id,
+        shopId: shop.id,
+        price: basePrice,
+        stock,
+        condition: 'new',
+      },
+    });
+
+    return res.status(201).json({ success: true, data: { product, listing } });
+  } catch (error) {
+    return sendServerError(res, 'Unable to create product', error);
+  }
+});
+
 app.get('/api/products', cacheMiddleware(300), async (req: Request, res: Response) => {
   try {
     const page = parseIntegerQuery(req.query.page, 1, 1, 1_000_000);
@@ -1150,13 +1269,12 @@ app.get('/api/products', cacheMiddleware(300), async (req: Request, res: Respons
     const skip = (page - 1) * limit;
 
     // Chạy song song truy vấn dữ liệu và truy vấn đếm tổng số để tối ưu hiệu năng.
-    const [products, totalItems] = await prisma.$transaction(async (tx) => {
-      const [productsResult, countResult] = await Promise.all([
-        getProductData(whereClause, skip, limit),
-        tx.product.count({ where: whereClause }),
-      ]);
-      return [productsResult, countResult] as const;
-    });
+    // Đây là thao tác READ-only nên KHÔNG cần $transaction; bọc trong transaction chỉ
+    // khiến một commit rỗng bị P2028 khi DB chậm (Neon cold start).
+    const [products, totalItems] = await Promise.all([
+      getProductData(whereClause, skip, limit),
+      prisma.product.count({ where: whereClause }),
+    ]);
 
     // Lấy TẤT CẢ danh mục (không phụ thuộc vào trang sản phẩm hiện tại).
     const allCategories = await prisma.category.findMany({
@@ -1744,6 +1862,68 @@ app.get('/api/products/:id/reviews', async (req: Request, res: Response) => {
   }
 });
 
+// Kiểu dữ liệu mỗi sản phẩm tương tự trả về từ AI service /products/:id/related (không dùng `any`).
+interface RelatedProductRow {
+  id: string;
+  name: string;
+  basePrice: number | null;
+  imageUrl: string | null;
+  images: string[] | null;
+  brand: string | null;
+  categoryName: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  stock: number | null;
+}
+
+app.get('/api/products/:id/related', async (req: Request, res: Response) => {
+  const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  try {
+    let related: Array<{
+      id: string;
+      name: string;
+      basePrice: number | null;
+      imageUrl: string | null;
+      images: string[] | null;
+      brand: string | null;
+      categoryName: string | null;
+      rating: number | null;
+      reviewCount: number | null;
+      originalPrice: number | null;
+      discountPercent: number | null;
+      stock: number | null;
+    }> = [];
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+      const resp = await fetch(`${AI_URL}/products/${encodeURIComponent(productId)}/related`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (resp.ok) {
+        const raw = await resp.json();
+        if (Array.isArray(raw)) {
+          related = raw;
+        } else if (raw && typeof raw === 'object' && Array.isArray((raw as { products?: unknown }).products)) {
+          related = (raw as { products: RelatedProductRow[] }).products;
+        }
+      } else {
+        console.error(`[Related Products] AI service responded ${resp.status}`);
+      }
+    } catch (error) {
+      console.error('[Related Products] AI service unavailable:', error);
+    }
+
+    return res.json({ success: true, data: related });
+  } catch (error) {
+    return sendServerError(res, 'Unable to fetch related products', error);
+  }
+});
+
 app.post('/api/products/:id/reviews', requireAuth, requireRole(['buyer']), async (req: AuthenticatedRequest, res: Response) => {
   const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const rating = req.body?.rating;
@@ -1997,7 +2177,7 @@ async function getDealScore(productId: string, currentPrice: number): Promise<{ 
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
     const resp = await fetch(`${AI_URL}/agent/score-deal`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
