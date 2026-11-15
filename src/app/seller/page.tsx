@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { Order } from "@/types";
 import { formatPrice, formatDate, getStatusColor, getStatusLabel } from "@/lib/helpers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, DollarSign, Package, ShoppingCart } from "lucide-react";
+import { AlertCircle, DollarSign, Package, ShoppingCart, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthProvider";
 import { useRouter } from "next/navigation";
 
@@ -261,6 +262,9 @@ export default function SellerPage() {
           <h1 className="figure text-4xl sm:text-5xl">Seller Dashboard</h1>
           <p className="text-sm text-muted-foreground">Quản lý đơn hàng và sản phẩm của bạn</p>
         </div>
+        <Button onClick={() => router.push("/seller/create-product")}>
+          <Plus className="h-4 w-4 mr-2" /> Thêm sản phẩm mới
+        </Button>
       </div>
 
       {/* Stats */}

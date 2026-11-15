@@ -111,7 +111,9 @@ export default function Header({ menuOpen, onMenuClick }: HeaderProps) {
               )}
             </Link>
 
-            {!user ? (
+            {!isMounted ? (
+              <div className="ml-1 h-10 w-16 animate-pulse bg-muted rounded-full flex items-center justify-center" />
+            ) : !user ? (
               <Link
                 href="/login"
                 className="ml-1 inline-flex h-10 items-center whitespace-nowrap bg-foreground px-3 sm:px-5 text-sm font-semibold text-background transition-colors duration-200 hover:bg-brand hover:text-[#111315] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
