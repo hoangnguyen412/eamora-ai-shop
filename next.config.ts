@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 2678400,
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "unsplash.com" },
       { protocol: "https", hostname: "api.dicebear.com" },
       { protocol: "https", hostname: "picsum.photos" },
       { protocol: "https", hostname: "rukminim2.flixcart.com" },
@@ -15,6 +16,14 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "placehold.co" },
       { protocol: "https", hostname: "cdn2.cellphones.com.vn" },
       { protocol: "https", hostname: "www.91-img.com" },
+      // Google image hosts (gstatic.com, googleusercontent.com)
+      { protocol: "https", hostname: "encrypted-tbn0.gstatic.com" },
+      { protocol: "https", hostname: "gstatic.com" },
+      { protocol: "https", hostname: "googleusercontent.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      // Cloudinary
+      { protocol: "https", hostname: "cloudinary.com" },
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   turbopack: {
