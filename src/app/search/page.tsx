@@ -26,6 +26,10 @@ interface ProductSearchResponse {
   limit: number;
   mode?: string;
   message?: string;
+  filterOptions?: {
+    categories: string[];
+    brands: string[];
+  };
 }
 
 function SearchContent() {
@@ -56,7 +60,7 @@ function SearchContent() {
     (async () => {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
-      if (selectedCategory) params.set("categoryId", selectedCategory);
+      if (selectedCategory) params.set("category", selectedCategory);
       if (selectedBrand) params.set("brand", selectedBrand);
       if (minPrice) params.set("minPrice", minPrice);
       if (maxPrice) params.set("maxPrice", maxPrice);
@@ -65,7 +69,7 @@ function SearchContent() {
       setError("");
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/search/hybrid?${params}`, {
+        const response = await fetch(`${API_BASE_URL}/api/products?${params}`, {
           signal: controller.signal,
         });
         const result = await response.json() as ProductSearchResponse;
@@ -74,8 +78,8 @@ function SearchContent() {
         }
 
         setProducts(result.data);
-        setCategories([]);
-        setBrands([]);
+        setCategories(result.filterOptions?.categories ?? []);
+        setBrands(result.filterOptions?.brands ?? []);
         setTotalPages(result.totalPages);
         setTotalItems(result.totalItems);
       } catch (fetchError) {
